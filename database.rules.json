@@ -1,0 +1,12 @@
+{
+  "rules": {
+    "live_locations": {
+      "$groupId": {
+        ".read": "auth != null",
+        "$uid": {
+          ".write": "auth != null && (auth.uid === $uid || !newData.exists())"
+        }
+      }
+    }
+  }
+}

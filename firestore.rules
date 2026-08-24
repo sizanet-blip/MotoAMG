@@ -1,0 +1,106 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /// El creador puede dejar a un motero sin grupo (solo ese campo).
+    function ownerCanClearMemberGroup() {
+      let groupId = resource.data.currentGroupId;
+      return isSignedIn()
+        && groupId is string
+        && request.resource.data.currentGroupId == null
+        && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['currentGroupId'])
+        && exists(/databases/$(database)/documents/groups/$(groupId))
+        && get(/databases/$(database)/documents/groups/$(groupId)).data.ownerId
+            == request.auth.uid;
+    }
+
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create, delete: if isSelf(userId);
+      allow update: if isSelf(userId) || ownerCanClearMemberGroup();
+
+      match /memberships/{groupId} {
+        allow read: if isSelf(userId);
+        allow create, update: if isSelf(userId);
+        allow delete: if isSelf(userId)
+          || !exists(/databases/$(database)/documents/users/$(userId))
+          || (
+            isSignedIn()
+            && exists(/databases/$(database)/documents/groups/$(groupId))
+            && get(/databases/$(database)/documents/groups/$(groupId)).data.ownerId
+              == request.auth.uid
+          );
+      }
+    }
+
+    function isAnonymous() {
+      return request.auth.token.firebase.sign_in_provider == 'anonymous';
+    }
+
+    /// Lookup público para entrar con usuario (sin correo).
+    /// El documento no guarda la contraseña en claro; sí un secreto cifrado
+    /// con ella, necesario para iniciar sesión antes de autenticarse.
+    function ownsUsernameEmail() {
+      return isSignedIn()
+        && request.auth.token.email is string
+        && request.auth.token.email == resource.data.authEmail;
+    }
+
+    match /usernames/{username} {
+      allow read: if true;
+      allow create: if isSignedIn()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.authEmail is string
+        && request.resource.data.salt is string
+        && request.resource.data.wrappedSecret is string;
+      /// El dueño actual, o quien recreó la cuenta Auth con el mismo correo
+      /// sintético (p. ej. borró el usuario en Authentication y vuelve a
+      /// registrarse).
+      allow update: if isSignedIn()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.authEmail == resource.data.authEmail
+        && request.resource.data.salt is string
+        && request.resource.data.wrappedSecret is string
+        && (
+          resource.data.uid == request.auth.uid
+          || ownsUsernameEmail()
+        );
+      allow delete: if isSignedIn()
+        && (
+          resource.data.uid == request.auth.uid
+          || ownsUsernameEmail()
+        );
+    }
+
+    match /groups/{groupId} {
+      allow create: if isSignedIn()
+        && !isAnonymous()
+        && request.resource.data.ownerId == request.auth.uid;
+      allow read: if isSignedIn();
+      allow update: if isSignedIn()
+        && resource.data.ownerId == request.auth.uid;
+      allow delete: if isSignedIn()
+        && resource.data.ownerId == request.auth.uid;
+
+      match /members/{userId} {
+        allow read: if isSignedIn();
+        allow create: if isSignedIn() && request.auth.uid == userId;
+        allow update: if isSignedIn() && request.auth.uid == userId;
+        allow delete: if isSignedIn() && (
+          request.auth.uid == userId
+          || get(/databases/$(database)/documents/groups/$(groupId)).data.ownerId
+            == request.auth.uid
+          || !exists(/databases/$(database)/documents/users/$(userId))
+        );
+      }
+    }
+  }
+}

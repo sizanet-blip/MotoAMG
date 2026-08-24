@@ -1,0 +1,33 @@
+{
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "database": {
+    "rules": "database.rules.json"
+  },
+  "auth": {
+    "providers": {
+      "emailPassword": true,
+      "anonymous": true
+    }
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "locmotos-project",
+          "appId": "1:128161523972:android:605f999525259554edc851",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "locmotos-project",
+          "configurations": {
+            "android": "1:128161523972:android:605f999525259554edc851"
+          }
+        }
+      }
+    }
+  }
+}

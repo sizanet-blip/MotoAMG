@@ -1,0 +1,40 @@
+name: loc_motos
+description: "Rastreo de ubicación en tiempo real para grupos de moteros."
+publish_to: "none"
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+  firebase_core: ^3.15.2
+  firebase_auth: ^5.7.0
+  cloud_firestore: ^5.6.12
+  firebase_database: ^11.3.10
+  flutter_riverpod: ^2.6.1
+  equatable: ^2.0.7
+  json_annotation: ^4.12.0
+  google_sign_in: ^6.3.0
+  flutter_map: ^8.2.2
+  latlong2: ^0.9.1
+  geolocator: ^13.0.4
+  permission_handler: ^11.4.0
+  crypto: ^3.0.6
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^6.0.0
+  build_runner: ^2.4.15
+  json_serializable: ^6.9.5
+
+flutter:
+  uses-material-design: true

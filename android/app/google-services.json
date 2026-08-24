@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "128161523972",
+    "project_id": "locmotos-project",
+    "storage_bucket": "locmotos-project.firebasestorage.app",
+    "firebase_url": "https://locmotos-project-default-rtdb.europe-west1.firebasedatabase.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:128161523972:android:605f999525259554edc851",
+        "android_client_info": {
+          "package_name": "com.locmotos.loc_motos"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "128161523972-o149r7fcls53tiamsll9090u6prkajak.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.locmotos.loc_motos",
+            "certificate_hash": "74c22b0974609aab64185a8aa42e37e5f382e2c3"
+          }
+        },
+        {
+          "client_id": "128161523972-povb28ju9fbrcq0jsg7ljlcj7sbef1an.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCV7AJZ44QxyFneD8yo2W4d-uK6guYoxt0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "128161523972-povb28ju9fbrcq0jsg7ljlcj7sbef1an.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
