@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:loc_motos/features/tracking/data/datasources/location_remote_datasource.dart';
 import 'package:loc_motos/features/tracking/data/repositories/location_repository_impl.dart';
 import 'package:loc_motos/features/tracking/data/services/device_location_service.dart';
+import 'package:loc_motos/features/tracking/domain/entities/device_position.dart';
 import 'package:loc_motos/features/tracking/domain/entities/live_location.dart';
 import 'package:loc_motos/features/tracking/domain/repositories/location_repository.dart';
 
@@ -18,10 +19,14 @@ final groupLocationsProvider =
       return ref.watch(locationRepositoryProvider).watchGroupLocations(groupId);
     });
 
-/// Última GPS del propio móvil (para centrar el mapa, no Madrid).
-final ownDevicePositionProvider = StateProvider<({double lat, double lng})?>(
-  (ref) => null,
-);
+/// Última GPS del propio móvil (posición, rumbo y velocidad).
+final ownDevicePositionProvider = StateProvider<OwnDevicePosition?>((ref) => null);
+
+/// Evita dos suscripciones GPS simultáneas (grupo vs navegación).
+enum OwnPositionWatchSource { group, navigation }
+
+final ownPositionWatchSourceProvider =
+    StateProvider<OwnPositionWatchSource?>((ref) => null);
 
 /// El GPS de este móvil está apagado o no da señal.
 final ownGpsLostProvider = StateProvider<bool>((ref) => false);

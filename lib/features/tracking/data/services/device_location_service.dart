@@ -40,6 +40,16 @@ class DeviceLocationService {
     return Geolocator.getPositionStream(locationSettings: _watchSettings());
   }
 
+  /// GPS en primer plano (navegación sin servicio de grupo en segundo plano).
+  Stream<Position> watchNavigationPosition() {
+    return Geolocator.getPositionStream(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 5,
+      ),
+    );
+  }
+
   Future<Position?> readPosition() async {
     try {
       return await Geolocator.getCurrentPosition(

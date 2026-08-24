@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:loc_motos/core/constants/app_constants.dart';
 import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
+import 'package:loc_motos/features/tracking/domain/entities/device_position.dart';
 import 'package:loc_motos/features/tracking/domain/entities/live_location.dart';
 import 'package:loc_motos/features/tracking/domain/exceptions/location_exceptions.dart';
 import 'package:loc_motos/features/tracking/presentation/providers/tracking_providers.dart';
@@ -78,6 +79,8 @@ class _LocationBinderState extends ConsumerState<LocationBinder>
       final gps = ref.read(deviceLocationServiceProvider);
       await gps.ensurePermission();
       _started = true;
+      ref.read(ownPositionWatchSourceProvider.notifier).state =
+          OwnPositionWatchSource.group;
       final first = await gps.readPosition();
       if (!mounted) {
         return;
@@ -118,9 +121,11 @@ class _LocationBinderState extends ConsumerState<LocationBinder>
   void _rememberPosition(Position position) {
     _lastPosition = position;
     if (mounted) {
-      ref.read(ownDevicePositionProvider.notifier).state = (
+      ref.read(ownDevicePositionProvider.notifier).state = ownDevicePosition(
         lat: position.latitude,
         lng: position.longitude,
+        heading: position.heading >= 0 ? position.heading : null,
+        speedMps: position.speed >= 0 ? position.speed : 0,
       );
     }
     unawaited(_publish(position));
@@ -209,6 +214,10 @@ class _LocationBinderState extends ConsumerState<LocationBinder>
     _lastPosition = null;
     _started = false;
     if (mounted) {
+      if (ref.read(ownPositionWatchSourceProvider) ==
+          OwnPositionWatchSource.group) {
+        ref.read(ownPositionWatchSourceProvider.notifier).state = null;
+      }
       ref.read(ownDevicePositionProvider.notifier).state = null;
       ref.read(ownGpsLostProvider.notifier).state = false;
     }

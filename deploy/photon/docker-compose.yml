@@ -1,0 +1,11 @@
+services:
+  photon:
+    image: komoot/photon:latest
+    container_name: locmotos-photon
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:2322:2322"
+    volumes:
+      - ./photon_data:/photon/photon_data
+    environment:
+      JAVA_OPTS: "-Xms1g -Xmx4g"

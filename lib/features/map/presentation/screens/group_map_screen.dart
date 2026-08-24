@@ -10,6 +10,7 @@ import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
 import 'package:loc_motos/features/groups/domain/entities/group_member.dart';
 import 'package:loc_motos/features/groups/presentation/providers/group_providers.dart';
 import 'package:loc_motos/features/map/presentation/widgets/moto_marker.dart';
+import 'package:loc_motos/features/tracking/domain/entities/device_position.dart';
 import 'package:loc_motos/features/tracking/domain/entities/live_location.dart';
 import 'package:loc_motos/features/tracking/presentation/providers/tracking_providers.dart';
 
@@ -100,7 +101,11 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
     final locations = locationsAsync.valueOrNull ?? const <LiveLocation>[];
     final markers = _markers(
       locations,
-      own ?? (lat: _initialCenter.latitude, lng: _initialCenter.longitude),
+      own ??
+          ownDevicePosition(
+            lat: _initialCenter.latitude,
+            lng: _initialCenter.longitude,
+          ),
       now: now,
       ownGpsLost: gpsLost,
       members: members,
@@ -254,7 +259,7 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
 
   List<Marker> _markers(
     List<LiveLocation> locations,
-    ({double lat, double lng}) own, {
+    OwnDevicePosition own, {
     required DateTime now,
     required bool ownGpsLost,
     required List<GroupMember>? members,

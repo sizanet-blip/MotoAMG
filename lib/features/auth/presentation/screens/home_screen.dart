@@ -8,6 +8,7 @@ import 'package:loc_motos/features/groups/presentation/screens/group_options_scr
 import 'package:loc_motos/features/groups/presentation/screens/my_groups_view.dart';
 import 'package:loc_motos/features/groups/presentation/widgets/group_entry_dialogs.dart';
 import 'package:loc_motos/features/map/presentation/screens/group_map_screen.dart';
+import 'package:loc_motos/features/navigation/presentation/screens/navigation_hub_screen.dart';
 import 'package:loc_motos/features/tracking/presentation/widgets/location_binder.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -177,6 +178,19 @@ class _InGroupView extends ConsumerWidget {
           ],
         ),
         actions: [
+          IconButton(
+            tooltip: 'Navegación',
+            onPressed: busy
+                ? null
+                : () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => NavigationHubScreen(user: user),
+                      ),
+                    );
+                  },
+            icon: const Icon(Icons.navigation_outlined),
+          ),
           IconButton(
             tooltip: 'Opciones del grupo',
             onPressed: groupAsync.valueOrNull == null

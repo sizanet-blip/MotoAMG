@@ -7,6 +7,7 @@ import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
 import 'package:loc_motos/features/groups/domain/entities/group_member.dart';
 import 'package:loc_motos/features/groups/domain/entities/ride_group.dart';
 import 'package:loc_motos/features/groups/presentation/providers/group_providers.dart';
+import 'package:loc_motos/features/tracking/domain/entities/device_position.dart';
 import 'package:loc_motos/features/tracking/domain/entities/live_location.dart';
 import 'package:loc_motos/features/tracking/presentation/providers/tracking_providers.dart';
 
@@ -247,7 +248,7 @@ class _MembersCard extends ConsumerWidget {
 
   String? _distanceLabel({
     required GroupMember member,
-    required ({double lat, double lng})? own,
+    required OwnDevicePosition? own,
     required LiveLocation? location,
   }) {
     if (member.uid == user.uid || own == null || location == null) {

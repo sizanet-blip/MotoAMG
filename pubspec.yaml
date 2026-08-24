@@ -27,6 +27,11 @@ dependencies:
   geolocator: ^13.0.4
   permission_handler: ^11.4.0
   crypto: ^3.0.6
+  http: ^1.5.0
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+  flutter_tts: ^4.2.3
+  maplibre_gl: ^0.27.0
 
 dev_dependencies:
   flutter_test:
@@ -38,3 +43,6 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/maps/navigation_style.json
+    - assets/maps/protomaps_light_layers.json

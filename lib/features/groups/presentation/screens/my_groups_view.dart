@@ -6,6 +6,7 @@ import 'package:loc_motos/features/auth/presentation/widgets/account_menu_button
 import 'package:loc_motos/features/groups/domain/entities/group_membership.dart';
 import 'package:loc_motos/features/groups/presentation/providers/group_providers.dart';
 import 'package:loc_motos/features/groups/presentation/widgets/group_entry_dialogs.dart';
+import 'package:loc_motos/features/navigation/presentation/screens/navigation_hub_screen.dart';
 
 class MyGroupsView extends ConsumerWidget {
   const MyGroupsView({super.key, required this.user});
@@ -82,6 +83,21 @@ class MyGroupsView extends ConsumerWidget {
                         onPressed: busy ? null : () => _joinGroup(context, ref),
                         icon: const Icon(Icons.vpn_key_outlined),
                         label: const Text('Unirme con un código'),
+                      ),
+                      const SizedBox(height: 8),
+                      OutlinedButton.icon(
+                        onPressed: busy
+                            ? null
+                            : () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute<void>(
+                                    builder: (_) =>
+                                        NavigationHubScreen(user: user),
+                                  ),
+                                );
+                              },
+                        icon: const Icon(Icons.navigation_outlined),
+                        label: const Text('Navegación'),
                       ),
                       if (busy) ...[
                         const SizedBox(height: 12),
