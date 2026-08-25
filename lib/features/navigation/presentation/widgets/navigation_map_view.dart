@@ -1,16 +1,22 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:loc_motos/core/constants/navigation_constants.dart';
+import 'package:loc_motos/features/navigation/domain/entities/hybrid_map_styles.dart';
 import 'package:loc_motos/features/navigation/domain/entities/navigation_route.dart';
 import 'package:loc_motos/features/navigation/presentation/helpers/route_map_bounds.dart';
 import 'package:loc_motos/features/navigation/presentation/models/navigation_map_camera_mode.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 
 /// Mapa MapLibre: seguimiento en HUD o encuadre de ruta en vista previa.
+///
+/// Usa PMTiles offline dentro de la CCAA descargada y OpenFreeMap al salir.
 class NavigationMapView extends StatefulWidget {
   const NavigationMapView({
     super.key,
     required this.route,
-    required this.styleString,
+    required this.mapStyles,
+    this.hasNetwork = false,
     this.latitude,
     this.longitude,
     this.bearing = 0,
@@ -21,7 +27,8 @@ class NavigationMapView extends StatefulWidget {
   });
 
   final NavigationRoute route;
-  final String styleString;
+  final HybridMapStyles mapStyles;
+  final bool hasNetwork;
   final double? latitude;
   final double? longitude;
   final double bearing;
@@ -40,11 +47,17 @@ class _NavigationMapViewState extends State<NavigationMapView> {
   MapLibreMapController? _controller;
   Line? _routeLine;
   Line? _routeCasingLine;
+  Circle? _puck;
+  Circle? _puckHalo;
   final List<Circle> _endpointMarkers = [];
   var _routeDrawn = false;
   var _lastCameraTarget = const LatLng(0, 0);
   var _cameraReady = false;
+  /// En preview: solo un encuadre inicial; no reajustar al soltar el dedo.
+  var _hasFittedPreview = false;
   var _mapConfigured = false;
+  var _styleSwitching = false;
+  late String _activeStyle;
 
   LatLng get _fallbackTarget {
     final origin = widget.route.origin;
@@ -61,17 +74,47 @@ class _NavigationMapViewState extends State<NavigationMapView> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _activeStyle = widget.mapStyles.resolve(
+      _cameraTarget.latitude,
+      _cameraTarget.longitude,
+      hasNetwork: widget.hasNetwork,
+    );
+  }
+
+  @override
   void didUpdateWidget(covariant NavigationMapView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (_controller == null || !_routeDrawn || widget._isPreview) {
+    if (oldWidget.mapStyles != widget.mapStyles ||
+        oldWidget.hasNetwork != widget.hasNetwork) {
+      // Usar el centro de cámara real (en preview no es el origen de la ruta).
+      unawaited(_syncStyleForVisiblePoint());
+    }
+    if (_controller == null) {
+      return;
+    }
+    if (oldWidget.route.id != widget.route.id) {
+      _hasFittedPreview = false;
+      _cameraReady = false;
+      unawaited(_drawRoute());
+      return;
+    }
+    if (!_routeDrawn || widget._isPreview) {
       return;
     }
     _syncCamera(oldWidget);
+    unawaited(_syncPuck());
+    if (oldWidget.latitude != widget.latitude ||
+        oldWidget.longitude != widget.longitude) {
+      unawaited(_syncStyleForVisiblePoint());
+    }
   }
 
   Future<void> _onMapCreated(MapLibreMapController controller) async {
     _controller = controller;
     widget.onControllerReady?.call(controller);
+    await _syncStyleForVisiblePoint();
     await _drawRoute();
   }
 
@@ -79,10 +122,53 @@ class _NavigationMapViewState extends State<NavigationMapView> {
     _routeDrawn = false;
     _routeLine = null;
     _routeCasingLine = null;
+    _puck = null;
+    _puckHalo = null;
     _endpointMarkers.clear();
     _mapConfigured = false;
+    _styleSwitching = false;
     await _configureMap();
     await _drawRoute();
+  }
+
+  Future<void> _onCameraIdle() async {
+    if (_styleSwitching) {
+      return;
+    }
+    await _syncStyleForVisiblePoint();
+  }
+
+  LatLng _visiblePoint() {
+    final camera = _controller?.cameraPosition?.target;
+    if (camera != null) {
+      return camera;
+    }
+    return _cameraTarget;
+  }
+
+  Future<void> _syncStyleForVisiblePoint() =>
+      _syncStyleForPoint(_visiblePoint());
+
+  Future<void> _syncStyleForPoint(LatLng point) async {
+    final controller = _controller;
+    final next = widget.mapStyles.resolve(
+      point.latitude,
+      point.longitude,
+      hasNetwork: widget.hasNetwork,
+    );
+    if (next == _activeStyle) {
+      return;
+    }
+    _activeStyle = next;
+    if (controller == null) {
+      return;
+    }
+    _styleSwitching = true;
+    try {
+      await controller.setStyle(next);
+    } catch (_) {
+      _styleSwitching = false;
+    }
   }
 
   Future<void> _configureMap() async {
@@ -164,11 +250,70 @@ class _NavigationMapViewState extends State<NavigationMapView> {
 
     if (widget._isPreview) {
       await _drawEndpointMarkers(controller);
+    } else {
+      await _syncPuck();
     }
 
     _routeDrawn = true;
-    await _moveCamera(animate: !_cameraReady);
-    _cameraReady = true;
+    if (widget._isPreview) {
+      // Tras un cambio de estilo (híbrido offline/online) se redibuja la ruta;
+      // no debemos volver a hacer fitBounds o el mapa “salta” al soltar.
+      if (!_hasFittedPreview) {
+        await _moveCamera(animate: true);
+        _hasFittedPreview = true;
+      }
+    } else {
+      await _moveCamera(animate: !_cameraReady);
+      _cameraReady = true;
+    }
+  }
+
+  /// Marcador de posición de navegación (GPS o simulación).
+  Future<void> _syncPuck() async {
+    final controller = _controller;
+    final lat = widget.latitude;
+    final lng = widget.longitude;
+    if (controller == null || widget._isPreview || lat == null || lng == null) {
+      return;
+    }
+
+    final geometry = LatLng(lat, lng);
+    const haloOptions = CircleOptions(
+      circleRadius: 18,
+      circleColor: '#1A73E8',
+      circleOpacity: 0.22,
+      circleStrokeWidth: 0,
+    );
+    const puckOptions = CircleOptions(
+      circleRadius: 9,
+      circleColor: '#1A73E8',
+      circleStrokeWidth: 3,
+      circleStrokeColor: '#FFFFFF',
+      circleOpacity: 1,
+    );
+
+    if (_puckHalo == null) {
+      final circles = await controller.addCircles([
+        haloOptions.copyWith(CircleOptions(geometry: geometry)),
+        puckOptions.copyWith(CircleOptions(geometry: geometry)),
+      ]);
+      if (circles.length >= 2) {
+        _puckHalo = circles[0];
+        _puck = circles[1];
+      }
+      return;
+    }
+
+    await controller.updateCircle(
+      _puckHalo!,
+      haloOptions.copyWith(CircleOptions(geometry: geometry)),
+    );
+    if (_puck != null) {
+      await controller.updateCircle(
+        _puck!,
+        puckOptions.copyWith(CircleOptions(geometry: geometry)),
+      );
+    }
   }
 
   Future<void> _drawEndpointMarkers(MapLibreMapController controller) async {
@@ -178,7 +323,7 @@ class _NavigationMapViewState extends State<NavigationMapView> {
 
     final origin = widget.route.origin;
     final destination = widget.route.destination;
-    final markers = await controller.addCircles([
+    final options = <CircleOptions>[
       const CircleOptions(
         circleRadius: 9,
         circleColor: '#2E7D32',
@@ -187,6 +332,15 @@ class _NavigationMapViewState extends State<NavigationMapView> {
       ).copyWith(
         CircleOptions(geometry: LatLng(origin.lat, origin.lng)),
       ),
+      for (final via in widget.route.waypoints)
+        const CircleOptions(
+          circleRadius: 8,
+          circleColor: '#F9A825',
+          circleStrokeWidth: 2.5,
+          circleStrokeColor: '#FFFFFF',
+        ).copyWith(
+          CircleOptions(geometry: LatLng(via.lat, via.lng)),
+        ),
       const CircleOptions(
         circleRadius: 9,
         circleColor: '#C62828',
@@ -195,7 +349,8 @@ class _NavigationMapViewState extends State<NavigationMapView> {
       ).copyWith(
         CircleOptions(geometry: LatLng(destination.lat, destination.lng)),
       ),
-    ]);
+    ];
+    final markers = await controller.addCircles(options);
     _endpointMarkers.addAll(markers);
   }
 
@@ -220,6 +375,7 @@ class _NavigationMapViewState extends State<NavigationMapView> {
       final bounds = boundsForPoints([
         widget.route.origin,
         widget.route.destination,
+        ...widget.route.waypoints,
         ...widget.route.polyline,
       ]);
       final horizontal = NavigationConstants.routePreviewPaddingHorizontal;
@@ -272,7 +428,7 @@ class _NavigationMapViewState extends State<NavigationMapView> {
   Widget build(BuildContext context) {
     final isPreview = widget._isPreview;
     return MapLibreMap(
-      styleString: widget.styleString,
+      styleString: _activeStyle,
       initialCameraPosition: CameraPosition(
         target: _cameraTarget,
         zoom: isPreview ? 12 : NavigationConstants.defaultNavigationZoom,
@@ -281,14 +437,20 @@ class _NavigationMapViewState extends State<NavigationMapView> {
       ),
       onMapCreated: _onMapCreated,
       onStyleLoadedCallback: _onStyleLoaded,
-      myLocationEnabled: true,
+      onCameraIdle: _onCameraIdle,
+      // En HUD usamos nuestro puck (simulación / posición de navegación).
+      // El punto azul nativo sería el GPS real y confundiría.
+      myLocationEnabled: isPreview,
       myLocationTrackingMode: MyLocationTrackingMode.none,
-      myLocationRenderMode: MyLocationRenderMode.compass,
+      myLocationRenderMode: isPreview
+          ? MyLocationRenderMode.compass
+          : MyLocationRenderMode.normal,
       compassEnabled: isPreview,
       rotateGesturesEnabled: isPreview,
       tiltGesturesEnabled: isPreview,
       zoomGesturesEnabled: true,
-      trackCameraPosition: false,
+      scrollGesturesEnabled: true,
+      trackCameraPosition: true,
     );
   }
 }

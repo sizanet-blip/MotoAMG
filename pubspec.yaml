@@ -32,6 +32,8 @@ dependencies:
   hive_flutter: ^1.1.0
   flutter_tts: ^4.2.3
   maplibre_gl: ^0.27.0
+  path_provider: ^2.1.6
+  connectivity_plus: ^7.3.1
 
 dev_dependencies:
   flutter_test:
@@ -46,3 +48,8 @@ flutter:
   assets:
     - assets/maps/navigation_style.json
     - assets/maps/protomaps_light_layers.json
+    - assets/maps/basemaps/fonts/Noto Sans Regular/
+    - assets/maps/basemaps/fonts/Noto Sans Medium/
+    - assets/maps/basemaps/fonts/Noto Sans Italic/
+    - assets/maps/basemaps/fonts/Noto Sans Devanagari Regular v1/
+    - assets/maps/basemaps/sprites/v4/

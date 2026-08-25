@@ -8,11 +8,25 @@ class NavigationException implements Exception {
 }
 
 class RouteNotFoundException extends NavigationException {
-  const RouteNotFoundException([super.message = 'No se encontró una ruta viable.']);
+  const RouteNotFoundException([
+    super.message = 'No hay una ruta viable hasta ese destino.',
+  ]);
 }
 
 class OfflineRouteUnavailableException extends NavigationException {
   const OfflineRouteUnavailableException([
-    super.message = 'No hay ruta guardada para usar sin cobertura.',
+    super.message = 'No hay ninguna ruta guardada para continuar.',
+  ]);
+}
+
+/// Fallo al descargar un pack de mapa offline.
+class MapRegionDownloadException extends NavigationException {
+  const MapRegionDownloadException(super.message);
+}
+
+/// El usuario canceló la descarga del mapa.
+class MapRegionDownloadCancelledException extends NavigationException {
+  const MapRegionDownloadCancelledException([
+    super.message = 'Descarga cancelada.',
   ]);
 }

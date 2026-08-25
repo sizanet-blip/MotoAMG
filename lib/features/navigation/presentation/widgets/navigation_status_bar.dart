@@ -57,7 +57,7 @@ class NavigationStatusBar extends StatelessWidget {
               ),
               _Divider(),
               _StatBlock(
-                label: 'Tramo',
+                label: 'Restante',
                 value: distanceLabel,
                 unit: '',
               ),

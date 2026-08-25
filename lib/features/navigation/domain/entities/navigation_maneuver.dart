@@ -10,6 +10,10 @@ enum ManeuverType {
   merge,
   ramp,
   unknown,
+  /// Giro a la izquierda (Valhalla 14–16).
+  turnLeft,
+  /// Giro a la derecha (Valhalla 9–11).
+  turnRight,
 }
 
 /// Instrucción giro a giro precargada (ruta en mochila).
@@ -20,29 +24,46 @@ class NavigationManeuver extends Equatable {
     required this.instruction,
     required this.distanceMeters,
     required this.location,
+    this.beginShapeIndex = 0,
     this.streetName,
     this.laneHint,
     this.roundaboutExit,
+    this.voiceInstruction,
   });
 
   final int index;
   final ManeuverType type;
+
+  /// Texto corto para la tarjeta (Valhalla `instruction`).
   final String instruction;
+
+  /// Longitud del tramo hasta la siguiente maniobra (metros).
   final double distanceMeters;
   final GeoPoint location;
+
+  /// Índice en la polilínea donde empieza esta maniobra (Valhalla).
+  final int beginShapeIndex;
+
   final String? streetName;
   final String? laneHint;
   final int? roundaboutExit;
 
+  /// Texto para TTS; si es null se usa [instruction].
+  final String? voiceInstruction;
+
+  String get spokenInstruction => voiceInstruction ?? instruction;
+
   @override
   List<Object?> get props => [
-    index,
-    type,
-    instruction,
-    distanceMeters,
-    location,
-    streetName,
-    laneHint,
-    roundaboutExit,
-  ];
+        index,
+        type,
+        instruction,
+        distanceMeters,
+        location,
+        beginShapeIndex,
+        streetName,
+        laneHint,
+        roundaboutExit,
+        voiceInstruction,
+      ];
 }

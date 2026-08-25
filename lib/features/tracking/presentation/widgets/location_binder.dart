@@ -121,6 +121,9 @@ class _LocationBinderState extends ConsumerState<LocationBinder>
   void _rememberPosition(Position position) {
     _lastPosition = position;
     if (mounted) {
+      if (ref.read(routeSimulationActiveProvider)) {
+        return;
+      }
       ref.read(ownDevicePositionProvider.notifier).state = ownDevicePosition(
         lat: position.latitude,
         lng: position.longitude,

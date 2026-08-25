@@ -43,3 +43,7 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Mapas offline locales (PMTiles pesados) y CLI de extracción
+/maps/offline/
+/tools/pmtiles/

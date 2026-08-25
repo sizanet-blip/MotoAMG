@@ -22,6 +22,9 @@ final groupLocationsProvider =
 /// Última GPS del propio móvil (posición, rumbo y velocidad).
 final ownDevicePositionProvider = StateProvider<OwnDevicePosition?>((ref) => null);
 
+/// True mientras se simula movimiento (el watcher GPS no sobrescribe).
+final routeSimulationActiveProvider = StateProvider<bool>((ref) => false);
+
 /// Evita dos suscripciones GPS simultáneas (grupo vs navegación).
 enum OwnPositionWatchSource { group, navigation }
 

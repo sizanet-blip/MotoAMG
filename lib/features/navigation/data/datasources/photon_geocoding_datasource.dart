@@ -28,7 +28,9 @@ class PhotonGeocodingDataSource implements GeocodingRemoteDataSource {
     bool thorough = false,
   }) async {
     if (!isConfigured) {
-      throw const NavigationException('Servidor Photon no configurado.');
+      throw const NavigationException(
+        'La búsqueda de direcciones no está disponible.',
+      );
     }
 
     final trimmed = query.trim();
@@ -65,7 +67,8 @@ class PhotonGeocodingDataSource implements GeocodingRemoteDataSource {
       if (best.isEmpty) {
         best = ranked;
       }
-      if (!thorough && best.isNotEmpty) {
+      // Al teclear: una sola petición. Thorough solo en Enter / sin resultados.
+      if (!thorough) {
         break;
       }
     }
@@ -97,10 +100,12 @@ class PhotonGeocodingDataSource implements GeocodingRemoteDataSource {
       },
     );
 
-    final response = await _client.get(
-      uri,
-      headers: const {'Accept': 'application/json'},
-    );
+    final response = await _client
+        .get(
+          uri,
+          headers: const {'Accept': 'application/json'},
+        )
+        .timeout(NavigationConstants.geocodingRequestTimeout);
     if (response.statusCode != 200) {
       return null;
     }
@@ -120,6 +125,12 @@ class PhotonGeocodingDataSource implements GeocodingRemoteDataSource {
   }
 
   List<String> _queriesForSearch(String query, {required bool thorough}) {
+    // Autocomplete: una sola consulta normalizada (rápido, estilo Waze).
+    if (!thorough) {
+      final free = GeocodingQueryNormalizer.normalizeFreeText(query);
+      return free.length >= 3 ? [free] : const [];
+    }
+
     final variants = GeocodingQueryNormalizer.buildVariants(query);
     final queries = <String>[];
     for (final variant in variants) {
@@ -132,13 +143,7 @@ class PhotonGeocodingDataSource implements GeocodingRemoteDataSource {
         queries.add(q);
       }
     }
-    if (thorough) {
-      return queries;
-    }
-    if (GeocodingQueryNormalizer.parseStructuredParts(query) != null) {
-      return queries.take(2).toList(growable: false);
-    }
-    return queries.take(1).toList(growable: false);
+    return queries;
   }
 
   Future<List<GeocodingPlace>> _fetchQuery(
@@ -147,10 +152,11 @@ class PhotonGeocodingDataSource implements GeocodingRemoteDataSource {
   }) async {
     final params = <String, String>{
       'q': query,
-      'limit': '8',
+      'limit': '6',
       'lang': NavigationConstants.photonLanguage,
     };
     if (near != null) {
+      // Sesgo por ubicación (Photon prioriza resultados cercanos).
       params['lat'] = near.lat.toString();
       params['lon'] = near.lng.toString();
     }
@@ -158,14 +164,16 @@ class PhotonGeocodingDataSource implements GeocodingRemoteDataSource {
     final uri = Uri.parse('${NavigationConstants.photonBaseUrl}/api')
         .replace(queryParameters: params);
 
-    final response = await _client.get(
-      uri,
-      headers: const {'Accept': 'application/json'},
-    );
+    final response = await _client
+        .get(
+          uri,
+          headers: const {'Accept': 'application/json'},
+        )
+        .timeout(NavigationConstants.geocodingRequestTimeout);
 
     if (response.statusCode != 200) {
-      throw NavigationException(
-        'Photon respondió ${response.statusCode}.',
+      throw const NavigationException(
+        'No se pudo buscar la dirección. Inténtalo de nuevo.',
       );
     }
 

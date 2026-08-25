@@ -6,6 +6,7 @@ import 'package:loc_motos/core/constants/navigation_constants.dart';
 import 'package:loc_motos/features/navigation/domain/entities/geocoding_place.dart';
 import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
 import 'package:loc_motos/features/navigation/domain/exceptions/navigation_exceptions.dart';
+import 'package:loc_motos/features/navigation/domain/exceptions/navigation_user_message.dart';
 import 'package:loc_motos/features/navigation/presentation/providers/navigation_providers.dart';
 import 'package:loc_motos/features/tracking/presentation/providers/tracking_providers.dart';
 
@@ -124,8 +125,9 @@ class _DestinationSearchFieldState extends ConsumerState<DestinationSearchField>
     return GeoPoint(lat: own.lat, lng: own.lng);
   }
 
+  /// Mantiene sugerencias visibles mientras llega la siguiente búsqueda.
   bool get _showSuggestions =>
-      _selected == null && _suggestions.isNotEmpty && !_searching;
+      _selected == null && _suggestions.isNotEmpty;
 
   void _onQueryChanged() {
     if (_ignoreQueryListener) {
@@ -138,12 +140,20 @@ class _DestinationSearchFieldState extends ConsumerState<DestinationSearchField>
     _debounce?.cancel();
     final query = _controller.text.trim();
     if (query.length < 3) {
+      _searchGeneration++;
       setState(() {
         _suggestions = const [];
         _error = '';
         _searching = false;
       });
       return;
+    }
+    // Feedback inmediato: el spinner aparece sin esperar al debounce.
+    if (!_searching) {
+      setState(() {
+        _searching = true;
+        _error = '';
+      });
     }
     _debounce = Timer(NavigationConstants.geocodingSearchDebounce, () {
       unawaited(_runSearch(query));
@@ -166,10 +176,8 @@ class _DestinationSearchFieldState extends ConsumerState<DestinationSearchField>
         near: _biasPoint,
         thorough: thorough,
       );
-      if (!thorough &&
-          results.isEmpty &&
-          query.contains(',') &&
-          generation == _searchGeneration) {
+      // Si no hay nada, una pasada completa (solo entonces).
+      if (!thorough && results.isEmpty && generation == _searchGeneration) {
         results = await repo.searchAddresses(
           query,
           near: _biasPoint,
@@ -187,7 +195,7 @@ class _DestinationSearchFieldState extends ConsumerState<DestinationSearchField>
         _suggestions = results.take(_maxSuggestions).toList(growable: false);
         _searching = false;
         if (results.isEmpty) {
-          _error = 'Sin resultados. Ajusta la dirección o usa coordenadas.';
+          _error = 'Sin resultados. Prueba con más detalle.';
         }
       });
     } on NavigationException catch (error) {
@@ -196,17 +204,18 @@ class _DestinationSearchFieldState extends ConsumerState<DestinationSearchField>
       }
       setState(() {
         _searching = false;
-        _error = error.message;
-        _suggestions = const [];
+        _error = navigationUserMessage(error);
+        if (_suggestions.isEmpty) {
+          _suggestions = const [];
+        }
       });
-    } catch (_) {
+    } catch (error) {
       if (!mounted || generation != _searchGeneration) {
         return;
       }
       setState(() {
         _searching = false;
-        _error = 'No se pudo buscar la dirección.';
-        _suggestions = const [];
+        _error = navigationUserMessage(error);
       });
     }
   }

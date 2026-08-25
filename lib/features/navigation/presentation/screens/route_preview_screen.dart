@@ -3,12 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:loc_motos/core/utils/distance_format.dart';
 import 'package:loc_motos/core/utils/navigation_duration_format.dart';
 import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
+import 'package:loc_motos/features/navigation/domain/entities/hybrid_map_styles.dart';
 import 'package:loc_motos/features/navigation/domain/entities/navigation_route.dart';
 import 'package:loc_motos/features/navigation/presentation/models/navigation_map_camera_mode.dart';
 import 'package:loc_motos/features/navigation/presentation/providers/navigation_providers.dart';
 import 'package:loc_motos/features/navigation/presentation/screens/navigation_hud_screen.dart';
+import 'package:loc_motos/features/navigation/presentation/widgets/map_network_resume_binder.dart';
 import 'package:loc_motos/features/navigation/presentation/widgets/navigation_map_view.dart';
 import 'package:loc_motos/features/navigation/presentation/widgets/navigation_map_zoom_controls.dart';
+import 'package:loc_motos/features/navigation/presentation/widgets/offline_map_banner.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 
 class RoutePreviewScreen extends ConsumerWidget {
@@ -22,7 +25,7 @@ class RoutePreviewScreen extends ConsumerWidget {
   final AppUser user;
 
   Future<void> _startNavigation(BuildContext context) async {
-    await Navigator.of(context).pushReplacement(
+    await Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => NavigationHudScreen(route: route, user: user),
       ),
@@ -31,25 +34,36 @@ class RoutePreviewScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final mapStyleAsync = ref.watch(navigationMapStyleProvider);
+    final mapStyleAsync = ref.watch(hybridMapStylesProvider);
+    final networkAsync = ref.watch(mapNetworkAvailableProvider);
+    // Solo “sin red” cuando el sistema lo confirma (no mientras carga).
+    final hasNetwork = networkAsync.asData?.value ?? true;
+    final showOfflineBanner = networkAsync.asData?.value == false;
 
-    return Scaffold(
-      body: mapStyleAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, _) => const Center(child: Text('No se pudo cargar el mapa.')),
-        data: (mapStyle) => Column(
-          children: [
-            Expanded(
-              child: _RoutePreviewMapLayer(
-                route: route,
-                mapStyle: mapStyle,
+    return MapNetworkResumeBinder(
+      child: Scaffold(
+        body: mapStyleAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (_, _) =>
+              const Center(child: Text('No se pudo cargar el mapa.')),
+          data: (mapStyles) => Column(
+            children: [
+              Expanded(
+                child: _RoutePreviewMapLayer(
+                  route: route,
+                  mapStyles: mapStyles,
+                  hasNetwork: hasNetwork,
+                  showOfflineBanner: showOfflineBanner,
+                ),
               ),
-            ),
-            _RoutePreviewSheet(
-              route: route,
-              onStart: () => _startNavigation(context),
-            ),
-          ],
+              _RoutePreviewSheet(
+                route: route,
+                preferencesSummary:
+                    ref.watch(routePreferencesProvider).summaryLabel,
+                onStart: () => _startNavigation(context),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -59,11 +73,15 @@ class RoutePreviewScreen extends ConsumerWidget {
 class _RoutePreviewMapLayer extends StatefulWidget {
   const _RoutePreviewMapLayer({
     required this.route,
-    required this.mapStyle,
+    required this.mapStyles,
+    required this.hasNetwork,
+    required this.showOfflineBanner,
   });
 
   final NavigationRoute route;
-  final String mapStyle;
+  final HybridMapStyles mapStyles;
+  final bool hasNetwork;
+  final bool showOfflineBanner;
 
   @override
   State<_RoutePreviewMapLayer> createState() => _RoutePreviewMapLayerState();
@@ -82,7 +100,8 @@ class _RoutePreviewMapLayerState extends State<_RoutePreviewMapLayer> {
       children: [
         NavigationMapView(
           route: widget.route,
-          styleString: widget.mapStyle,
+          mapStyles: widget.mapStyles,
+          hasNetwork: widget.hasNetwork,
           cameraMode: NavigationMapCameraMode.fitRoute,
           onControllerReady: (controller) {
             if (_mapController == controller) {
@@ -110,6 +129,13 @@ class _RoutePreviewMapLayerState extends State<_RoutePreviewMapLayer> {
             right: 12,
             child: NavigationMapZoomControls(controller: _mapController!),
           ),
+        if (widget.showOfflineBanner)
+          const Positioned(
+            left: 16,
+            right: 16,
+            bottom: 16,
+            child: OfflineMapBanner(compact: true),
+          ),
       ],
     );
   }
@@ -118,10 +144,12 @@ class _RoutePreviewMapLayerState extends State<_RoutePreviewMapLayer> {
 class _RoutePreviewSheet extends StatelessWidget {
   const _RoutePreviewSheet({
     required this.route,
+    required this.preferencesSummary,
     required this.onStart,
   });
 
   final NavigationRoute route;
+  final String preferencesSummary;
   final VoidCallback onStart;
 
   @override
@@ -153,22 +181,35 @@ class _RoutePreviewSheet extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               Text(
-                'Vista previa de la ruta',
+                route.hasWaypoints
+                    ? 'Vista previa del circuito'
+                    : 'Vista previa de la ruta',
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w700,
                 ),
               ),
               const SizedBox(height: 12),
-              Row(
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
                 children: [
                   _RouteStatChip(
                     icon: Icons.straighten,
                     label: formatRideDistance(route.distanceMeters),
                   ),
-                  const SizedBox(width: 8),
                   _RouteStatChip(
                     icon: Icons.schedule,
                     label: formatNavigationDuration(route.durationSeconds),
+                  ),
+                  if (route.hasWaypoints)
+                    _RouteStatChip(
+                      icon: Icons.place_outlined,
+                      label: '${route.waypoints.length} parada'
+                          '${route.waypoints.length == 1 ? '' : 's'}',
+                    ),
+                  _RouteStatChip(
+                    icon: Icons.tune,
+                    label: preferencesSummary,
                   ),
                 ],
               ),
@@ -177,15 +218,27 @@ class _RoutePreviewSheet extends StatelessWidget {
                 icon: Icons.trip_origin,
                 iconColor: const Color(0xFF2E7D32),
                 title: 'Origen',
-                subtitle: _pointLabel(route.origin.lat, route.origin.lng),
+                subtitle: route.originDisplay,
               ),
+              if (route.hasWaypoints) ...[
+                for (var i = 0; i < route.waypoints.length; i++) ...[
+                  const SizedBox(height: 8),
+                  _RouteEndpointRow(
+                    icon: Icons.radio_button_checked,
+                    iconColor: const Color(0xFFF9A825),
+                    title: 'Parada ${i + 1}',
+                    subtitle:
+                        '${route.waypoints[i].lat.toStringAsFixed(5)}, '
+                        '${route.waypoints[i].lng.toStringAsFixed(5)}',
+                  ),
+                ],
+              ],
               const SizedBox(height: 8),
               _RouteEndpointRow(
                 icon: Icons.flag_outlined,
                 iconColor: const Color(0xFFC62828),
                 title: 'Destino',
-                subtitle:
-                    _pointLabel(route.destination.lat, route.destination.lng),
+                subtitle: route.destinationDisplay,
               ),
               const SizedBox(height: 16),
               FilledButton.icon(
@@ -193,23 +246,11 @@ class _RoutePreviewSheet extends StatelessWidget {
                 icon: const Icon(Icons.navigation),
                 label: const Text('Empezar navegación'),
               ),
-              const SizedBox(height: 4),
-              Text(
-                'Revisa el recorrido en el mapa. Pulsa empezar cuando quieras ir.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: colors.onSurfaceVariant,
-                ),
-                textAlign: TextAlign.center,
-              ),
             ],
           ),
         ),
       ),
     );
-  }
-
-  String _pointLabel(double lat, double lng) {
-    return '${lat.toStringAsFixed(5)}, ${lng.toStringAsFixed(5)}';
   }
 }
 
@@ -278,6 +319,8 @@ class _RouteEndpointRow extends StatelessWidget {
               Text(
                 subtitle,
                 style: theme.textTheme.bodyMedium,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),

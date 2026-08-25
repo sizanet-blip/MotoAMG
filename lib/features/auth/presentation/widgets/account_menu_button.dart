@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:loc_motos/features/auth/presentation/providers/auth_providers.dart';
 import 'package:loc_motos/features/auth/presentation/screens/profile_screen.dart';
 import 'package:loc_motos/features/auth/presentation/widgets/reveal_recovery_key_dialog.dart';
+import 'package:loc_motos/features/settings/presentation/screens/settings_screen.dart';
 
 class AccountMenuButton extends ConsumerWidget {
   const AccountMenuButton({super.key});
@@ -31,6 +32,12 @@ class AccountMenuButton extends ConsumerWidget {
               builder: (_) => ProfileScreen(user: user),
             ),
           );
+        } else if (value == 'settings') {
+          Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => const SettingsScreen(),
+            ),
+          );
         }
       },
       itemBuilder: (context) => [
@@ -42,6 +49,10 @@ class AccountMenuButton extends ConsumerWidget {
         const PopupMenuItem(
           value: 'profile',
           child: Text('Mi perfil'),
+        ),
+        const PopupMenuItem(
+          value: 'settings',
+          child: Text('Configuración'),
         ),
         if (username.isNotEmpty)
           const PopupMenuItem(

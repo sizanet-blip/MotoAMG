@@ -165,8 +165,8 @@ class NominatimGeocodingDataSource implements GeocodingRemoteDataSource {
     );
 
     if (response.statusCode != 200) {
-      throw NavigationException(
-        'No se pudo buscar la dirección (${response.statusCode}).',
+      throw const NavigationException(
+        'No se pudo buscar la dirección. Inténtalo de nuevo.',
       );
     }
 

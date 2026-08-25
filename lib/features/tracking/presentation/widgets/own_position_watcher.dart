@@ -83,6 +83,10 @@ class _OwnPositionWatcherState extends ConsumerState<OwnPositionWatcher> {
     if (!mounted) {
       return;
     }
+    // No pisar la posición mientras se simula el recorrido.
+    if (ref.read(routeSimulationActiveProvider)) {
+      return;
+    }
     ref.read(ownDevicePositionProvider.notifier).state = ownDevicePosition(
       lat: position.latitude,
       lng: position.longitude,

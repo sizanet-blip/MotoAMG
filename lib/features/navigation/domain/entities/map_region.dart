@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:loc_motos/features/navigation/domain/entities/geo_bounds.dart';
 
 /// Región descargable de mapas vectoriales (.pmtiles).
 class MapRegion extends Equatable {
@@ -7,6 +8,7 @@ class MapRegion extends Equatable {
     required this.name,
     required this.downloadUrl,
     required this.sizeBytes,
+    required this.bounds,
     this.localPath,
     this.isDownloaded = false,
   });
@@ -15,18 +17,21 @@ class MapRegion extends Equatable {
   final String name;
   final String downloadUrl;
   final int sizeBytes;
+  final GeoBounds bounds;
   final String? localPath;
   final bool isDownloaded;
 
   MapRegion copyWith({
     String? localPath,
     bool? isDownloaded,
+    GeoBounds? bounds,
   }) {
     return MapRegion(
       id: id,
       name: name,
       downloadUrl: downloadUrl,
       sizeBytes: sizeBytes,
+      bounds: bounds ?? this.bounds,
       localPath: localPath ?? this.localPath,
       isDownloaded: isDownloaded ?? this.isDownloaded,
     );
@@ -38,6 +43,7 @@ class MapRegion extends Equatable {
     name,
     downloadUrl,
     sizeBytes,
+    bounds,
     localPath,
     isDownloaded,
   ];
