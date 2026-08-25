@@ -8,6 +8,44 @@ enum RouteAlertType {
   sharpCurve,
 }
 
+/// Clasificación de radar para UI / voz.
+enum RadarKind {
+  /// Cabina fija puntual.
+  fixed,
+
+  /// Radar de tramo / velocidad media.
+  section,
+
+  /// Cinemómetro en remolque / móvil señalizado.
+  trailer,
+
+  /// Tipo desconocido (p. ej. OSM sin tags).
+  unknown,
+}
+
+extension RadarKindX on RadarKind {
+  String get shortLabel => switch (this) {
+        RadarKind.fixed => 'Fijo',
+        RadarKind.section => 'Tramo',
+        RadarKind.trailer => 'Remolque',
+        RadarKind.unknown => 'Radar',
+      };
+
+  String get titleLabel => switch (this) {
+        RadarKind.fixed => 'RADAR FIJO',
+        RadarKind.section => 'RADAR DE TRAMO',
+        RadarKind.trailer => 'RADAR REMOLQUE',
+        RadarKind.unknown => 'RADAR',
+      };
+
+  String get voiceNoun => switch (this) {
+        RadarKind.fixed => 'Radar fijo',
+        RadarKind.section => 'Radar de tramo',
+        RadarKind.trailer => 'Radar remolque',
+        RadarKind.unknown => 'Radar',
+      };
+}
+
 extension RouteAlertTypeX on RouteAlertType {
   String get shortLabel => switch (this) {
         RouteAlertType.toll => 'Peaje',
@@ -34,6 +72,7 @@ class RouteAlert extends Equatable {
     required this.label,
     this.meta,
     this.speedLimitKmh,
+    this.radarKind,
   });
 
   final String id;
@@ -51,6 +90,12 @@ class RouteAlert extends Equatable {
   /// Límite asociado al radar (km/h), si se conoce.
   final int? speedLimitKmh;
 
+  /// Solo para [RouteAlertType.speedCamera].
+  final RadarKind? radarKind;
+
+  RadarKind get effectiveRadarKind =>
+      radarKind ?? RadarKind.unknown;
+
   String get voiceAnnouncement => type.voicePrefix;
 
   String announcementForDistance(double metersAhead, {bool imminent = false}) {
@@ -58,15 +103,16 @@ class RouteAlert extends Equatable {
         ? '${metersAhead.round()} metros'
         : '${(metersAhead / 1000).toStringAsFixed(1).replaceAll('.', ',')} kilómetros';
     if (type == RouteAlertType.speedCamera) {
+      final kind = effectiveRadarKind.voiceNoun;
       final speed = speedLimitKmh != null && speedLimitKmh! > 0
           ? ', límite $speedLimitKmh kilómetros por hora'
           : '';
       if (imminent) {
         return speedLimitKmh != null && speedLimitKmh! > 0
-            ? 'Radar. Límite $speedLimitKmh'
-            : 'Radar delante';
+            ? '$kind. Límite $speedLimitKmh'
+            : '$kind delante';
       }
-      return 'Radar en $distance$speed';
+      return '$kind en $distance$speed';
     }
     final detail = meta != null && meta!.trim().isNotEmpty
         ? ', ${meta!.trim()}'
@@ -84,6 +130,7 @@ class RouteAlert extends Equatable {
     String? label,
     String? meta,
     int? speedLimitKmh,
+    RadarKind? radarKind,
   }) {
     return RouteAlert(
       id: id ?? this.id,
@@ -94,6 +141,7 @@ class RouteAlert extends Equatable {
       label: label ?? this.label,
       meta: meta ?? this.meta,
       speedLimitKmh: speedLimitKmh ?? this.speedLimitKmh,
+      radarKind: radarKind ?? this.radarKind,
     );
   }
 
@@ -103,6 +151,13 @@ class RouteAlert extends Equatable {
       (t) => t.name == typeName,
       orElse: () => RouteAlertType.fuel,
     );
+    final kindName = json['radarKind'] as String?;
+    final kind = kindName == null
+        ? null
+        : RadarKind.values.firstWhere(
+            (k) => k.name == kindName,
+            orElse: () => RadarKind.unknown,
+          );
     return RouteAlert(
       id: json['id'] as String,
       type: type,
@@ -115,6 +170,7 @@ class RouteAlert extends Equatable {
       label: json['label'] as String? ?? type.shortLabel,
       meta: json['meta'] as String?,
       speedLimitKmh: (json['speedLimitKmh'] as num?)?.toInt(),
+      radarKind: kind,
     );
   }
 
@@ -127,6 +183,7 @@ class RouteAlert extends Equatable {
         'label': label,
         'meta': meta,
         'speedLimitKmh': speedLimitKmh,
+        'radarKind': radarKind?.name,
       };
 
   @override
@@ -138,5 +195,6 @@ class RouteAlert extends Equatable {
         label,
         meta,
         speedLimitKmh,
+        radarKind,
       ];
 }

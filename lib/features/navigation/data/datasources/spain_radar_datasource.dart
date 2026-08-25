@@ -70,6 +70,7 @@ class SpainRadarDatasource {
           label: poi.label,
           meta: poi.road,
           speedLimitKmh: poi.speedLimitKmh,
+          radarKind: poi.kind,
         ),
       );
     }
@@ -173,12 +174,15 @@ class SpainRadarDatasource {
         continue;
       }
       final road = roadRe.firstMatch(body)?.group(1)?.trim();
-      final isSection = id.contains('CVM') || lats.length > 1;
+      final isSection = id.contains('CVM') ||
+          id.toUpperCase().contains('VELOCIDADMEDIA') ||
+          lats.length > 1;
+      final kind = isSection ? RadarKind.section : RadarKind.fixed;
       final label = isSection
           ? (road != null && road.isNotEmpty
               ? 'Radar de tramo · $road'
               : 'Radar de tramo')
-          : (road != null && road.isNotEmpty ? 'Radar · $road' : 'Radar DGT');
+          : (road != null && road.isNotEmpty ? 'Radar fijo · $road' : 'Radar fijo');
 
       for (var i = 0; i < lats.length; i++) {
         final lat = lats[i];
@@ -190,6 +194,7 @@ class SpainRadarDatasource {
           _RadarPoi(
             point: GeoPoint(lat: lat, lng: lng),
             source: 'dgt',
+            kind: kind,
             label: isSection && i > 0 ? '$label (fin)' : label,
             road: road,
           ),
@@ -247,19 +252,24 @@ class SpainRadarDatasource {
         continue;
       }
       final road = parts.first;
+      final pk = parts.length >= 5 ? parts[1] : '';
+      final isSection = pk.contains('-');
+      final kind = trailer
+          ? RadarKind.trailer
+          : (isSection ? RadarKind.section : RadarKind.fixed);
       final limit =
           (speed != null && speed >= 20 && speed <= 140) ? speed : null;
       final point = _utm31NToWgs84(easting: x, northing: y);
       final speedLabel = limit != null ? ' · $limit km/h' : '';
+      final kindLabel = kind.shortLabel.toLowerCase();
       out.add(
         _RadarPoi(
           point: point,
           source: 'sct',
-          label: trailer
-              ? 'Radar remolque$speedLabel'
-              : (road.isNotEmpty
-                  ? 'Radar · $road$speedLabel'
-                  : 'Radar SCT$speedLabel'),
+          kind: kind,
+          label: road.isNotEmpty
+              ? 'Radar $kindLabel · $road$speedLabel'
+              : 'Radar $kindLabel$speedLabel',
           road: road,
           speedLimitKmh: limit,
         ),
@@ -320,6 +330,7 @@ class SpainRadarDatasource {
             ? Map<String, dynamic>.from(tags)
             : const <String, dynamic>{};
         final limit = _parseMaxspeedKmh(tagMap['maxspeed']?.toString());
+        final kind = _osmRadarKind(tagMap);
         final point = GeoPoint(lat: lat, lng: lon);
         final projected = _projectOntoRoute(point, polyline);
         if (projected == null || projected.distanceToRoute > buffer) {
@@ -337,8 +348,9 @@ class SpainRadarDatasource {
             type: RouteAlertType.speedCamera,
             point: point,
             distanceAlongRouteMeters: projected.alongMeters,
-            label: 'Radar$speedLabel',
+            label: '${kind.voiceNoun}$speedLabel',
             speedLimitKmh: limit,
+            radarKind: kind,
           ),
         );
       }
@@ -361,6 +373,29 @@ class SpainRadarDatasource {
       return null;
     }
     return value;
+  }
+
+  RadarKind _osmRadarKind(Map<String, dynamic> tags) {
+    final joined = [
+      tags['speed_camera']?.toString(),
+      tags['enforcement']?.toString(),
+      tags['camera:type']?.toString(),
+      tags['highway']?.toString(),
+    ].whereType<String>().join(' ').toLowerCase();
+    if (joined.contains('section') ||
+        joined.contains('average') ||
+        joined.contains('tram') ||
+        joined.contains('stretch')) {
+      return RadarKind.section;
+    }
+    if (joined.contains('mobile') || joined.contains('trailer')) {
+      return RadarKind.trailer;
+    }
+    if (tags['highway'] == 'speed_camera' ||
+        tags['enforcement'] == 'maxspeed') {
+      return RadarKind.fixed;
+    }
+    return RadarKind.unknown;
   }
 
   List<({double south, double west, double north, double east})> _sampleBboxes(
@@ -553,6 +588,7 @@ class _RadarPoi {
   const _RadarPoi({
     required this.point,
     required this.source,
+    required this.kind,
     required this.label,
     this.road,
     this.speedLimitKmh,
@@ -560,6 +596,7 @@ class _RadarPoi {
 
   final GeoPoint point;
   final String source;
+  final RadarKind kind;
   final String label;
   final String? road;
   final int? speedLimitKmh;

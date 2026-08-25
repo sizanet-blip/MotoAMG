@@ -846,70 +846,197 @@ class _UpcomingRadarBanner extends StatelessWidget {
     final speed = alert.speedLimitKmh;
     final imminent =
         remainingMeters <= NavigationConstants.radarImminentAnnounceMeters;
-    return Material(
-      color: imminent ? const Color(0xFFB71C1C) : const Color(0xFFC62828),
-      borderRadius: BorderRadius.circular(14),
-      elevation: 4,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 12, 14, 12),
-        child: Row(
+    final announceAt = NavigationConstants.alertAnnounceMeters;
+    final progress = (1.0 - (remainingMeters / announceAt)).clamp(0.05, 1.0);
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: (imminent ? const Color(0xFFE53935) : const Color(0xFF000000))
+                .withValues(alpha: imminent ? 0.45 : 0.35),
+            blurRadius: imminent ? 22 : 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(18),
+        child: Stack(
           children: [
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white,
-                border: Border.all(color: const Color(0xFFC62828), width: 4),
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                speed != null && speed > 0 ? '$speed' : '!',
-                style: TextStyle(
-                  color: const Color(0xFF212121),
-                  fontWeight: FontWeight.w900,
-                  fontSize: speed != null && speed > 0 ? 22 : 26,
-                  height: 1,
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: imminent
+                        ? const [Color(0xFF3A1212), Color(0xFF1A1D21)]
+                        : const [Color(0xFF252A31), Color(0xFF1A1D21)],
+                  ),
                 ),
               ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
+            Positioned(
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: 5,
+              child: ColoredBox(
+                color: imminent
+                    ? const Color(0xFFFF5252)
+                    : const Color(0xFFE53935),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 14, 12),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(
-                    imminent ? 'RADAR · AHORA' : 'RADAR',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 16,
-                      letterSpacing: 0.6,
-                    ),
+                  Row(
+                    children: [
+                      _RadarSpeedSign(speedKmh: speed, urgent: imminent),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.photo_camera_rounded,
+                                  size: 16,
+                                  color: imminent
+                                      ? const Color(0xFFFF8A80)
+                                      : const Color(0xFFFFAB91),
+                                ),
+                                const SizedBox(width: 6),
+                                Flexible(
+                                  child: Text(
+                                    imminent
+                                        ? '${alert.effectiveRadarKind.titleLabel} · AHORA'
+                                        : alert.effectiveRadarKind.titleLabel,
+                                    style: TextStyle(
+                                      color: imminent
+                                          ? const Color(0xFFFFCDD2)
+                                          : const Color(0xFFFFEBEE),
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 13,
+                                      letterSpacing: 0.8,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              speed != null && speed > 0
+                                  ? 'Límite $speed km/h'
+                                  : alert.effectiveRadarKind == RadarKind.unknown
+                                      ? 'Control de velocidad'
+                                      : alert.effectiveRadarKind.shortLabel,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 18,
+                                height: 1.15,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.14),
+                          ),
+                        ),
+                        child: Text(
+                          formatRideDistance(remainingMeters),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 17,
+                            letterSpacing: -0.2,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    speed != null && speed > 0
-                        ? 'Límite $speed km/h'
-                        : 'Control de velocidad',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.92),
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
+                  const SizedBox(height: 10),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(99),
+                    child: LinearProgressIndicator(
+                      value: progress,
+                      minHeight: 4,
+                      backgroundColor: Colors.white.withValues(alpha: 0.12),
+                      color: imminent
+                          ? const Color(0xFFFF5252)
+                          : const Color(0xFFE53935),
                     ),
                   ),
                 ],
               ),
             ),
-            Text(
-              formatRideDistance(remainingMeters),
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w800,
-                fontSize: 18,
-              ),
-            ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Señal circular española (anillo rojo + cifra negra).
+class _RadarSpeedSign extends StatelessWidget {
+  const _RadarSpeedSign({
+    required this.speedKmh,
+    required this.urgent,
+  });
+
+  final int? speedKmh;
+  final bool urgent;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasSpeed = speedKmh != null && speedKmh! > 0;
+    return Container(
+      width: 62,
+      height: 62,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white,
+        border: Border.all(
+          color: urgent ? const Color(0xFFFF1744) : const Color(0xFFE53935),
+          width: 5.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: (urgent ? const Color(0xFFFF1744) : const Color(0xFFE53935))
+                .withValues(alpha: 0.35),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        hasSpeed ? '$speedKmh' : '!',
+        style: TextStyle(
+          color: const Color(0xFF1A1A1A),
+          fontWeight: FontWeight.w900,
+          fontSize: hasSpeed
+              ? (speedKmh! >= 100 ? 20 : 24)
+              : 28,
+          height: 1,
         ),
       ),
     );
