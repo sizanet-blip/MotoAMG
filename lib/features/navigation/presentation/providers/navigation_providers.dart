@@ -158,7 +158,7 @@ final hybridMapStylesProvider = FutureProvider<HybridMapStyles>((ref) async {
     }
   }
   return HybridMapStyles(
-    onlineStyle: NavigationMapStyleService.onlineStyle(),
+    onlineStyle: await NavigationMapStyleService.onlineStyle(),
     unavailableStyle: NavigationMapStyleService.unavailableStyle(),
     offline: offline,
   );

@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:loc_motos/core/constants/navigation_constants.dart';
+import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
 import 'package:loc_motos/features/navigation/domain/entities/hybrid_map_styles.dart';
 import 'package:loc_motos/features/navigation/domain/entities/navigation_route.dart';
 import 'package:loc_motos/features/navigation/presentation/helpers/route_map_bounds.dart';
@@ -44,13 +46,24 @@ class NavigationMapView extends StatefulWidget {
 }
 
 class _NavigationMapViewState extends State<NavigationMapView> {
+  static const _routeSourceId = 'locmotos-route';
+  static const _routeCasingLayerId = 'locmotos-route-casing';
+  static const _routeLineLayerId = 'locmotos-route-line';
+  static const _routeLabelsSourceId = 'locmotos-route-labels';
+  static const _routeLabelsLayerId = 'locmotos-route-labels-text';
+
+  /// Refs tipo A-23 / N-234 / CV-624 / AP-7 (no calles largas).
+  static final _roadRefPattern = RegExp(
+    r'\b([A-ZÁÉÍÓÚÜÑ]{1,3}[-\s]?\d[\w-]*)',
+    caseSensitive: false,
+  );
+
   MapLibreMapController? _controller;
-  Line? _routeLine;
-  Line? _routeCasingLine;
   Circle? _puck;
   Circle? _puckHalo;
   final List<Circle> _endpointMarkers = [];
   var _routeDrawn = false;
+  var _routeLayersReady = false;
   var _lastCameraTarget = const LatLng(0, 0);
   var _cameraReady = false;
   /// En preview: solo un encuadre inicial; no reajustar al soltar el dedo.
@@ -120,8 +133,7 @@ class _NavigationMapViewState extends State<NavigationMapView> {
 
   Future<void> _onStyleLoaded() async {
     _routeDrawn = false;
-    _routeLine = null;
-    _routeCasingLine = null;
+    _routeLayersReady = false;
     _puck = null;
     _puckHalo = null;
     _endpointMarkers.clear();
@@ -208,44 +220,14 @@ class _NavigationMapViewState extends State<NavigationMapView> {
       await _configureMap();
     }
 
-    final geometry = widget.route.polyline
-        .map((point) => LatLng(point.lat, point.lng))
-        .toList(growable: false);
-
-    const casingOptions = LineOptions(
-      lineColor: '#FFFFFF',
-      lineWidth: 13,
-      lineOpacity: 0.92,
-      lineJoin: 'round',
-      lineBlur: 0.4,
-    );
-    const routeOptions = LineOptions(
-      lineColor: '#1A73E8',
-      lineWidth: 8,
-      lineOpacity: 1,
-      lineJoin: 'round',
-    );
-
-    if (_routeCasingLine != null) {
-      await controller.updateLine(
-        _routeCasingLine!,
-        casingOptions.copyWith(LineOptions(geometry: geometry)),
-      );
+    final geojson = _routeGeoJson(widget.route.polyline);
+    final labelsGeoJson = _routeStreetLabelsGeoJson(widget.route);
+    if (_routeLayersReady) {
+      await controller.setGeoJsonSource(_routeSourceId, geojson);
+      await controller.setGeoJsonSource(_routeLabelsSourceId, labelsGeoJson);
     } else {
-      _routeCasingLine = await controller.addLine(
-        casingOptions.copyWith(LineOptions(geometry: geometry)),
-      );
-    }
-
-    if (_routeLine != null) {
-      await controller.updateLine(
-        _routeLine!,
-        routeOptions.copyWith(LineOptions(geometry: geometry)),
-      );
-    } else {
-      _routeLine = await controller.addLine(
-        routeOptions.copyWith(LineOptions(geometry: geometry)),
-      );
+      await _addRouteLayersBelowLabels(controller, geojson, labelsGeoJson);
+      _routeLayersReady = true;
     }
 
     if (widget._isPreview) {
@@ -266,6 +248,300 @@ class _NavigationMapViewState extends State<NavigationMapView> {
       await _moveCamera(animate: !_cameraReady);
       _cameraReady = true;
     }
+  }
+
+  Map<String, dynamic> _routeGeoJson(List<GeoPoint> polyline) {
+    return {
+      'type': 'FeatureCollection',
+      'features': [
+        {
+          'type': 'Feature',
+          'properties': <String, dynamic>{},
+          'geometry': {
+            'type': 'LineString',
+            'coordinates': [
+              for (final point in polyline) [point.lng, point.lat],
+            ],
+          },
+        },
+      ],
+    };
+  }
+
+  /// Etiquetas de carretera desde Valhalla (puntos), raleadas para el zoom de itinerario.
+  Map<String, dynamic> _routeStreetLabelsGeoJson(NavigationRoute route) {
+    final polyline = route.polyline;
+    final maneuvers = route.maneuvers;
+    if (polyline.length < 2 || maneuvers.isEmpty) {
+      return {'type': 'FeatureCollection', 'features': <Map<String, dynamic>>[]};
+    }
+
+    // Candidatos: un punto por tramo continuo con ref (solo tramos “de verdad”).
+    final candidates = <({String ref, double meters, List<double> point})>[];
+    String? currentRef;
+    var segmentStart = 0;
+    var segmentEnd = 0;
+    var segmentMeters = 0.0;
+
+    void emit() {
+      final ref = currentRef;
+      // Ignora enlaces/rotondas cortos: saturan el mapa en Secundarias.
+      if (ref == null || segmentEnd <= segmentStart || segmentMeters < 2500) {
+        return;
+      }
+      final last =
+          segmentEnd < polyline.length ? segmentEnd : polyline.length - 1;
+      final coords = <List<double>>[
+        for (var i = segmentStart; i <= last; i++)
+          [polyline[i].lng, polyline[i].lat],
+      ];
+      if (coords.length < 2) {
+        return;
+      }
+      final length = _lineLengthMeters(coords);
+      if (length < 2500) {
+        return;
+      }
+      // Una etiqueta por tramo; si es muy largo, otra a mitad del segundo tercio.
+      final points = length >= 45000
+          ? [
+              _pointAlongLine(coords, length * 0.33),
+              _pointAlongLine(coords, length * 0.66),
+            ]
+          : [_pointAlongLine(coords, length / 2)];
+      for (final point in points) {
+        candidates.add((ref: ref, meters: length, point: point));
+      }
+    }
+
+    for (var i = 0; i < maneuvers.length; i++) {
+      final m = maneuvers[i];
+      // Preferir street_names; la instrucción añade ruido en salidas cortas.
+      final ref = _extractRoadRef(m.streetName) ??
+          (m.distanceMeters >= 800
+              ? _extractRoadRef(m.instruction) ??
+                  _extractRoadRef(m.voiceInstruction)
+              : null);
+      final start = m.beginShapeIndex.clamp(0, polyline.length - 1);
+      final end = i + 1 < maneuvers.length
+          ? maneuvers[i + 1].beginShapeIndex.clamp(0, polyline.length - 1)
+          : polyline.length - 1;
+
+      if (ref == null) {
+        if (currentRef != null) {
+          segmentEnd = end;
+          segmentMeters += m.distanceMeters;
+        }
+        continue;
+      }
+
+      if (currentRef == ref) {
+        segmentEnd = end;
+        segmentMeters += m.distanceMeters;
+      } else {
+        emit();
+        currentRef = ref;
+        segmentStart = start;
+        segmentEnd = end;
+        segmentMeters = m.distanceMeters;
+      }
+    }
+    emit();
+
+    // Primero los tramos más largos; luego separación mínima entre etiquetas.
+    candidates.sort((a, b) => b.meters.compareTo(a.meters));
+    const minSeparationMeters = 22000.0;
+    const maxLabels = 14;
+    final kept = <({String ref, double meters, List<double> point})>[];
+    for (final c in candidates) {
+      if (kept.length >= maxLabels) {
+        break;
+      }
+      final tooClose = kept.any(
+        (k) =>
+            _approxMeters(k.point[1], k.point[0], c.point[1], c.point[0]) <
+            minSeparationMeters,
+      );
+      if (tooClose) {
+        continue;
+      }
+      kept.add(c);
+    }
+
+    return {
+      'type': 'FeatureCollection',
+      'features': [
+        for (final c in kept)
+          {
+            'type': 'Feature',
+            'properties': {
+              'ref': c.ref,
+              // Sprites OpenFreeMap/Protomaps: road_1 … road_6
+              'ref_length': c.ref.length.clamp(1, 6),
+            },
+            'geometry': {
+              'type': 'Point',
+              'coordinates': c.point,
+            },
+          },
+      ],
+    };
+  }
+
+  double _lineLengthMeters(List<List<double>> coords) {
+    var total = 0.0;
+    for (var i = 1; i < coords.length; i++) {
+      total += _approxMeters(
+        coords[i - 1][1],
+        coords[i - 1][0],
+        coords[i][1],
+        coords[i][0],
+      );
+    }
+    return total;
+  }
+
+  List<double> _pointAlongLine(List<List<double>> coords, double meters) {
+    var remaining = meters;
+    for (var i = 1; i < coords.length; i++) {
+      final a = coords[i - 1];
+      final b = coords[i];
+      final seg = _approxMeters(a[1], a[0], b[1], b[0]);
+      if (seg <= 0) {
+        continue;
+      }
+      if (remaining <= seg) {
+        final t = remaining / seg;
+        return [
+          a[0] + (b[0] - a[0]) * t,
+          a[1] + (b[1] - a[1]) * t,
+        ];
+      }
+      remaining -= seg;
+    }
+    return coords.last;
+  }
+
+  double _approxMeters(
+    double lat1,
+    double lng1,
+    double lat2,
+    double lng2,
+  ) {
+    const metersPerDegLat = 111320.0;
+    final midLatRad = ((lat1 + lat2) / 2) * (math.pi / 180);
+    final cosLat = math.cos(midLatRad).abs().clamp(0.01, 1.0);
+    final dy = (lat2 - lat1) * metersPerDegLat;
+    final dx = (lng2 - lng1) * metersPerDegLat * cosLat;
+    return math.sqrt(dx * dx + dy * dy);
+  }
+
+  String? _extractRoadRef(String? raw) {
+    if (raw == null || raw.isEmpty) {
+      return null;
+    }
+    final match = _roadRefPattern.firstMatch(raw);
+    return match?.group(1)?.toUpperCase();
+  }
+
+  /// Línea bajo textos del mapa; refs de ruta encima de la línea azul.
+  Future<void> _addRouteLayersBelowLabels(
+    MapLibreMapController controller,
+    Map<String, dynamic> geojson,
+    Map<String, dynamic> labelsGeoJson,
+  ) async {
+    final belowLayerId = await _firstMapLabelLayerId(controller);
+
+    await controller.addGeoJsonSource(_routeSourceId, geojson);
+    await controller.addLineLayer(
+      _routeSourceId,
+      _routeCasingLayerId,
+      const LineLayerProperties(
+        lineColor: '#FFFFFF',
+        lineWidth: 13,
+        lineOpacity: 0.92,
+        lineJoin: 'round',
+        lineBlur: 0.4,
+      ),
+      belowLayerId: belowLayerId,
+      enableInteraction: false,
+    );
+    await controller.addLineLayer(
+      _routeSourceId,
+      _routeLineLayerId,
+      const LineLayerProperties(
+        lineColor: '#1A73E8',
+        lineWidth: 8,
+        lineOpacity: 1,
+        lineJoin: 'round',
+      ),
+      belowLayerId: belowLayerId,
+      enableInteraction: false,
+    );
+
+    await controller.addGeoJsonSource(_routeLabelsSourceId, labelsGeoJson);
+    // Mismo aspecto que highway-shield del basemap (caja blanca + texto negro).
+    await controller.addSymbolLayer(
+      _routeLabelsSourceId,
+      _routeLabelsLayerId,
+      SymbolLayerProperties(
+        iconImage: const [
+          Expressions.concat,
+          'road_',
+          [
+            Expressions.toStringExpression,
+            [Expressions.get, 'ref_length'],
+          ],
+        ],
+        iconSize: 1,
+        iconRotationAlignment: 'viewport',
+        iconAllowOverlap: false,
+        iconIgnorePlacement: false,
+        iconOptional: true,
+        textField: const [Expressions.get, 'ref'],
+        textSize: 10,
+        textColor: '#000000',
+        textHaloColor: '#ffffff',
+        textHaloWidth: 1.2,
+        textFont: const ['Noto Sans Regular'],
+        textRotationAlignment: 'viewport',
+        textAllowOverlap: false,
+        textIgnorePlacement: false,
+        textOptional: false,
+        textAnchor: 'center',
+        symbolPlacement: 'point',
+      ),
+      enableInteraction: false,
+    );
+  }
+
+  /// Primera capa de texto/escudo/pueblo (abajo→arriba) para meter la ruta debajo.
+  Future<String?> _firstMapLabelLayerId(
+    MapLibreMapController controller,
+  ) async {
+    try {
+      final ids = await controller.getLayerIds();
+      for (final raw in ids) {
+        final id = raw?.toString();
+        if (id != null && _looksLikeMapLabelLayer(id)) {
+          return id;
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  bool _looksLikeMapLabelLayer(String id) {
+    if (id.startsWith('locmotos-')) {
+      return false;
+    }
+    final lower = id.toLowerCase();
+    return lower.contains('label') ||
+        lower.contains('name') ||
+        lower.contains('place') ||
+        lower.contains('shield') ||
+        lower.contains('ref') ||
+        lower.contains('poi');
   }
 
   /// Marcador de posición de navegación (GPS o simulación).
@@ -438,6 +714,12 @@ class _NavigationMapViewState extends State<NavigationMapView> {
       onMapCreated: _onMapCreated,
       onStyleLoadedCallback: _onStyleLoaded,
       onCameraIdle: _onCameraIdle,
+      // Ruta = capas GeoJSON; no hace falta LineManager (taparía etiquetas).
+      annotationOrder: const [
+        AnnotationType.fill,
+        AnnotationType.circle,
+        AnnotationType.symbol,
+      ],
       // En HUD usamos nuestro puck (simulación / posición de navegación).
       // El punto azul nativo sería el GPS real y confundiría.
       myLocationEnabled: isPreview,
