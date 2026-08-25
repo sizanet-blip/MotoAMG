@@ -14,6 +14,62 @@ abstract final class NavigationConstants {
   /// Timeout para peticiones de ruta (rutas largas pueden tardar varios segundos).
   static const Duration valhallaRequestTimeout = Duration(seconds: 45);
 
+  /// Timeout Overpass (consultas POI en ruta).
+  static const Duration overpassRequestTimeout = Duration(seconds: 25);
+
+  /// Timeout descarga inventarios de radares (DGT/SCT).
+  static const Duration spainRadarRequestTimeout = Duration(seconds: 45);
+
+  /// Caché en memoria del inventario de radares (DGT + regionales).
+  static const Duration spainRadarCacheTtl = Duration(hours: 12);
+
+  /// Endpoint Overpass público (rate-limit; degradar si falla).
+  static const String overpassInterpreterUrl =
+      'https://overpass-api.de/api/interpreter';
+
+  /// Inventario DATEX II de radares fijos/tramo DGT (excepto CAT y Euskadi).
+  /// Fuente: https://nap.dgt.es/dataset/radares-fijos-dgt
+  /// HTTPS obligatorio en Android (cleartext HTTP bloqueado por defecto).
+  static const String dgtRadaresDatexUrl =
+      'https://infocar.dgt.es/datex2/dgt/PredefinedLocationsPublication/radares/content.xml';
+
+  /// Distancia para no duplicar un radar OSM si ya hay uno oficial cerca.
+  static const double radarDedupeMeters = 100;
+
+  /// Coordenadas UTM (ETRS89 zona 31N) de cinemómetros fijos SCT.
+  static const String sctRadaresFijosUrl =
+      'https://transit.gencat.cat/web/.content/documents/seguretat_viaria/radars.txt';
+
+  /// Cinemómetros en remolc SCT (mismo formato UTM).
+  static const String sctRadaresRemolcUrl =
+      'https://transit.gencat.cat/web/.content/documents/seguretat_viaria/radars-remolc.txt';
+
+  /// Buffer lateral para buscar gasolineras/radares (metros).
+  static const double routePoiBufferMeters = 400;
+
+  /// Muestreo de la ruta para bboxes Overpass (metros entre anclas).
+  static const double overpassSampleEveryMeters = 25000;
+
+  /// Ventana de detección de curvas fuertes (metros).
+  static const double sharpCurveWindowMeters = 120;
+
+  /// Cambio de rumbo acumulado (grados) para marcar curva fuerte.
+  static const double sharpCurveMinBearingDeltaDeg = 55;
+
+  /// Separación mínima entre avisos de curva (metros).
+  static const double sharpCurveMinSeparationMeters = 400;
+
+  /// Distancia a la que se anuncia un aviso por voz (metros).
+  static const double alertAnnounceMeters = 350;
+
+  /// Segunda voz de radar al estar muy cerca (metros).
+  static const double radarImminentAnnounceMeters = 90;
+
+  /// Tras anunciar, no repetir hasta pasar el punto (+ gracia).
+  static const double alertPassedGraceMeters = 40;
+
+  /// Fase 2 (tráfico TomTom): ver `deploy/traffic-tomtom-phase2.md` — no implementado.
+
   /// Perfil de costing para motos en asfalto.
   static const String valhallaCosting = 'motorcycle';
 
@@ -22,6 +78,13 @@ abstract final class NavigationConstants {
 
   /// Distancia al destino para considerar llegada (metros).
   static const double arrivalThresholdMeters = 40;
+
+  /// No dar por llegada si aún queda más que esto a lo largo de la ruta
+  /// (evita falsos positivos si el trazado pasa cerca del destino antes).
+  static const double arrivalMaxAlongRemainingMeters = 120;
+
+  /// Distancia a la que se anuncia por voz la próxima maniobra (metros).
+  static const double maneuverAnnounceMeters = 280;
 
   /// Espera confirmando el desvío antes de pedir una ruta nueva (evita parpadeos).
   static const Duration rerouteDebounce = Duration(seconds: 2);

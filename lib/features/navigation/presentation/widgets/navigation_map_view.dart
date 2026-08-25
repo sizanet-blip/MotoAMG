@@ -1,11 +1,15 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:loc_motos/core/constants/navigation_constants.dart';
+import 'package:loc_motos/core/utils/navigation_duration_format.dart';
 import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
 import 'package:loc_motos/features/navigation/domain/entities/hybrid_map_styles.dart';
 import 'package:loc_motos/features/navigation/domain/entities/navigation_route.dart';
+import 'package:loc_motos/features/navigation/domain/entities/route_alert.dart';
 import 'package:loc_motos/features/navigation/presentation/helpers/route_map_bounds.dart';
 import 'package:loc_motos/features/navigation/presentation/models/navigation_map_camera_mode.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
@@ -18,6 +22,7 @@ class NavigationMapView extends StatefulWidget {
     super.key,
     required this.route,
     required this.mapStyles,
+    this.alternativeRoutes = const [],
     this.hasNetwork = false,
     this.latitude,
     this.longitude,
@@ -29,6 +34,9 @@ class NavigationMapView extends StatefulWidget {
   });
 
   final NavigationRoute route;
+
+  /// Otras opciones de ruta (vista previa); se pintan más claras.
+  final List<NavigationRoute> alternativeRoutes;
   final HybridMapStyles mapStyles;
   final bool hasNetwork;
   final double? latitude;
@@ -49,8 +57,27 @@ class _NavigationMapViewState extends State<NavigationMapView> {
   static const _routeSourceId = 'locmotos-route';
   static const _routeCasingLayerId = 'locmotos-route-casing';
   static const _routeLineLayerId = 'locmotos-route-line';
+  static const _altsSourceId = 'locmotos-alts';
+  static const _altsCasingLayerId = 'locmotos-alts-casing';
+  static const _altsLineLayerId = 'locmotos-alts-line';
   static const _routeLabelsSourceId = 'locmotos-route-labels';
   static const _routeLabelsLayerId = 'locmotos-route-labels-text';
+  static const _etaSourceId = 'locmotos-eta';
+  static const _etaLayerId = 'locmotos-eta-text';
+  static const _etaPillSelectedId = 'locmotos-eta-pill';
+  static const _etaPillAltId = 'locmotos-eta-pill-alt';
+  static const _alertsSourceId = 'locmotos-alerts';
+  static const _alertsSymbolLayerId = 'locmotos-alerts-symbol';
+  static const _alertIconCameraId = 'locmotos-alert-camera';
+  static const _alertIconFuelId = 'locmotos-alert-fuel';
+  static const _alertIconTollId = 'locmotos-alert-toll';
+
+  /// Tipos que se pintan en el mapa (no curvas: saturan el trazado).
+  static const _mapAlertTypes = {
+    RouteAlertType.speedCamera,
+    RouteAlertType.fuel,
+    RouteAlertType.toll,
+  };
 
   /// Refs tipo A-23 / N-234 / CV-624 / AP-7 (no calles largas).
   static final _roadRefPattern = RegExp(
@@ -64,6 +91,8 @@ class _NavigationMapViewState extends State<NavigationMapView> {
   final List<Circle> _endpointMarkers = [];
   var _routeDrawn = false;
   var _routeLayersReady = false;
+  var _etaPillsReady = false;
+  var _alertIconsReady = false;
   var _lastCameraTarget = const LatLng(0, 0);
   var _cameraReady = false;
   /// En preview: solo un encuadre inicial; no reajustar al soltar el dedo.
@@ -107,9 +136,30 @@ class _NavigationMapViewState extends State<NavigationMapView> {
     if (_controller == null) {
       return;
     }
-    if (oldWidget.route.id != widget.route.id) {
-      _hasFittedPreview = false;
-      _cameraReady = false;
+    final routeChanged = oldWidget.route.id != widget.route.id;
+    final alertsChanged = !_sameAlertIds(
+      oldWidget.route.alerts,
+      widget.route.alerts,
+    );
+    final altsChanged = !_sameRouteIds(
+      oldWidget.alternativeRoutes,
+      widget.alternativeRoutes,
+    );
+    if (routeChanged || altsChanged || alertsChanged) {
+      final oldIds = {
+        oldWidget.route.id,
+        ...oldWidget.alternativeRoutes.map((r) => r.id),
+      };
+      final newIds = {
+        widget.route.id,
+        ...widget.alternativeRoutes.map((r) => r.id),
+      };
+      final samePlan =
+          oldIds.length == newIds.length && oldIds.containsAll(newIds);
+      if (!samePlan) {
+        _hasFittedPreview = false;
+        _cameraReady = false;
+      }
       unawaited(_drawRoute());
       return;
     }
@@ -118,8 +168,10 @@ class _NavigationMapViewState extends State<NavigationMapView> {
     }
     _syncCamera(oldWidget);
     unawaited(_syncPuck());
+    // En HUD: al avanzar, actualizar qué avisos (próximos 1–2) se muestran.
     if (oldWidget.latitude != widget.latitude ||
         oldWidget.longitude != widget.longitude) {
+      unawaited(_syncAlertsSource());
       unawaited(_syncStyleForVisiblePoint());
     }
   }
@@ -134,6 +186,8 @@ class _NavigationMapViewState extends State<NavigationMapView> {
   Future<void> _onStyleLoaded() async {
     _routeDrawn = false;
     _routeLayersReady = false;
+    _etaPillsReady = false;
+    _alertIconsReady = false;
     _puck = null;
     _puckHalo = null;
     _endpointMarkers.clear();
@@ -220,13 +274,30 @@ class _NavigationMapViewState extends State<NavigationMapView> {
       await _configureMap();
     }
 
-    final geojson = _routeGeoJson(widget.route.polyline);
+    final selectedGeoJson = _routeGeoJson(widget.route.polyline);
+    final altsGeoJson = _alternativesGeoJson(widget.alternativeRoutes);
     final labelsGeoJson = _routeStreetLabelsGeoJson(widget.route);
+    final etaGeoJson = _etaLabelsGeoJson(
+      selected: widget.route,
+      alternatives: widget.alternativeRoutes,
+    );
+    final alertsGeoJson = _alertsGeoJson();
+
     if (_routeLayersReady) {
-      await controller.setGeoJsonSource(_routeSourceId, geojson);
+      await controller.setGeoJsonSource(_altsSourceId, altsGeoJson);
+      await controller.setGeoJsonSource(_routeSourceId, selectedGeoJson);
       await controller.setGeoJsonSource(_routeLabelsSourceId, labelsGeoJson);
+      await controller.setGeoJsonSource(_etaSourceId, etaGeoJson);
+      await controller.setGeoJsonSource(_alertsSourceId, alertsGeoJson);
     } else {
-      await _addRouteLayersBelowLabels(controller, geojson, labelsGeoJson);
+      await _addRouteLayersBelowLabels(
+        controller,
+        altsGeoJson: altsGeoJson,
+        selectedGeoJson: selectedGeoJson,
+        labelsGeoJson: labelsGeoJson,
+        etaGeoJson: etaGeoJson,
+        alertsGeoJson: alertsGeoJson,
+      );
       _routeLayersReady = true;
     }
 
@@ -238,8 +309,6 @@ class _NavigationMapViewState extends State<NavigationMapView> {
 
     _routeDrawn = true;
     if (widget._isPreview) {
-      // Tras un cambio de estilo (híbrido offline/online) se redibuja la ruta;
-      // no debemos volver a hacer fitBounds o el mapa “salta” al soltar.
       if (!_hasFittedPreview) {
         await _moveCamera(animate: true);
         _hasFittedPreview = true;
@@ -248,6 +317,143 @@ class _NavigationMapViewState extends State<NavigationMapView> {
       await _moveCamera(animate: !_cameraReady);
       _cameraReady = true;
     }
+  }
+
+  bool _sameRouteIds(List<NavigationRoute> a, List<NavigationRoute> b) {
+    if (a.length != b.length) {
+      return false;
+    }
+    for (var i = 0; i < a.length; i++) {
+      if (a[i].id != b[i].id) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  bool _sameAlertIds(List<RouteAlert> a, List<RouteAlert> b) {
+    if (a.length != b.length) {
+      return false;
+    }
+    for (var i = 0; i < a.length; i++) {
+      if (a[i].id != b[i].id) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  Future<void> _syncAlertsSource() async {
+    final controller = _controller;
+    if (controller == null || !_routeLayersReady) {
+      return;
+    }
+    try {
+      await controller.setGeoJsonSource(_alertsSourceId, _alertsGeoJson());
+    } catch (_) {}
+  }
+
+  /// Preview: todos los POI de la ruta. HUD: solo los próximos 1–2.
+  Map<String, dynamic> _alertsGeoJson() {
+    final visible = _alertsForMap();
+    return {
+      'type': 'FeatureCollection',
+      'features': [
+        for (final alert in visible)
+          {
+            'type': 'Feature',
+            'properties': {
+              'kind': alert.type.name,
+              'icon': switch (alert.type) {
+                RouteAlertType.speedCamera => _alertIconCameraId,
+                RouteAlertType.fuel => _alertIconFuelId,
+                RouteAlertType.toll => _alertIconTollId,
+                RouteAlertType.sharpCurve => _alertIconCameraId,
+              },
+              'label': alert.label,
+            },
+            'geometry': {
+              'type': 'Point',
+              'coordinates': [alert.point.lng, alert.point.lat],
+            },
+          },
+      ],
+    };
+  }
+
+  List<RouteAlert> _alertsForMap() {
+    final mapped = widget.route.alerts
+        .where((a) => _mapAlertTypes.contains(a.type))
+        .toList(growable: false);
+    if (mapped.isEmpty) {
+      return const [];
+    }
+    if (widget._isPreview) {
+      return mapped;
+    }
+    final lat = widget.latitude;
+    final lng = widget.longitude;
+    if (lat == null || lng == null) {
+      return mapped.take(2).toList(growable: false);
+    }
+    // Ordenados por distancia a lo largo de la ruta; mostrar solo los próximos.
+    final along = _approxAlongMeters(GeoPoint(lat: lat, lng: lng));
+    final ahead = [
+      for (final a in mapped)
+        if (a.distanceAlongRouteMeters >= along - 40) a,
+    ];
+    return ahead.take(2).toList(growable: false);
+  }
+
+  double _approxAlongMeters(GeoPoint position) {
+    final polyline = widget.route.polyline;
+    if (polyline.length < 2) {
+      return 0;
+    }
+    var bestAlong = 0.0;
+    var bestDist = double.infinity;
+    var cumulative = 0.0;
+    for (var i = 0; i < polyline.length - 1; i++) {
+      final a = polyline[i];
+      final b = polyline[i + 1];
+      final seg = _haversineMetersLocal(a, b);
+      final t = _projectT(position, a, b);
+      final proj = GeoPoint(
+        lat: a.lat + (b.lat - a.lat) * t,
+        lng: a.lng + (b.lng - a.lng) * t,
+      );
+      final d = _haversineMetersLocal(position, proj);
+      if (d < bestDist) {
+        bestDist = d;
+        bestAlong = cumulative + t * seg;
+      }
+      cumulative += seg;
+    }
+    return bestAlong;
+  }
+
+  double _projectT(GeoPoint p, GeoPoint a, GeoPoint b) {
+    final dx = b.lng - a.lng;
+    final dy = b.lat - a.lat;
+    final len2 = dx * dx + dy * dy;
+    if (len2 < 1e-18) {
+      return 0;
+    }
+    return (((p.lng - a.lng) * dx + (p.lat - a.lat) * dy) / len2).clamp(0.0, 1.0);
+  }
+
+  double _haversineMetersLocal(GeoPoint a, GeoPoint b) {
+    const r = 6371000.0;
+    final dLat = (b.lat - a.lat) * math.pi / 180;
+    final dLng = (b.lng - a.lng) * math.pi / 180;
+    final lat1 = a.lat * math.pi / 180;
+    final lat2 = b.lat * math.pi / 180;
+    final h = math.sin(dLat / 2) * math.sin(dLat / 2) +
+        math.cos(lat1) *
+            math.cos(lat2) *
+            math.sin(dLng / 2) *
+            math.sin(dLng / 2);
+    return 2 * r * math.asin(math.sqrt(h));
   }
 
   Map<String, dynamic> _routeGeoJson(List<GeoPoint> polyline) {
@@ -266,6 +472,66 @@ class _NavigationMapViewState extends State<NavigationMapView> {
         },
       ],
     };
+  }
+
+  Map<String, dynamic> _alternativesGeoJson(List<NavigationRoute> routes) {
+    return {
+      'type': 'FeatureCollection',
+      'features': [
+        for (final route in routes)
+          if (route.polyline.length >= 2)
+            {
+              'type': 'Feature',
+              'properties': {'id': route.id},
+              'geometry': {
+                'type': 'LineString',
+                'coordinates': [
+                  for (final point in route.polyline) [point.lng, point.lat],
+                ],
+              },
+            },
+      ],
+    };
+  }
+
+  Map<String, dynamic> _etaLabelsGeoJson({
+    required NavigationRoute selected,
+    required List<NavigationRoute> alternatives,
+  }) {
+    final features = <Map<String, dynamic>>[];
+    void add(NavigationRoute route, {required bool isSelected}) {
+      if (route.polyline.length < 2) {
+        return;
+      }
+      final coords = [
+        for (final p in route.polyline) [p.lng, p.lat],
+      ];
+      final length = _lineLengthMeters(coords);
+      if (length < 500) {
+        return;
+      }
+      // Un poco desplazado del centro para no amontonar etiquetas.
+      final along = isSelected ? length * 0.42 : length * 0.58;
+      final point = _pointAlongLine(coords, along);
+      features.add({
+        'type': 'Feature',
+        'properties': {
+          'label': formatNavigationDurationCompact(route.durationSeconds),
+          'selected': isSelected ? 1 : 0,
+        },
+        'geometry': {
+          'type': 'Point',
+          'coordinates': point,
+        },
+      });
+    }
+
+    for (final route in alternatives) {
+      add(route, isSelected: false);
+    }
+    add(selected, isSelected: true);
+
+    return {'type': 'FeatureCollection', 'features': features};
   }
 
   /// Etiquetas de carretera desde Valhalla (puntos), raleadas para el zoom de itinerario.
@@ -446,13 +712,42 @@ class _NavigationMapViewState extends State<NavigationMapView> {
 
   /// Línea bajo textos del mapa; refs de ruta encima de la línea azul.
   Future<void> _addRouteLayersBelowLabels(
-    MapLibreMapController controller,
-    Map<String, dynamic> geojson,
-    Map<String, dynamic> labelsGeoJson,
-  ) async {
+    MapLibreMapController controller, {
+    required Map<String, dynamic> altsGeoJson,
+    required Map<String, dynamic> selectedGeoJson,
+    required Map<String, dynamic> labelsGeoJson,
+    required Map<String, dynamic> etaGeoJson,
+    required Map<String, dynamic> alertsGeoJson,
+  }) async {
     final belowLayerId = await _firstMapLabelLayerId(controller);
 
-    await controller.addGeoJsonSource(_routeSourceId, geojson);
+    await controller.addGeoJsonSource(_altsSourceId, altsGeoJson);
+    await controller.addLineLayer(
+      _altsSourceId,
+      _altsCasingLayerId,
+      const LineLayerProperties(
+        lineColor: '#FFFFFF',
+        lineWidth: 10,
+        lineOpacity: 0.7,
+        lineJoin: 'round',
+      ),
+      belowLayerId: belowLayerId,
+      enableInteraction: false,
+    );
+    await controller.addLineLayer(
+      _altsSourceId,
+      _altsLineLayerId,
+      const LineLayerProperties(
+        lineColor: '#90CAF9',
+        lineWidth: 6,
+        lineOpacity: 0.95,
+        lineJoin: 'round',
+      ),
+      belowLayerId: belowLayerId,
+      enableInteraction: false,
+    );
+
+    await controller.addGeoJsonSource(_routeSourceId, selectedGeoJson);
     await controller.addLineLayer(
       _routeSourceId,
       _routeCasingLayerId,
@@ -513,6 +808,203 @@ class _NavigationMapViewState extends State<NavigationMapView> {
       ),
       enableInteraction: false,
     );
+
+    await controller.addGeoJsonSource(_etaSourceId, etaGeoJson);
+    await _ensureEtaPillImages(controller);
+    // Pastilla blanca + texto oscuro (legible sobre la línea azul).
+    await controller.addSymbolLayer(
+      _etaSourceId,
+      _etaLayerId,
+      SymbolLayerProperties(
+        iconImage: const [
+          Expressions.caseExpression,
+          [
+            Expressions.equal,
+            [Expressions.get, 'selected'],
+            1,
+          ],
+          _etaPillSelectedId,
+          _etaPillAltId,
+        ],
+        iconTextFit: 'both',
+        iconTextFitPadding: const [5.0, 10.0, 5.0, 10.0],
+        iconAllowOverlap: true,
+        iconIgnorePlacement: true,
+        iconOptional: true,
+        textField: const [Expressions.get, 'label'],
+        textSize: const [
+          Expressions.interpolate,
+          ['linear'],
+          [Expressions.zoom],
+          5,
+          11,
+          10,
+          13,
+        ],
+        textColor: '#202124',
+        textHaloColor: '#ffffff',
+        textHaloWidth: 1.5,
+        textFont: const ['Noto Sans Regular'],
+        textAllowOverlap: true,
+        textIgnorePlacement: true,
+        textOptional: false,
+        textAnchor: 'center',
+        symbolPlacement: 'point',
+      ),
+      enableInteraction: false,
+    );
+
+    await controller.addGeoJsonSource(_alertsSourceId, alertsGeoJson);
+    await _ensureAlertIconImages(controller);
+    await controller.addSymbolLayer(
+      _alertsSourceId,
+      _alertsSymbolLayerId,
+      const SymbolLayerProperties(
+        iconImage: [Expressions.get, 'icon'],
+        iconSize: 0.55,
+        iconAllowOverlap: true,
+        iconIgnorePlacement: true,
+        iconAnchor: 'center',
+        symbolPlacement: 'point',
+      ),
+      enableInteraction: false,
+    );
+  }
+
+  Future<void> _ensureAlertIconImages(MapLibreMapController controller) async {
+    if (_alertIconsReady) {
+      return;
+    }
+    try {
+      await controller.addImage(
+        _alertIconCameraId,
+        await _buildAlertMarkerPng(
+          icon: Icons.photo_camera_rounded,
+          background: const Color(0xFFC62828),
+        ),
+      );
+      await controller.addImage(
+        _alertIconFuelId,
+        await _buildAlertMarkerPng(
+          icon: Icons.local_gas_station_rounded,
+          background: const Color(0xFFEF6C00),
+        ),
+      );
+      await controller.addImage(
+        _alertIconTollId,
+        await _buildAlertMarkerPng(
+          icon: Icons.toll_rounded,
+          background: const Color(0xFF6A1B9A),
+        ),
+      );
+      _alertIconsReady = true;
+    } catch (_) {
+      // Sin iconos: los avisos siguen en chips / HUD.
+    }
+  }
+
+  /// Marcador circular con icono Material (estilo app de navegación).
+  Future<Uint8List> _buildAlertMarkerPng({
+    required IconData icon,
+    required Color background,
+  }) async {
+    const size = 96.0;
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+    final center = const Offset(size / 2, size / 2);
+
+    canvas.drawCircle(
+      center,
+      size / 2 - 2,
+      Paint()
+        ..color = Colors.black.withValues(alpha: 0.18)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2),
+    );
+    canvas.drawCircle(center, size / 2 - 6, Paint()..color = background);
+    canvas.drawCircle(
+      center,
+      size / 2 - 6,
+      Paint()
+        ..color = Colors.white
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 4,
+    );
+
+    final textPainter = TextPainter(textDirection: TextDirection.ltr)
+      ..text = TextSpan(
+        text: String.fromCharCode(icon.codePoint),
+        style: TextStyle(
+          fontSize: 46,
+          fontFamily: icon.fontFamily,
+          package: icon.fontPackage,
+          color: Colors.white,
+        ),
+      )
+      ..layout();
+    textPainter.paint(
+      canvas,
+      Offset(
+        (size - textPainter.width) / 2,
+        (size - textPainter.height) / 2,
+      ),
+    );
+
+    final image = await recorder.endRecording().toImage(size.toInt(), size.toInt());
+    final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+    return bytes!.buffer.asUint8List();
+  }
+
+  Future<void> _ensureEtaPillImages(MapLibreMapController controller) async {
+    if (_etaPillsReady) {
+      return;
+    }
+    try {
+      await controller.addImage(
+        _etaPillSelectedId,
+        await _buildEtaPillPng(
+          fill: const Color(0xFFFFFFFF),
+          stroke: const Color(0xFF1A73E8),
+        ),
+      );
+      await controller.addImage(
+        _etaPillAltId,
+        await _buildEtaPillPng(
+          fill: const Color(0xFFF8F9FA),
+          stroke: const Color(0xFF9AA0A6),
+        ),
+      );
+      _etaPillsReady = true;
+    } catch (_) {
+      // Sin pastilla: el texto sigue siendo usable con halo.
+    }
+  }
+
+  Future<Uint8List> _buildEtaPillPng({
+    required Color fill,
+    required Color stroke,
+  }) async {
+    const width = 72.0;
+    const height = 32.0;
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+    final rect = RRect.fromRectAndRadius(
+      const Rect.fromLTWH(1.5, 1.5, width - 3, height - 3),
+      const Radius.circular(10),
+    );
+    canvas.drawRRect(rect, Paint()..color = fill);
+    canvas.drawRRect(
+      rect,
+      Paint()
+        ..color = stroke
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.5,
+    );
+    final image = await recorder.endRecording().toImage(
+      width.toInt(),
+      height.toInt(),
+    );
+    final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+    return bytes!.buffer.asUint8List();
   }
 
   /// Primera capa de texto/escudo/pueblo (abajo→arriba) para meter la ruta debajo.
@@ -653,6 +1145,7 @@ class _NavigationMapViewState extends State<NavigationMapView> {
         widget.route.destination,
         ...widget.route.waypoints,
         ...widget.route.polyline,
+        for (final alt in widget.alternativeRoutes) ...alt.polyline,
       ]);
       final horizontal = NavigationConstants.routePreviewPaddingHorizontal;
       update = CameraUpdate.newLatLngBounds(

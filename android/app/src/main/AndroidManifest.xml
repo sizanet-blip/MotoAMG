@@ -10,6 +10,7 @@
         android:label="LocMotos"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
         android:localeConfig="@xml/locales_config">
         <activity
             android:name=".MainActivity"

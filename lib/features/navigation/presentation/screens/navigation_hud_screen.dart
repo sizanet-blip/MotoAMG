@@ -6,11 +6,13 @@ import 'package:loc_motos/core/constants/navigation_constants.dart';
 import 'package:loc_motos/core/utils/distance_format.dart';
 import 'package:loc_motos/core/utils/navigation_bearing.dart';
 import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
+import 'package:loc_motos/features/navigation/data/services/route_alerts_service.dart';
 import 'package:loc_motos/features/navigation/data/services/route_guidance_service.dart';
 import 'package:loc_motos/features/navigation/data/services/route_progress_simulator.dart';
 import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
 import 'package:loc_motos/features/navigation/domain/entities/navigation_maneuver.dart';
 import 'package:loc_motos/features/navigation/domain/entities/navigation_route.dart';
+import 'package:loc_motos/features/navigation/domain/entities/route_alert.dart';
 import 'package:loc_motos/features/navigation/domain/exceptions/navigation_exceptions.dart';
 import 'package:loc_motos/features/navigation/domain/exceptions/navigation_user_message.dart';
 import 'package:loc_motos/features/navigation/presentation/providers/navigation_providers.dart';
@@ -62,6 +64,11 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
   String? _rerouteError;
   DateTime? _lastRerouteAt;
   var _arrived = false;
+  RouteAlert? _upcomingAlert;
+  double _upcomingAlertMeters = 0;
+  final _announcedAlertIds = <String>{};
+  final _announcedManeuverIndices = <int>{};
+  var _arrivalAnnounced = false;
 
   bool get _showSimulatorControls =>
       !_arrived && (_simulating || !_hideSimulatorForRealNav);
@@ -71,12 +78,19 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
     super.initState();
     _route = widget.route;
     _bootstrapGuidance(_route);
+    if (!_route.hasAlerts) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        unawaited(_enrichActiveRouteAlerts());
+      });
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final maneuver = _route.maneuvers.elementAtOrNull(_maneuverIndex);
       if (maneuver != null) {
-        ref
-            .read(navigationSessionProvider.notifier)
-            .announceManeuver(maneuver.spokenInstruction);
+        _maybeAnnounceManeuver(
+          maneuver,
+          remainingMeters: _remainingMeters,
+          forceIfDepart: true,
+        );
       }
     });
   }
@@ -110,6 +124,21 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
       position: route.origin,
       route: route,
     );
+    if (route.hasAlerts) {
+      final along = guidance.distanceAlongRouteMeters(
+        route.origin,
+        route.polyline,
+      );
+      final next = RouteAlertsService().nextRadar(
+        route: route,
+        alongMeters: along,
+        graceMeters: NavigationConstants.alertPassedGraceMeters,
+      );
+      _upcomingAlert = next;
+      _upcomingAlertMeters = next == null
+          ? 0.0
+          : (next.distanceAlongRouteMeters - along).clamp(0.0, 1e9);
+    }
   }
 
   @override
@@ -141,7 +170,6 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
       return;
     }
     final position = GeoPoint(lat: own.lat, lng: own.lng);
-    final session = ref.read(navigationSessionProvider.notifier);
     final guidance = ref.read(routeGuidanceServiceProvider);
     final deviation = ref.read(routeDeviationServiceProvider);
 
@@ -222,6 +250,16 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
       position: position,
       route: _route,
     );
+    final along = guidance.distanceAlongRouteMeters(position, _route.polyline);
+    final alertsService = ref.read(routeAlertsServiceProvider);
+    final upcomingAlert = alertsService.nextRadar(
+      route: _route,
+      alongMeters: along,
+      graceMeters: NavigationConstants.alertPassedGraceMeters,
+    );
+    final upcomingAlertMeters = upcomingAlert == null
+        ? 0.0
+        : (upcomingAlert.distanceAlongRouteMeters - along).clamp(0.0, 1e9);
 
     final maneuverChanged = upcomingIndex != _maneuverIndex;
     final metersChanged = (remaining - _remainingMeters).abs() > 5;
@@ -230,26 +268,93 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
     final durationChanged =
         (remainingDuration.inSeconds - _remainingDuration.inSeconds).abs() > 5;
     final limitChanged = speedLimit != _speedLimitKmh;
+    final alertChanged = upcomingAlert?.id != _upcomingAlert?.id ||
+        (upcomingAlertMeters - _upcomingAlertMeters).abs() > 10;
 
     if (maneuverChanged ||
         metersChanged ||
         routeMetersChanged ||
         durationChanged ||
-        limitChanged) {
+        limitChanged ||
+        alertChanged) {
       setState(() {
         _maneuverIndex = upcomingIndex;
         _remainingMeters = remaining;
         _routeRemainingMeters = routeRemaining;
         _remainingDuration = remainingDuration;
         _speedLimitKmh = speedLimit;
+        _upcomingAlert = upcomingAlert;
+        _upcomingAlertMeters = upcomingAlertMeters;
       });
     }
-    if (maneuverChanged) {
-      final next = _currentManeuver;
-      if (next != null) {
-        session.announceManeuver(next.spokenInstruction);
-      }
+    final upcoming = _route.maneuvers.elementAtOrNull(upcomingIndex);
+    if (upcoming != null) {
+      _maybeAnnounceManeuver(upcoming, remainingMeters: remaining);
     }
+    if (upcomingAlert != null) {
+      _maybeAnnounceRadar(upcomingAlert, upcomingAlertMeters);
+    }
+  }
+
+  void _maybeAnnounceRadar(RouteAlert alert, double metersAhead) {
+    if (alert.type != RouteAlertType.speedCamera) {
+      return;
+    }
+    final session = ref.read(navigationSessionProvider.notifier);
+    final approachKey = '${alert.id}_approach';
+    final imminentKey = '${alert.id}_imminent';
+
+    if (metersAhead <= NavigationConstants.radarImminentAnnounceMeters) {
+      if (!_announcedAlertIds.contains(imminentKey)) {
+        _announcedAlertIds.add(approachKey);
+        _announcedAlertIds.add(imminentKey);
+        unawaited(
+          session.announceManeuver(
+            alert.announcementForDistance(metersAhead, imminent: true),
+          ),
+        );
+      }
+      return;
+    }
+
+    if (metersAhead <= NavigationConstants.alertAnnounceMeters &&
+        !_announcedAlertIds.contains(approachKey)) {
+      _announcedAlertIds.add(approachKey);
+      unawaited(
+        session.announceManeuver(
+          alert.announcementForDistance(metersAhead),
+        ),
+      );
+    }
+  }
+
+  /// Anuncia giros al acercarse; la llegada final solo en [_onArrived].
+  void _maybeAnnounceManeuver(
+    NavigationManeuver maneuver, {
+    required double remainingMeters,
+    bool forceIfDepart = false,
+  }) {
+    if (_arrived || _announcedManeuverIndices.contains(maneuver.index)) {
+      return;
+    }
+    final isFinalArrive = maneuver.type == ManeuverType.arrive &&
+        maneuver.index >= _route.maneuvers.length - 1;
+    if (isFinalArrive) {
+      return;
+    }
+    final nearEnough =
+        remainingMeters <= NavigationConstants.maneuverAnnounceMeters;
+    final departAtStart =
+        forceIfDepart && maneuver.type == ManeuverType.depart;
+    if (!nearEnough && !departAtStart) {
+      return;
+    }
+    _announcedManeuverIndices.add(maneuver.index);
+    unawaited(
+      ref
+          .read(navigationSessionProvider.notifier)
+          .announceManeuver(maneuver.spokenInstruction),
+    );
   }
 
   void _onArrived() {
@@ -267,11 +372,14 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
       _routeRemainingMeters = 0;
       _remainingDuration = Duration.zero;
     });
-    unawaited(
-      ref
-          .read(navigationSessionProvider.notifier)
-          .announceManeuver('Has llegado al destino'),
-    );
+    if (!_arrivalAnnounced) {
+      _arrivalAnnounced = true;
+      unawaited(
+        ref
+            .read(navigationSessionProvider.notifier)
+            .announceManeuver('Has llegado al destino'),
+      );
+    }
   }
 
   void _scheduleReroute() {
@@ -386,11 +494,22 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
         _hasJoinedRoute = true;
         _rerouting = false;
         _rerouteError = null;
+        _upcomingAlert = null;
+        _upcomingAlertMeters = 0;
+        _announcedAlertIds.clear();
+        _announcedManeuverIndices.clear();
+        _arrivalAnnounced = false;
       });
+
+      unawaited(_enrichActiveRouteAlerts());
 
       final first = newRoute.maneuvers.elementAtOrNull(startIndex);
       if (first != null) {
-        unawaited(session.announceManeuver(first.spokenInstruction));
+        _maybeAnnounceManeuver(
+          first,
+          remainingMeters: startRemaining,
+          forceIfDepart: true,
+        );
       }
     } on NavigationException catch (error) {
       if (!mounted) {
@@ -527,6 +646,18 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
     }
   }
 
+  Future<void> _enrichActiveRouteAlerts() async {
+    try {
+      final enriched =
+          await ref.read(routeAlertsServiceProvider).enrich(_route);
+      if (!mounted || enriched.id != _route.id) {
+        return;
+      }
+      setState(() => _route = enriched);
+      _updateGuidance();
+    } catch (_) {}
+  }
+
   @override
   Widget build(BuildContext context) {
     ref.listen(ownDevicePositionProvider, (previous, next) {
@@ -632,11 +763,24 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
                   top: topInset + (showOffRouteBanner ? 64 : 8),
                   left: 12,
                   right: 12,
-                  child: NavigationManeuverCard(
-                    maneuver: maneuver,
-                    nextManeuver: _nextManeuver,
-                    remainingMeters: _remainingMeters,
-                    onClose: _stop,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      NavigationManeuverCard(
+                        maneuver: maneuver,
+                        nextManeuver: _nextManeuver,
+                        remainingMeters: _remainingMeters,
+                        onClose: _stop,
+                      ),
+                      if (_upcomingAlert != null) ...[
+                        const SizedBox(height: 8),
+                        _UpcomingRadarBanner(
+                          alert: _upcomingAlert!,
+                          remainingMeters: _upcomingAlertMeters,
+                        ),
+                      ],
+                    ],
                   ),
                 ),
               if (_showSimulatorControls) ...[
@@ -683,6 +827,90 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
           ),
         ),
       ),
+      ),
+    );
+  }
+}
+
+class _UpcomingRadarBanner extends StatelessWidget {
+  const _UpcomingRadarBanner({
+    required this.alert,
+    required this.remainingMeters,
+  });
+
+  final RouteAlert alert;
+  final double remainingMeters;
+
+  @override
+  Widget build(BuildContext context) {
+    final speed = alert.speedLimitKmh;
+    final imminent =
+        remainingMeters <= NavigationConstants.radarImminentAnnounceMeters;
+    return Material(
+      color: imminent ? const Color(0xFFB71C1C) : const Color(0xFFC62828),
+      borderRadius: BorderRadius.circular(14),
+      elevation: 4,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 12, 14, 12),
+        child: Row(
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white,
+                border: Border.all(color: const Color(0xFFC62828), width: 4),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                speed != null && speed > 0 ? '$speed' : '!',
+                style: TextStyle(
+                  color: const Color(0xFF212121),
+                  fontWeight: FontWeight.w900,
+                  fontSize: speed != null && speed > 0 ? 22 : 26,
+                  height: 1,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    imminent ? 'RADAR · AHORA' : 'RADAR',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 16,
+                      letterSpacing: 0.6,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    speed != null && speed > 0
+                        ? 'Límite $speed km/h'
+                        : 'Control de velocidad',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.92),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Text(
+              formatRideDistance(remainingMeters),
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w800,
+                fontSize: 18,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

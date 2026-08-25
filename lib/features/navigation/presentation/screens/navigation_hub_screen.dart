@@ -187,12 +187,6 @@ class _NavigationHubScreenState extends ConsumerState<NavigationHubScreen> {
         );
     await ref.read(recentPlacesRepositoryProvider).remember(resolved);
     _applyPlace(resolved);
-    if (!mounted) {
-      return;
-    }
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Parada añadida al itinerario.')),
-    );
   }
 
   void _removeStop(String id) {
@@ -258,7 +252,7 @@ class _NavigationHubScreenState extends ConsumerState<NavigationHubScreen> {
         .toList(growable: false);
 
     try {
-      final route = await ref.read(navigationSessionProvider.notifier).planRoute(
+      final plan = await ref.read(navigationSessionProvider.notifier).planRoute(
             origin: origin.point,
             destination: destination.point,
             waypoints: waypoints,
@@ -270,7 +264,7 @@ class _NavigationHubScreenState extends ConsumerState<NavigationHubScreen> {
       }
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
-          builder: (_) => RoutePreviewScreen(route: route, user: widget.user),
+          builder: (_) => RoutePreviewScreen(plan: plan, user: widget.user),
         ),
       );
     } catch (error) {

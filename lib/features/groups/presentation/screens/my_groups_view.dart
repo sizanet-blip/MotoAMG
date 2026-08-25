@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:loc_motos/core/constants/app_constants.dart';
+import 'package:loc_motos/core/widgets/app_brand_title.dart';
 import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
 import 'package:loc_motos/features/auth/presentation/widgets/account_menu_button.dart';
 import 'package:loc_motos/features/groups/domain/entities/group_membership.dart';
@@ -20,7 +20,7 @@ class MyGroupsView extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(AppConstants.appName),
+        title: const AppBrandTitle(),
         actions: const [AccountMenuButton()],
       ),
       body: groupsAsync.when(

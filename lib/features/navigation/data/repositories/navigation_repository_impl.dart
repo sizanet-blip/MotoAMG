@@ -3,6 +3,7 @@ import 'package:loc_motos/features/navigation/data/datasources/valhalla_remote_d
 import 'package:loc_motos/features/navigation/data/models/navigation_route_model.dart';
 import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
 import 'package:loc_motos/features/navigation/domain/entities/navigation_route.dart';
+import 'package:loc_motos/features/navigation/domain/entities/route_plan.dart';
 import 'package:loc_motos/features/navigation/domain/entities/route_preferences.dart';
 import 'package:loc_motos/features/navigation/domain/exceptions/navigation_exceptions.dart';
 import 'package:loc_motos/features/navigation/domain/repositories/navigation_repository.dart';
@@ -14,35 +15,44 @@ class NavigationRepositoryImpl implements NavigationRepository {
   final HiveRouteCacheDataSource _cache;
 
   @override
-  Future<NavigationRoute> planRoute({
+  Future<RoutePlan> planRoute({
     required GeoPoint origin,
     required GeoPoint destination,
     List<GeoPoint> waypoints = const [],
     RoutePreferences preferences = RoutePreferences.defaults,
     String? originLabel,
     String? destinationLabel,
+    bool includeAlternates = true,
   }) async {
-    final NavigationRouteModel baseRoute;
+    final List<NavigationRouteModel> baseRoutes;
     if (_valhalla.isConfigured) {
-      baseRoute = await _valhalla.fetchRoute(
+      baseRoutes = await _valhalla.fetchRoutes(
         origin: origin,
         destination: destination,
         waypoints: waypoints,
         preferences: preferences,
+        maxAlternates: includeAlternates ? null : 0,
+        attachSpeedLimits: true,
       );
     } else {
-      baseRoute = NavigationRouteModel.demo(
-        origin: origin,
-        destination: destination,
-        waypoints: waypoints,
-      );
+      baseRoutes = [
+        NavigationRouteModel.demo(
+          origin: origin,
+          destination: destination,
+          waypoints: waypoints,
+        ),
+      ];
     }
-    final route = baseRoute.copyWithLabels(
-      originLabel: originLabel,
-      destinationLabel: destinationLabel,
-    );
-    await _cache.saveRoute(route);
-    return route;
+
+    final labeled = [
+      for (final route in baseRoutes)
+        route.copyWithLabels(
+          originLabel: originLabel,
+          destinationLabel: destinationLabel,
+        ),
+    ];
+    await _cache.saveRoute(labeled.first);
+    return RoutePlan(alternatives: List.unmodifiable(labeled));
   }
 
   @override

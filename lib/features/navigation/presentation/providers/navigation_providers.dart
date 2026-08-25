@@ -10,12 +10,14 @@ import 'package:loc_motos/features/navigation/data/repositories/recent_places_re
 import 'package:loc_motos/features/navigation/data/repositories/route_preferences_repository.dart';
 import 'package:loc_motos/features/navigation/data/services/navigation_map_style_service.dart';
 import 'package:loc_motos/features/navigation/data/services/navigation_voice_service.dart';
+import 'package:loc_motos/features/navigation/data/services/route_alerts_service.dart';
 import 'package:loc_motos/features/navigation/data/services/route_deviation_service.dart';
 import 'package:loc_motos/features/navigation/data/services/route_guidance_service.dart';
 import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
 import 'package:loc_motos/features/navigation/domain/entities/hybrid_map_styles.dart';
 import 'package:loc_motos/features/navigation/domain/entities/map_region.dart';
 import 'package:loc_motos/features/navigation/domain/entities/navigation_route.dart';
+import 'package:loc_motos/features/navigation/domain/entities/route_plan.dart';
 import 'package:loc_motos/features/navigation/domain/entities/route_preferences.dart';
 import 'package:loc_motos/features/navigation/domain/exceptions/navigation_exceptions.dart';
 import 'package:loc_motos/features/navigation/domain/exceptions/navigation_user_message.dart';
@@ -99,6 +101,10 @@ final routeDeviationServiceProvider = Provider<RouteDeviationService>((ref) {
 
 final routeGuidanceServiceProvider = Provider<RouteGuidanceService>((ref) {
   return RouteGuidanceService();
+});
+
+final routeAlertsServiceProvider = Provider<RouteAlertsService>((ref) {
+  return RouteAlertsService();
 });
 
 final navigationVoiceServiceProvider = Provider<NavigationVoiceService>((ref) {
@@ -197,7 +203,7 @@ class NavigationSessionController extends Notifier<AsyncValue<void>> {
       ref.read(routeDeviationServiceProvider);
   NavigationVoiceService get _voice => ref.read(navigationVoiceServiceProvider);
 
-  Future<NavigationRoute> planRoute({
+  Future<RoutePlan> planRoute({
     required GeoPoint destination,
     GeoPoint? origin,
     List<GeoPoint> waypoints = const [],
@@ -215,17 +221,18 @@ class NavigationSessionController extends Notifier<AsyncValue<void>> {
               : throw const NavigationException(
                   'Activa la ubicación o escribe una dirección.',
                 ));
-      final route = await _repo.planRoute(
+      final plan = await _repo.planRoute(
         origin: start,
         destination: destination,
         waypoints: waypoints,
         preferences: ref.read(routePreferencesProvider),
         originLabel: originLabel,
         destinationLabel: destinationLabel,
+        includeAlternates: true,
       );
-      ref.read(activeNavigationRouteProvider.notifier).state = route;
+      ref.read(activeNavigationRouteProvider.notifier).state = plan.selected;
       state = const AsyncData(null);
-      return route;
+      return plan;
     } on NavigationException catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
       rethrow;
@@ -257,7 +264,7 @@ class NavigationSessionController extends Notifier<AsyncValue<void>> {
     required GeoPoint from,
   }) async {
     try {
-      final route = await _repo.planRoute(
+      final plan = await _repo.planRoute(
         origin: from,
         destination: currentRoute.destination,
         waypoints: currentRoute.waypoints,
@@ -265,9 +272,10 @@ class NavigationSessionController extends Notifier<AsyncValue<void>> {
         originLabel: 'Mi ubicación',
         destinationLabel:
             currentRoute.destinationLabel ?? currentRoute.destinationDisplay,
+        includeAlternates: false,
       );
-      ref.read(activeNavigationRouteProvider.notifier).state = route;
-      return route;
+      ref.read(activeNavigationRouteProvider.notifier).state = plan.selected;
+      return plan.selected;
     } on NavigationException {
       rethrow;
     } catch (error) {

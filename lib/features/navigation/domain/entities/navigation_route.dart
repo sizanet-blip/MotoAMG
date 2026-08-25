@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
 import 'package:loc_motos/features/navigation/domain/entities/navigation_maneuver.dart';
+import 'package:loc_motos/features/navigation/domain/entities/route_alert.dart';
 import 'package:loc_motos/features/navigation/domain/entities/speed_limit_segment.dart';
 
 /// Ruta calculada lista para navegar (online o desde caché).
@@ -17,6 +18,7 @@ class NavigationRoute extends Equatable {
     this.waypoints = const [],
     this.speedLimitKmh,
     this.speedLimitSegments = const [],
+    this.alerts = const [],
     this.originLabel,
     this.destinationLabel,
   });
@@ -40,6 +42,9 @@ class NavigationRoute extends Equatable {
   /// Límites a lo largo de la polilínea (índices de forma Valhalla).
   final List<SpeedLimitSegment> speedLimitSegments;
 
+  /// Avisos moto enriquecidos (peajes, gasolineras, radares, curvas).
+  final List<RouteAlert> alerts;
+
   /// Texto legible del origen (dirección o "Mi ubicación").
   final String? originLabel;
 
@@ -47,6 +52,8 @@ class NavigationRoute extends Equatable {
   final String? destinationLabel;
 
   bool get hasWaypoints => waypoints.isNotEmpty;
+
+  bool get hasAlerts => alerts.isNotEmpty;
 
   NavigationManeuver? get firstManeuver =>
       maneuvers.isEmpty ? null : maneuvers.first;
@@ -83,6 +90,7 @@ class NavigationRoute extends Equatable {
         createdAt,
         speedLimitKmh,
         speedLimitSegments,
+        alerts,
         originLabel,
         destinationLabel,
       ];

@@ -1,6 +1,8 @@
 /// Constantes de negocio y rutas de Firebase para LocMotos.
 abstract final class AppConstants {
   static const String appName = 'LocMotos';
+  static const String appIconAsset = 'assets/branding/locmotos-app-icon.png';
+  static const String appWordmarkAsset = 'assets/branding/locmotos-wordmark.png';
 
   /// Intervalo de envío de GPS al nodo RTDB `live_locations`.
   static const Duration locationUpdateInterval = Duration(seconds: 3);

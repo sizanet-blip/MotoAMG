@@ -1,6 +1,7 @@
 import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
 import 'package:loc_motos/features/navigation/domain/entities/navigation_maneuver.dart';
 import 'package:loc_motos/features/navigation/domain/entities/navigation_route.dart';
+import 'package:loc_motos/features/navigation/domain/entities/route_alert.dart';
 import 'package:loc_motos/features/navigation/domain/entities/speed_limit_segment.dart';
 import 'package:loc_motos/features/navigation/domain/exceptions/navigation_exceptions.dart';
 
@@ -17,6 +18,7 @@ class NavigationRouteModel extends NavigationRoute {
     super.waypoints,
     super.speedLimitKmh,
     super.speedLimitSegments,
+    super.alerts,
     super.originLabel,
     super.destinationLabel,
   });
@@ -37,6 +39,7 @@ class NavigationRouteModel extends NavigationRoute {
       createdAt: createdAt,
       speedLimitKmh: speedLimitKmh,
       speedLimitSegments: speedLimitSegments,
+      alerts: alerts,
       originLabel: originLabel ?? this.originLabel,
       destinationLabel: destinationLabel ?? this.destinationLabel,
     );
@@ -57,6 +60,26 @@ class NavigationRouteModel extends NavigationRoute {
       createdAt: createdAt,
       speedLimitKmh: segments.isEmpty ? speedLimitKmh : segments.first.speedLimitKmh,
       speedLimitSegments: segments,
+      alerts: alerts,
+      originLabel: originLabel,
+      destinationLabel: destinationLabel,
+    );
+  }
+
+  NavigationRouteModel copyWithAlerts(List<RouteAlert> alerts) {
+    return NavigationRouteModel(
+      id: id,
+      origin: origin,
+      destination: destination,
+      waypoints: waypoints,
+      polyline: polyline,
+      maneuvers: maneuvers,
+      distanceMeters: distanceMeters,
+      durationSeconds: durationSeconds,
+      createdAt: createdAt,
+      speedLimitKmh: speedLimitKmh,
+      speedLimitSegments: speedLimitSegments,
+      alerts: List.unmodifiable(alerts),
       originLabel: originLabel,
       destinationLabel: destinationLabel,
     );
@@ -68,6 +91,7 @@ class NavigationRouteModel extends NavigationRoute {
     required GeoPoint destination,
     List<GeoPoint> waypoints = const [],
     List<SpeedLimitSegment> speedLimitSegments = const [],
+    String? id,
   }) {
     final trip = json['trip'] as Map<String, dynamic>?;
     final legs = trip?['legs'] as List<dynamic>? ?? const [];
@@ -143,8 +167,9 @@ class NavigationRouteModel extends NavigationRoute {
       totalDurationSeconds = (tripSummary['time'] as num?)?.round() ?? 0;
     }
 
+    final now = DateTime.now();
     return NavigationRouteModel(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      id: id ?? now.millisecondsSinceEpoch.toString(),
       origin: origin,
       destination: destination,
       waypoints: List.unmodifiable(waypoints),
@@ -152,7 +177,7 @@ class NavigationRouteModel extends NavigationRoute {
       maneuvers: List.unmodifiable(maneuvers),
       distanceMeters: totalDistanceMeters,
       durationSeconds: totalDurationSeconds,
-      createdAt: DateTime.now(),
+      createdAt: now,
       speedLimitKmh: speedLimitSegments.isEmpty
           ? null
           : speedLimitSegments.first.speedLimitKmh,
@@ -306,6 +331,13 @@ class NavigationRouteModel extends NavigationRoute {
               ),
             )
             .toList(growable: false);
+    final alertsJson = json['alerts'] as List<dynamic>?;
+    final alerts = alertsJson == null
+        ? const <RouteAlert>[]
+        : alertsJson
+            .whereType<Map<String, dynamic>>()
+            .map(RouteAlert.fromJson)
+            .toList(growable: false);
     return NavigationRouteModel(
       id: json['id'] as String,
       origin: GeoPoint(
@@ -349,6 +381,7 @@ class NavigationRouteModel extends NavigationRoute {
       createdAt: DateTime.parse(json['createdAt'] as String),
       speedLimitKmh: json['speedLimitKmh'] as int?,
       speedLimitSegments: segments,
+      alerts: alerts,
       originLabel: json['originLabel'] as String?,
       destinationLabel: json['destinationLabel'] as String?,
     );
@@ -392,6 +425,7 @@ class NavigationRouteModel extends NavigationRoute {
       'speedLimitKmh': speedLimitKmh,
       'speedLimitSegments':
           speedLimitSegments.map((s) => s.toJson()).toList(growable: false),
+      'alerts': alerts.map((a) => a.toJson()).toList(growable: false),
     };
   }
 

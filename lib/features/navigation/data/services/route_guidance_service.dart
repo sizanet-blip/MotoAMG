@@ -149,7 +149,17 @@ class RouteGuidanceService {
     required GeoPoint position,
     required NavigationRoute route,
     double thresholdMeters = NavigationConstants.arrivalThresholdMeters,
+    double maxAlongRemainingMeters =
+        NavigationConstants.arrivalMaxAlongRemainingMeters,
   }) {
+    final alongRemaining = remainingRouteMeters(
+      position: position,
+      route: route,
+    );
+    // Si aún queda mucho trazado, no has llegado (aunque pases cerca del pin).
+    if (alongRemaining > maxAlongRemainingMeters) {
+      return false;
+    }
     final straight = distanceToDestinationMeters(
       position: position,
       route: route,
@@ -158,10 +168,6 @@ class RouteGuidanceService {
       return true;
     }
     // Casi al final del trazado y cerca del pin (aparcamiento / acera).
-    final alongRemaining = remainingRouteMeters(
-      position: position,
-      route: route,
-    );
     return alongRemaining <= thresholdMeters &&
         straight <= thresholdMeters * 2.5;
   }
