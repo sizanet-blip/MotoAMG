@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:loc_motos/core/utils/distance_format.dart';
 import 'package:loc_motos/core/utils/navigation_duration_format.dart';
 import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
+import 'package:loc_motos/features/navigation/domain/entities/alert_preferences.dart';
 import 'package:loc_motos/features/navigation/domain/entities/hybrid_map_styles.dart';
 import 'package:loc_motos/features/navigation/domain/entities/navigation_route.dart';
 import 'package:loc_motos/features/navigation/domain/entities/route_alert.dart';
@@ -67,7 +68,14 @@ class _RoutePreviewScreenState extends ConsumerState<RoutePreviewScreen> {
     setState(() => _enriching = true);
     try {
       final enriched =
-          await ref.read(routeAlertsServiceProvider).enrich(selected);
+          await ref.read(routeAlertsServiceProvider).enrich(
+                selected,
+                preferredFuel: resolveNavigationPreferredFuel(
+                  user: widget.user,
+                  vehicleId: ref.read(navigationVehicleIdProvider),
+                ),
+                preferences: ref.read(alertPreferencesProvider),
+              );
       if (!mounted || _plan.selected.id != selected.id) {
         return;
       }
@@ -97,7 +105,14 @@ class _RoutePreviewScreenState extends ConsumerState<RoutePreviewScreen> {
     var route = _plan.selected;
     if (!_enrichedRouteIds.contains(route.id)) {
       try {
-        route = await ref.read(routeAlertsServiceProvider).enrich(route);
+        route = await ref.read(routeAlertsServiceProvider).enrich(
+              route,
+              preferredFuel: resolveNavigationPreferredFuel(
+                user: widget.user,
+                vehicleId: ref.read(navigationVehicleIdProvider),
+              ),
+              preferences: ref.read(alertPreferencesProvider),
+            );
         _enrichedRouteIds.add(route.id);
       } catch (_) {}
     }
@@ -136,6 +151,7 @@ class _RoutePreviewScreenState extends ConsumerState<RoutePreviewScreen> {
                   mapStyles: mapStyles,
                   hasNetwork: hasNetwork,
                   showOfflineBanner: showOfflineBanner,
+                  alertPreferences: ref.watch(alertPreferencesProvider),
                 ),
               ),
               _RoutePreviewSheet(
@@ -143,6 +159,14 @@ class _RoutePreviewScreenState extends ConsumerState<RoutePreviewScreen> {
                 enriching: _enriching,
                 preferencesSummary:
                     ref.watch(routePreferencesProvider).summaryLabel,
+                fuelCacheReady: ref
+                        .watch(spainFuelCacheStatusProvider)
+                        .asData
+                        ?.value
+                        .isReady ??
+                    false,
+                fuelAlertsEnabled:
+                    ref.watch(alertPreferencesProvider).fuelEnabled,
                 onSelect: _selectAlternative,
                 onStart: _startNavigation,
               ),
@@ -161,6 +185,7 @@ class _RoutePreviewMapLayer extends StatefulWidget {
     required this.mapStyles,
     required this.hasNetwork,
     required this.showOfflineBanner,
+    required this.alertPreferences,
   });
 
   final NavigationRoute route;
@@ -168,6 +193,7 @@ class _RoutePreviewMapLayer extends StatefulWidget {
   final HybridMapStyles mapStyles;
   final bool hasNetwork;
   final bool showOfflineBanner;
+  final AlertPreferences alertPreferences;
 
   @override
   State<_RoutePreviewMapLayer> createState() => _RoutePreviewMapLayerState();
@@ -189,6 +215,7 @@ class _RoutePreviewMapLayerState extends State<_RoutePreviewMapLayer> {
           alternativeRoutes: widget.alternativeRoutes,
           mapStyles: widget.mapStyles,
           hasNetwork: widget.hasNetwork,
+          alertPreferences: widget.alertPreferences,
           cameraMode: NavigationMapCameraMode.fitRoute,
           onControllerReady: (controller) {
             if (_mapController == controller) {
@@ -233,6 +260,8 @@ class _RoutePreviewSheet extends StatelessWidget {
     required this.plan,
     required this.enriching,
     required this.preferencesSummary,
+    required this.fuelCacheReady,
+    required this.fuelAlertsEnabled,
     required this.onSelect,
     required this.onStart,
   });
@@ -240,6 +269,8 @@ class _RoutePreviewSheet extends StatelessWidget {
   final RoutePlan plan;
   final bool enriching;
   final String preferencesSummary;
+  final bool fuelCacheReady;
+  final bool fuelAlertsEnabled;
   final ValueChanged<int> onSelect;
   final VoidCallback onStart;
 
@@ -391,6 +422,16 @@ class _RoutePreviewSheet extends StatelessWidget {
                             '${(alertCounts[RouteAlertType.sharpCurve] ?? 0) == 1 ? '' : 's'}',
                       ),
                   ],
+                ),
+              ] else if (!enriching &&
+                  fuelAlertsEnabled &&
+                  !fuelCacheReady) ...[
+                const SizedBox(height: 10),
+                Text(
+                  'Descarga gasolineras en Configuración para ver precios en la ruta.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colors.onSurfaceVariant,
+                  ),
                 ),
               ],
               const SizedBox(height: 16),

@@ -1,5 +1,6 @@
 import 'package:loc_motos/features/auth/data/datasources/auth_remote_datasource.dart';
 import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
+import 'package:loc_motos/features/auth/domain/entities/user_vehicle.dart';
 import 'package:loc_motos/features/auth/domain/entities/username_registration.dart';
 import 'package:loc_motos/features/auth/domain/exceptions/auth_exceptions.dart';
 import 'package:loc_motos/features/auth/domain/repositories/auth_repository.dart';
@@ -189,6 +190,9 @@ class AuthRepositoryImpl implements AuthRepository {
     String? bikeYear,
     String? bikeColor,
     String? bikePlate,
+    List<UserVehicle>? vehicles,
+    String? activeVehicleId,
+    bool clearActiveVehicleId = false,
   }) async {
     final firebaseUser = _remote.currentFirebaseUser;
     if (firebaseUser == null) {
@@ -198,6 +202,22 @@ class AuthRepositoryImpl implements AuthRepository {
     try {
       current = await _remote.fetchUser(firebaseUser.uid) ?? current;
     } catch (_) {}
+
+    final nextVehicles = vehicles ?? current.vehicles;
+    final nextActiveId = clearActiveVehicleId
+        ? null
+        : (activeVehicleId ?? current.activeVehicleId);
+    UserVehicle? active;
+    if (nextActiveId != null) {
+      for (final v in nextVehicles) {
+        if (v.id == nextActiveId) {
+          active = v;
+          break;
+        }
+      }
+    }
+    active ??= nextVehicles.isNotEmpty ? nextVehicles.first : null;
+
     final updated = AppUser(
       uid: current.uid,
       displayName: displayName.trim(),
@@ -208,11 +228,14 @@ class AuthRepositoryImpl implements AuthRepository {
       username: current.username,
       photoUrl: current.photoUrl,
       currentGroupId: current.currentGroupId,
-      bikeBrand: bikeBrand,
-      bikeModel: bikeModel,
-      bikeYear: bikeYear,
-      bikeColor: bikeColor,
-      bikePlate: bikePlate,
+      vehicles: nextVehicles,
+      activeVehicleId: active?.id ?? nextActiveId,
+      // Legacy mirror for group maps / old clients.
+      bikeBrand: active?.brand ?? bikeBrand,
+      bikeModel: active?.model ?? bikeModel,
+      bikeYear: active?.year ?? bikeYear,
+      bikeColor: active?.color ?? bikeColor,
+      bikePlate: active?.plate ?? bikePlate,
     );
     return _remote.saveProfile(updated);
   }

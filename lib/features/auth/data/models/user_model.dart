@@ -3,6 +3,7 @@ import 'package:json_annotation/json_annotation.dart';
 import 'package:loc_motos/core/utils/timestamp_converter.dart';
 import 'package:loc_motos/features/auth/data/models/auth_provider_converter.dart';
 import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
+import 'package:loc_motos/features/auth/domain/entities/user_vehicle.dart';
 
 part 'user_model.g.dart';
 
@@ -27,6 +28,8 @@ class UserModel extends AppUser {
     super.bikeYear,
     super.bikeColor,
     super.bikePlate,
+    super.vehicles,
+    super.activeVehicleId,
   });
 
   factory UserModel.fromEntity(AppUser user) {
@@ -45,6 +48,8 @@ class UserModel extends AppUser {
       bikeYear: user.bikeYear,
       bikeColor: user.bikeColor,
       bikePlate: user.bikePlate,
+      vehicles: user.vehicles,
+      activeVehicleId: user.activeVehicleId,
     );
   }
 
@@ -78,4 +83,18 @@ class UserModel extends AppUser {
   Map<String, dynamic> toFirestore() {
     return toJson()..remove('uid');
   }
+}
+
+/// Helper para parsear vehículos desde JSON suelto (Firestore).
+List<UserVehicle> parseUserVehicles(Object? raw) {
+  if (raw is! List) {
+    return const [];
+  }
+  return [
+    for (final item in raw)
+      if (item is Map<String, dynamic>)
+        UserVehicle.fromJson(item)
+      else if (item is Map)
+        UserVehicle.fromJson(Map<String, dynamic>.from(item)),
+  ];
 }

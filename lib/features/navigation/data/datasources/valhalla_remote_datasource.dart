@@ -23,12 +23,14 @@ class ValhallaRemoteDataSource {
     required GeoPoint destination,
     List<GeoPoint> waypoints = const [],
     RoutePreferences preferences = RoutePreferences.defaults,
+    String costing = NavigationConstants.valhallaCosting,
   }) async {
     final routes = await fetchRoutes(
       origin: origin,
       destination: destination,
       waypoints: waypoints,
       preferences: preferences,
+      costing: costing,
       maxAlternates: 0,
       attachSpeedLimits: true,
     );
@@ -41,6 +43,7 @@ class ValhallaRemoteDataSource {
     required GeoPoint destination,
     List<GeoPoint> waypoints = const [],
     RoutePreferences preferences = RoutePreferences.defaults,
+    String costing = NavigationConstants.valhallaCosting,
     int? maxAlternates,
     bool attachSpeedLimits = true,
   }) async {
@@ -66,10 +69,9 @@ class ValhallaRemoteDataSource {
         for (final point in locations)
           {'lat': point.lat, 'lon': point.lng},
       ],
-      'costing': NavigationConstants.valhallaCosting,
+      'costing': costing,
       'costing_options': {
-        NavigationConstants.valhallaCosting:
-            preferences.toValhallaCostingOptions(),
+        costing: preferences.toValhallaCostingOptions(costing),
       },
       'directions_options': {'language': 'es-ES', 'units': 'kilometers'},
       'shape_format': 'polyline6',

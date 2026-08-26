@@ -76,6 +76,20 @@ abstract final class NavigationMapStyleService {
     );
   }
 
+  /// Estilo Protomaps sobre un `.pmtiles` servido por HTTPS (mismo look que offline).
+  static Future<String> remotePmtilesStyle(String httpsUrl) async {
+    final trimmed = httpsUrl.trim();
+    final pmtilesUrl = trimmed.startsWith('pmtiles://')
+        ? trimmed
+        : 'pmtiles://$trimmed';
+    final assets = await MapBasemapAssetsService.ensureReady();
+    return buildPmtilesStyle(
+      pmtilesUrl,
+      glyphsUrl: assets.glyphsUrlTemplate,
+      spriteUrl: assets.spriteUrl,
+    );
+  }
+
   static Future<String> buildPmtilesStyle(
     String pmtilesUrl, {
     String? glyphsUrl,
@@ -95,8 +109,10 @@ abstract final class NavigationMapStyleService {
       if (id == 'roads_labels_major') {
         // Rutas “secundarias”: el fitBounds aleja más; hace falta ver refs antes.
         map['minzoom'] = 6;
+        _boostRoadLabelContrast(map);
       } else if (id == 'roads_labels_minor') {
         map['minzoom'] = 10;
+        _boostRoadLabelContrast(map);
       }
       layers.add(map);
     }
@@ -237,6 +253,18 @@ abstract final class NavigationMapStyleService {
     });
   }
 
+  /// Nombres de calle legibles sobre la línea azul de ruta.
+  static void _boostRoadLabelContrast(Map<String, dynamic> layer) {
+    final paint = Map<String, dynamic>.from(
+      (layer['paint'] as Map?) ?? const {},
+    );
+    paint['text-color'] = '#111111';
+    paint['text-halo-color'] = '#ffffff';
+    paint['text-halo-width'] = 2.4;
+    paint['text-halo-blur'] = 0.4;
+    layer['paint'] = paint;
+  }
+
   static Map<String, dynamic> _earlyHighwayRefLayerPmtiles() {
     return {
       'id': 'roads_ref_early',
@@ -282,9 +310,10 @@ abstract final class NavigationMapStyleService {
         'text-optional': false,
       },
       'paint': {
-        'text-color': '#333333',
+        'text-color': '#111111',
         'text-halo-color': '#ffffff',
-        'text-halo-width': 1.6,
+        'text-halo-width': 2.4,
+        'text-halo-blur': 0.4,
       },
     };
   }

@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:loc_motos/core/constants/navigation_constants.dart';
+import 'package:loc_motos/features/auth/domain/entities/user_vehicle.dart';
+import 'package:loc_motos/features/auth/presentation/providers/auth_providers.dart';
 import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
 import 'package:loc_motos/features/navigation/domain/entities/route_itinerary.dart';
+import 'package:loc_motos/features/navigation/presentation/providers/navigation_providers.dart';
 import 'package:loc_motos/features/navigation/presentation/widgets/route_preferences_bar.dart';
 
 /// Panel inferior con la lista del itinerario (origen + paradas + destino).
-class ItinerarySheet extends StatelessWidget {
+class ItinerarySheet extends ConsumerWidget {
   const ItinerarySheet({
     super.key,
     required this.itinerary,
@@ -27,15 +32,38 @@ class ItinerarySheet extends StatelessWidget {
   final ValueChanged<String> onEditStop;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colors = Theme.of(context).colorScheme;
     final stops = itinerary.stops;
     final canCloseLoop = itinerary.hasOrigin &&
-      itinerary.canPlan &&
-      !_samePoint(
-        itinerary.origin!.point,
-        itinerary.destination!.point,
-      );
+        itinerary.canPlan &&
+        !_samePoint(
+          itinerary.origin!.point,
+          itinerary.destination!.point,
+        );
+
+    final user = resolveSessionUser(
+      ref.watch(signedInUserProvider),
+      ref.watch(authStateProvider).asData?.value,
+    );
+    final vehicles = user?.resolvedVehicles ?? const <UserVehicle>[];
+    final vehicleOverride = ref.watch(navigationVehicleIdProvider);
+    final selectedId = vehicleOverride ??
+        user?.activeVehicleId ??
+        (vehicles.isNotEmpty
+            ? vehicles.first.id
+            : NavigationConstants.navigationNoVehicleId);
+    UserVehicle? selected;
+    if (selectedId != NavigationConstants.navigationNoVehicleId) {
+      for (final v in vehicles) {
+        if (v.id == selectedId) {
+          selected = v;
+          break;
+        }
+      }
+    }
+    final showCurvature =
+        selected == null || selected.kind == VehicleKind.motorcycle;
 
     return Material(
       elevation: 10,
@@ -66,9 +94,41 @@ class ItinerarySheet extends StatelessWidget {
                       fontWeight: FontWeight.w700,
                     ),
               ),
+              if (vehicles.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  // ignore: deprecated_member_use
+                  value: selectedId,
+                  decoration: const InputDecoration(
+                    labelText: 'Vehículo',
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                  items: [
+                    const DropdownMenuItem<String>(
+                      value: NavigationConstants.navigationNoVehicleId,
+                      child: Text('Sin vehículo (ruta moto)'),
+                    ),
+                    for (final v in vehicles)
+                      DropdownMenuItem<String>(
+                        value: v.id,
+                        child: Text(
+                          '${v.displayLabel} · ${v.kind.label}',
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                  ],
+                  onChanged: busy
+                      ? null
+                      : (value) {
+                          ref.read(navigationVehicleIdProvider.notifier).state =
+                              value ?? NavigationConstants.navigationNoVehicleId;
+                        },
+                ),
+              ],
               const SizedBox(height: 8),
               ConstrainedBox(
-                constraints: const BoxConstraints(maxHeight: 220),
+                constraints: const BoxConstraints(maxHeight: 180),
                 child: ReorderableListView.builder(
                   shrinkWrap: true,
                   buildDefaultDragHandles: false,
@@ -119,32 +179,15 @@ class ItinerarySheet extends StatelessWidget {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      subtitle: Text(
-                        isOrigin
-                            ? (stop.followsGps
-                                ? 'Origen · GPS'
-                                : 'Origen')
-                            : isDest
-                                ? 'Destino'
-                                : 'Parada',
-                      ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            tooltip: 'Editar',
-                            onPressed: busy ? null : () => onEditStop(stop.id),
-                            icon: const Icon(Icons.edit_outlined),
-                          ),
-                          if (!isOrigin || stops.length > 1)
-                            IconButton(
+                      onTap: busy ? null : () => onEditStop(stop.id),
+                      trailing: !isOrigin
+                          ? IconButton(
                               tooltip: 'Quitar',
                               onPressed:
                                   busy ? null : () => onRemoveStop(stop.id),
                               icon: const Icon(Icons.close),
-                            ),
-                        ],
-                      ),
+                            )
+                          : null,
                     );
                   },
                 ),
@@ -168,7 +211,10 @@ class ItinerarySheet extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 8),
-              RoutePreferencesBar(enabled: !busy),
+              RoutePreferencesBar(
+                enabled: !busy,
+                showCurvature: showCurvature,
+              ),
               const SizedBox(height: 10),
               FilledButton.icon(
                 onPressed: busy || !itinerary.canPlan ? null : onPlanRoute,

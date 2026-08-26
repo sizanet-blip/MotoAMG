@@ -1,7 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:loc_motos/features/navigation/domain/entities/geo_bounds.dart';
 
-/// Cobertura offline + estilo online para mapas híbridos.
+/// Cobertura por CCAA (PMTiles) + fallback online fuera de España.
 class HybridMapStyles extends Equatable {
   const HybridMapStyles({
     required this.onlineStyle,
@@ -9,9 +9,13 @@ class HybridMapStyles extends Equatable {
     this.offline = const [],
   });
 
+  /// Fuera de todas las CCAA (p. ej. Portugal), con red.
   final String onlineStyle;
-  /// Fondo vacío cuando no hay red ni pack local para ese punto.
+
+  /// Sin red y sin pack local para ese punto.
   final String unavailableStyle;
+
+  /// Una entrada por CCAA: estilo Protomaps (local o remoto).
   final List<OfflineMapStyle> offline;
 
   bool get hasOfflineCoverage => offline.isNotEmpty;
@@ -25,14 +29,21 @@ class HybridMapStyles extends Equatable {
     return false;
   }
 
-  /// Estilo según el punto visible y si hay internet.
+  /// Mismo estilo Protomaps en toda España: archivo local si está descargado,
+  /// o PMTiles del servidor si hay red. Fuera de CCAA → [onlineStyle].
   String resolve(
     double latitude,
     double longitude, {
     required bool hasNetwork,
   }) {
     for (final region in offline) {
-      if (region.bounds.contains(latitude, longitude)) {
+      if (!region.bounds.contains(latitude, longitude)) {
+        continue;
+      }
+      if (!region.requiresNetwork) {
+        return region.styleString;
+      }
+      if (hasNetwork) {
         return region.styleString;
       }
     }
@@ -51,12 +62,16 @@ class OfflineMapStyle extends Equatable {
     required this.regionId,
     required this.bounds,
     required this.styleString,
+    this.requiresNetwork = false,
   });
 
   final String regionId;
   final GeoBounds bounds;
   final String styleString;
 
+  /// `true` = PMTiles por HTTPS (mismo estilo que offline, hace falta red).
+  final bool requiresNetwork;
+
   @override
-  List<Object?> get props => [regionId, bounds, styleString];
+  List<Object?> get props => [regionId, bounds, styleString, requiresNetwork];
 }

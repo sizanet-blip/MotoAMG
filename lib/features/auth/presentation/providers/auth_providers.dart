@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:loc_motos/features/auth/data/datasources/auth_remote_datasource.dart';
 import 'package:loc_motos/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
+import 'package:loc_motos/features/auth/domain/entities/user_vehicle.dart';
 import 'package:loc_motos/features/auth/domain/exceptions/auth_exceptions.dart';
 import 'package:loc_motos/features/auth/domain/repositories/auth_repository.dart';
 import 'package:loc_motos/features/tracking/presentation/providers/tracking_providers.dart';
@@ -135,6 +136,9 @@ class AuthActionController extends Notifier<AsyncValue<void>> {
     String? bikeYear,
     String? bikeColor,
     String? bikePlate,
+    List<UserVehicle>? vehicles,
+    String? activeVehicleId,
+    bool clearActiveVehicleId = false,
   }) {
     return _run(
       () => _repo.updateProfile(
@@ -145,6 +149,9 @@ class AuthActionController extends Notifier<AsyncValue<void>> {
         bikeYear: bikeYear,
         bikeColor: bikeColor,
         bikePlate: bikePlate,
+        vehicles: vehicles,
+        activeVehicleId: activeVehicleId,
+        clearActiveVehicleId: clearActiveVehicleId,
       ),
     );
   }

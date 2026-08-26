@@ -17,19 +17,47 @@ abstract final class NavigationConstants {
   /// Timeout Overpass (consultas POI en ruta).
   static const Duration overpassRequestTimeout = Duration(seconds: 25);
 
-  /// Timeout descarga inventarios de radares (DGT/SCT).
+  /// Timeout descarga inventario de radares desde el servidor LocMotos.
+  static const Duration spainRadarBundleTimeout = Duration(seconds: 90);
+
+  /// Timeout fallback DGT/SCT directo (si no hay bundle en caché).
   static const Duration spainRadarRequestTimeout = Duration(seconds: 45);
 
-  /// Caché en memoria del inventario de radares (DGT + regionales).
+  /// Mientras la app está abierta: no volver a pedir red antes de esto.
   static const Duration spainRadarCacheTtl = Duration(hours: 12);
 
-  /// Endpoint Overpass público (rate-limit; degradar si falla).
+  /// Caché en disco: se usa sin red; se refresca al caducar si hay cobertura.
+  static const Duration spainRadarDiskMaxAge = Duration(days: 14);
+
+  static const String spainRadarBox = 'navigation_spain_radars';
+  static const String spainRadarInventoryKey = 'official_inventory_v1';
+  static const String spainRadarFetchedAtKey = 'official_fetched_at_v1';
+  static const String spainOsmRadarInventoryKey = 'osm_inventory_v1';
+  static const String spainOsmRadarFetchedAtKey = 'osm_fetched_at_v1';
+
+  /// Inventario unificado generado en el servidor (DGT+SCT+OSM).
+  /// Ver `deploy/radares/build_es_json.py`.
+  static const String spainRadarBundleUrl =
+      '$valhallaBaseUrl/radares/es.json';
+
+  /// Inventario MITECO de gasolineras (precios). Ver `deploy/gasolineras/`.
+  static const String spainFuelBundleUrl =
+      '$valhallaBaseUrl/gasolineras/es.json';
+
+  static const String spainFuelBox = 'navigation_spain_fuel';
+  static const String spainFuelInventoryKey = 'fuel_inventory_v1';
+  static const String spainFuelFetchedAtKey = 'fuel_fetched_at_v1';
+  static const Duration spainFuelBundleTimeout = Duration(seconds: 90);
+  static const Duration spainFuelDiskMaxAge = Duration(days: 7);
+
+  /// Endpoint Overpass público (legacy POI; gasolineras usan bundle MITECO).
   static const String overpassInterpreterUrl =
       'https://overpass-api.de/api/interpreter';
 
   /// Inventario DATEX II de radares fijos/tramo DGT (excepto CAT y Euskadi).
   /// Fuente: https://nap.dgt.es/dataset/radares-fijos-dgt
   /// HTTPS obligatorio en Android (cleartext HTTP bloqueado por defecto).
+  /// Fallback si no hay caché del bundle del servidor.
   static const String dgtRadaresDatexUrl =
       'https://infocar.dgt.es/datex2/dgt/PredefinedLocationsPublication/radares/content.xml';
 
@@ -62,6 +90,9 @@ abstract final class NavigationConstants {
   /// Distancia a la que se anuncia un aviso por voz (metros).
   static const double alertAnnounceMeters = 350;
 
+  /// Aviso de gasolinera en HUD (más lejos que radar; no es urgente).
+  static const double fuelAnnounceMeters = 1200;
+
   /// Segunda voz de radar al estar muy cerca (metros).
   static const double radarImminentAnnounceMeters = 90;
 
@@ -72,6 +103,10 @@ abstract final class NavigationConstants {
 
   /// Perfil de costing para motos en asfalto.
   static const String valhallaCosting = 'motorcycle';
+
+  /// Selección explícita «Sin vehículo» en el planificador.
+  /// Distingue de `null` (= aún no elegido → usar vehículo activo).
+  static const String navigationNoVehicleId = '__none__';
 
   /// Umbral de desvío (metros) antes de avisar al usuario.
   static const double deviationThresholdMeters = 80;
@@ -181,6 +216,12 @@ abstract final class NavigationConstants {
 
   static const String routePreferencesBox = 'navigation_route_preferences';
   static const String routePreferencesKey = 'prefs';
+
+  static const String alertPreferencesBox = 'navigation_alert_preferences';
+  static const String alertPreferencesKey = 'prefs_v1';
+
+  /// Distancia HUD por defecto para peajes (metros).
+  static const double tollAnnounceMeters = 800;
 
   /// Regiones PMTiles descargables (hospedadas en Valhalla).
   /// Bounds = caja WGS84 aproximada del extract. Local: maps/offline/*.pmtiles

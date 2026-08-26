@@ -10,6 +10,7 @@ abstract class NavigationRepository {
     required GeoPoint destination,
     List<GeoPoint> waypoints = const [],
     RoutePreferences preferences = RoutePreferences.defaults,
+    String costing = 'motorcycle',
     String? originLabel,
     String? destinationLabel,
     bool includeAlternates = true,

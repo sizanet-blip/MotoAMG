@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:loc_motos/core/constants/navigation_constants.dart';
+import 'package:loc_motos/core/widgets/app_popup_menu.dart';
 import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
 import 'package:loc_motos/features/navigation/domain/entities/geocoding_place.dart';
 import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
@@ -178,13 +179,18 @@ class _NavigationHubScreenState extends ConsumerState<NavigationHubScreen> {
     if (!mounted) {
       return;
     }
-    final resolved = place ??
-        GeocodingPlace(
-          displayName:
-              '${point.lat.toStringAsFixed(5)}, ${point.lng.toStringAsFixed(5)}',
-          location: point,
-          shortLabel: 'Punto en el mapa',
-        );
+    // Mantener coordenadas del toque: Photon/Nominatim devuelve el centro del
+    // POI/calle, que puede quedar lejos del punto pulsado.
+    final resolved = GeocodingPlace(
+      displayName: place?.displayName ??
+          '${point.lat.toStringAsFixed(5)}, ${point.lng.toStringAsFixed(5)}',
+      location: point,
+      shortLabel: place?.shortLabel ?? 'Punto en el mapa',
+      secondaryLabel: place?.secondaryLabel,
+      category: place?.category,
+      osmType: place?.osmType,
+      houseNumber: place?.houseNumber,
+    );
     await ref.read(recentPlacesRepositoryProvider).remember(resolved);
     _applyPlace(resolved);
   }
@@ -424,15 +430,25 @@ class _NavigationHubScreenState extends ConsumerState<NavigationHubScreen> {
                         elevation: 2,
                         child: PopupMenuButton<String>(
                           tooltip: 'Más opciones',
+                          offset: AppPopupMenus.offset,
+                          elevation: AppPopupMenus.elevation,
+                          shadowColor: AppPopupMenus.shadowColor,
+                          surfaceTintColor:
+                              AppPopupMenus.surfaceTintOf(context),
+                          color: AppPopupMenus.colorOf(context),
+                          shape: AppPopupMenus.shapeOf(context),
                           onSelected: (value) {
                             if (value == 'resume') {
                               unawaited(_resumeOffline());
                             }
                           },
-                          itemBuilder: (context) => const [
-                            PopupMenuItem(
+                          itemBuilder: (context) => [
+                            appPopupMenuItem(
                               value: 'resume',
-                              child: Text('Continuar ruta guardada'),
+                              icon: Icons.history_rounded,
+                              label: 'Continuar ruta guardada',
+                              tint: Theme.of(context).colorScheme.primary,
+                              padding: const EdgeInsets.fromLTRB(8, 4, 8, 6),
                             ),
                           ],
                         ),
@@ -587,9 +603,24 @@ class _PlacePickerSheetState extends ConsumerState<_PlacePickerSheet> {
                 ),
                 if (_recents.isNotEmpty) ...[
                   const SizedBox(height: 20),
-                  Text(
-                    'Recientes',
-                    style: Theme.of(context).textTheme.titleSmall,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Recientes',
+                          style: Theme.of(context).textTheme.titleSmall,
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () => unawaited(_clearRecents()),
+                        style: TextButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                          foregroundColor:
+                              Theme.of(context).colorScheme.error,
+                        ),
+                        child: const Text('Borrar todos'),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 4),
                   for (final place in _recents)
@@ -600,6 +631,16 @@ class _PlacePickerSheetState extends ConsumerState<_PlacePickerSheet> {
                       subtitle: place.contextLine == null
                           ? null
                           : Text(place.contextLine!),
+                      trailing: IconButton(
+                        tooltip: 'Quitar de recientes',
+                        icon: Icon(
+                          Icons.close_rounded,
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurfaceVariant,
+                        ),
+                        onPressed: () => unawaited(_removeRecent(place)),
+                      ),
                       onTap: () => Navigator.pop(context, place),
                     ),
                 ],
@@ -609,5 +650,51 @@ class _PlacePickerSheetState extends ConsumerState<_PlacePickerSheet> {
         },
       ),
     );
+  }
+
+  Future<void> _removeRecent(GeocodingPlace place) async {
+    await ref.read(recentPlacesRepositoryProvider).remove(place);
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _recents = _recents
+          .where(
+            (item) =>
+                item.location.lat != place.location.lat ||
+                item.location.lng != place.location.lng,
+          )
+          .toList(growable: false);
+    });
+  }
+
+  Future<void> _clearRecents() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Borrar recientes'),
+        content: const Text(
+          '¿Quieres eliminar todos los lugares recientes?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Borrar todos'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) {
+      return;
+    }
+    await ref.read(recentPlacesRepositoryProvider).clear();
+    if (!mounted) {
+      return;
+    }
+    setState(() => _recents = const []);
   }
 }

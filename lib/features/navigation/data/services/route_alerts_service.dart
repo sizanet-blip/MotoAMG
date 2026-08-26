@@ -1,46 +1,71 @@
-import 'package:loc_motos/features/navigation/data/datasources/overpass_poi_datasource.dart';
+import 'package:loc_motos/features/auth/domain/entities/user_vehicle.dart';
+import 'package:loc_motos/features/navigation/data/datasources/spain_fuel_datasource.dart';
 import 'package:loc_motos/features/navigation/data/datasources/spain_radar_datasource.dart';
 import 'package:loc_motos/features/navigation/data/datasources/valhalla_remote_datasource.dart';
 import 'package:loc_motos/features/navigation/data/models/navigation_route_model.dart';
 import 'package:loc_motos/features/navigation/data/services/route_guidance_service.dart';
 import 'package:loc_motos/features/navigation/data/services/sharp_curve_detector.dart';
+import 'package:loc_motos/features/navigation/domain/entities/alert_preferences.dart';
+import 'package:loc_motos/features/navigation/domain/entities/fuel_alert_display.dart';
 import 'package:loc_motos/features/navigation/domain/entities/navigation_route.dart';
 import 'package:loc_motos/features/navigation/domain/entities/route_alert.dart';
-
-/// Enriquece una ruta con avisos moto (peajes, gasolineras, radares oficiales, curvas).
+/// Enriquece una ruta con avisos (peajes, gasolineras MITECO, radares, curvas).
 class RouteAlertsService {
   RouteAlertsService({
     ValhallaRemoteDataSource? valhalla,
-    OverpassPoiDatasource? overpass,
+    SpainFuelDatasource? spainFuel,
     SpainRadarDatasource? spainRadars,
     RouteGuidanceService? guidance,
   })  : _valhalla = valhalla ?? ValhallaRemoteDataSource(),
-        _overpass = overpass ?? OverpassPoiDatasource(),
+        _spainFuel = spainFuel ?? SpainFuelDatasource(),
         _spainRadars = spainRadars ?? SpainRadarDatasource(),
         _guidance = guidance ?? RouteGuidanceService();
 
   final ValhallaRemoteDataSource _valhalla;
-  final OverpassPoiDatasource _overpass;
+  final SpainFuelDatasource _spainFuel;
   final SpainRadarDatasource _spainRadars;
   final RouteGuidanceService _guidance;
 
   final _cache = <String, List<RouteAlert>>{};
 
-  Future<NavigationRoute> enrich(NavigationRoute route) async {
+  Future<NavigationRoute> enrich(
+    NavigationRoute route, {
+    VehicleFuelType? preferredFuel,
+    AlertPreferences preferences = AlertPreferences.defaults,
+  }) async {
     if (route.polyline.length < 2) {
       return route;
     }
-    final cached = _cache[route.id];
+    final cacheKey =
+        '${route.id}_${preferredFuel?.name ?? 'all'}_${preferences.enrichCacheSuffix}';
+    final cached = _cache[cacheKey];
     if (cached != null) {
       return _withAlerts(route, cached);
     }
 
-    final results = await Future.wait([
-      _tollAlerts(route),
-      _overpass.fetchFuelNearRoute(route.polyline),
-      _spainRadars.fetchCamerasNearRoute(route.polyline),
-      Future.value(SharpCurveDetector.detect(route.polyline)),
-    ]);
+    final futures = <Future<List<RouteAlert>>>[
+      if (preferences.tollsEnabled)
+        _tollAlerts(route)
+      else
+        Future.value(const <RouteAlert>[]),
+      if (preferences.fuelEnabled)
+        _spainFuel.fetchFuelNearRoute(
+          route.polyline,
+          preferredFuel: preferredFuel,
+        )
+      else
+        Future.value(const <RouteAlert>[]),
+      if (preferences.radarsEnabled)
+        _spainRadars.fetchCamerasNearRoute(route.polyline)
+      else
+        Future.value(const <RouteAlert>[]),
+      if (preferences.curvesEnabled)
+        Future.value(SharpCurveDetector.detect(route.polyline))
+      else
+        Future.value(const <RouteAlert>[]),
+    ];
+
+    final results = await Future.wait(futures);
 
     final merged = <RouteAlert>[
       ...results[0],
@@ -52,7 +77,7 @@ class RouteAlertsService {
             a.distanceAlongRouteMeters.compareTo(b.distanceAlongRouteMeters),
       );
 
-    _cache[route.id] = List.unmodifiable(merged);
+    _cache[cacheKey] = List.unmodifiable(merged);
     return _withAlerts(route, merged);
   }
 
@@ -144,7 +169,6 @@ class RouteAlertsService {
     return null;
   }
 
-  /// Próximo radar (HUD en navegación).
   RouteAlert? nextRadar({
     required NavigationRoute route,
     required double alongMeters,
@@ -158,6 +182,45 @@ class RouteAlertsService {
     );
   }
 
+  RouteAlert? nextFuel({
+    required NavigationRoute route,
+    required double alongMeters,
+    double graceMeters = 40,
+  }) {
+    return nextAlert(
+      route: route,
+      alongMeters: alongMeters,
+      graceMeters: graceMeters,
+      onlyType: RouteAlertType.fuel,
+    );
+  }
+
+  RouteAlert? nextToll({
+    required NavigationRoute route,
+    required double alongMeters,
+    double graceMeters = 40,
+  }) {
+    return nextAlert(
+      route: route,
+      alongMeters: alongMeters,
+      graceMeters: graceMeters,
+      onlyType: RouteAlertType.toll,
+    );
+  }
+
+  RouteAlert? nextCurve({
+    required NavigationRoute route,
+    required double alongMeters,
+    double graceMeters = 40,
+  }) {
+    return nextAlert(
+      route: route,
+      alongMeters: alongMeters,
+      graceMeters: graceMeters,
+      onlyType: RouteAlertType.sharpCurve,
+    );
+  }
+
   Map<RouteAlertType, int> counts(List<RouteAlert> alerts) {
     final map = <RouteAlertType, int>{
       for (final t in RouteAlertType.values) t: 0,
@@ -167,4 +230,17 @@ class RouteAlertsService {
     }
     return map;
   }
+}
+
+/// Texto plano de gasolinera (voz / fallback) según preferencia de precio.
+String fuelAlertDisplayLabel(RouteAlert alert, {required bool showPrice}) {
+  final parts = parseFuelAlertParts(alert);
+  if (!showPrice || !parts.hasPrice) {
+    return parts.brand;
+  }
+  final priceBits = [
+    for (final p in parts.prices)
+      p.grade.isEmpty ? p.priceText : '${p.grade} ${p.priceText}',
+  ];
+  return '${parts.brand} · ${priceBits.join(' · ')}';
 }

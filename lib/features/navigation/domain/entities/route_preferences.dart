@@ -103,19 +103,28 @@ class RoutePreferences extends Equatable {
         '${avoid == 1 ? 'ón' : 'ones'}';
   }
 
-  /// Opciones Valhalla `costing_options.motorcycle`.
-  Map<String, dynamic> toValhallaCostingOptions() {
-    final useHighways = avoidHighways
-        ? curvature.useHighwaysWhenAvoiding
-        : curvature.useHighways;
+  /// Opciones Valhalla según costing (`motorcycle` / `auto` / `truck`).
+  Map<String, dynamic> toValhallaCostingOptions(String costing) {
+    if (costing == 'motorcycle') {
+      final useHighways = avoidHighways
+          ? curvature.useHighwaysWhenAvoiding
+          : curvature.useHighways;
+      return {
+        'use_highways': useHighways,
+        'top_speed': curvature.topSpeedKmh,
+        'use_tolls': avoidTolls ? 0.0 : 0.5,
+        'use_ferry': avoidFerries ? 0.0 : 0.5,
+        'use_trails': avoidUnpaved ? 0.0 : 0.0,
+        'use_tracks': avoidUnpaved ? 0.0 : 0.0,
+      };
+    }
 
+    // auto / truck: evitaciones sin perfil de curvas.
     return {
-      'use_highways': useHighways,
-      'top_speed': curvature.topSpeedKmh,
-      'use_tolls': avoidTolls ? 0.0 : 0.5,
-      'use_ferry': avoidFerries ? 0.0 : 0.5,
-      'use_trails': avoidUnpaved ? 0.0 : 0.0,
-      'use_tracks': avoidUnpaved ? 0.0 : 0.0,
+      'use_highways': avoidHighways ? 0.0 : 1.0,
+      'use_tolls': avoidTolls ? 0.0 : 1.0,
+      'use_ferry': avoidFerries ? 0.0 : 1.0,
+      if (costing == 'auto') 'use_tracks': avoidUnpaved ? 0.0 : 0.5,
     };
   }
 

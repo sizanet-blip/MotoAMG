@@ -1,17 +1,70 @@
 import 'dart:convert';
 import 'dart:math' as math;
 
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:loc_motos/core/constants/navigation_constants.dart';
 import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
 import 'package:loc_motos/features/navigation/domain/entities/route_alert.dart';
 
-/// Inventario de radares: DGT NAP + SCT + OSM (huecos urbanos / Euskadi).
+/// Estado de la caché local de radares (oficial + OSM).
+class SpainRadarCacheStatus {
+  const SpainRadarCacheStatus({
+    required this.officialCount,
+    required this.officialFetchedAt,
+    required this.osmCount,
+    required this.osmFetchedAt,
+  });
+
+  final int officialCount;
+  final DateTime? officialFetchedAt;
+  final int osmCount;
+  final DateTime? osmFetchedAt;
+
+  bool get hasOfficial => officialCount > 0;
+  bool get hasOsm => osmCount > 0;
+  bool get isReady => hasOfficial && hasOsm;
+}
+
+/// Progreso de descarga manual (Configuración).
+class SpainRadarDownloadProgress {
+  const SpainRadarDownloadProgress({
+    required this.phase,
+    required this.completed,
+    required this.total,
+    required this.label,
+  });
+
+  /// `official` o `osm`.
+  final String phase;
+  final int completed;
+  final int total;
+  final String label;
+
+  double? get fraction {
+    if (total <= 0) {
+      return null;
+    }
+    return (completed / total).clamp(0.0, 1.0);
+  }
+}
+
+class SpainRadarDownloadResult {
+  const SpainRadarDownloadResult({
+    required this.officialCount,
+    required this.osmCount,
+    this.cancelled = false,
+  });
+
+  final int officialCount;
+  final int osmCount;
+  final bool cancelled;
+}
+
+/// Inventario de radares: bundle del servidor LocMotos + fallback DGT/SCT.
 ///
-/// - DGT DATEX II: red estatal excepto Cataluña y País Vasco.
-/// - SCT: ficheros UTM ETRS89 zona 31N publicados por Trànsit.
-/// - OSM Overpass: complemento en la ruta (municipales, Euskadi, etc.);
-///   se omiten si ya hay un oficial a < [NavigationConstants.radarDedupeMeters].
+/// - Descarga manual (Configuración): `…/radares/es.json` (DGT+SCT+OSM).
+/// - En ruta: oficiales desde caché (fallback DGT/SCT si falta); OSM solo caché.
 class SpainRadarDatasource {
   SpainRadarDatasource({http.Client? client})
       : _client = client ?? http.Client();
@@ -20,6 +73,168 @@ class SpainRadarDatasource {
 
   List<_RadarPoi>? _inventory;
   DateTime? _inventoryFetchedAt;
+  List<_RadarPoi>? _osmInventory;
+  DateTime? _osmInventoryFetchedAt;
+  bool _downloadCancelled = false;
+  Box<String>? _box;
+
+  Future<Box<String>> _openBox() async {
+    _box ??= await Hive.openBox<String>(NavigationConstants.spainRadarBox);
+    return _box!;
+  }
+
+  Future<SpainRadarCacheStatus> readCacheStatus() async {
+    final official = await _readDiskInventory(
+      NavigationConstants.spainRadarInventoryKey,
+      NavigationConstants.spainRadarFetchedAtKey,
+    );
+    final osm = await _readDiskInventory(
+      NavigationConstants.spainOsmRadarInventoryKey,
+      NavigationConstants.spainOsmRadarFetchedAtKey,
+    );
+    return SpainRadarCacheStatus(
+      officialCount: official?.pois.length ?? _inventory?.length ?? 0,
+      officialFetchedAt: official?.fetchedAt ?? _inventoryFetchedAt,
+      osmCount: osm?.pois.length ?? _osmInventory?.length ?? 0,
+      osmFetchedAt: osm?.fetchedAt ?? _osmInventoryFetchedAt,
+    );
+  }
+
+  void cancelDownload() {
+    _downloadCancelled = true;
+  }
+
+  /// Descarga el bundle `es.json` del servidor y lo guarda en Hive.
+  Future<SpainRadarDownloadResult> downloadToCache({
+    void Function(SpainRadarDownloadProgress progress)? onProgress,
+  }) async {
+    _downloadCancelled = false;
+    onProgress?.call(
+      const SpainRadarDownloadProgress(
+        phase: 'bundle',
+        completed: 0,
+        total: 1,
+        label: 'Descargando inventario desde el servidor…',
+      ),
+    );
+
+    final bundle = await _fetchServerBundle();
+    if (_downloadCancelled) {
+      return const SpainRadarDownloadResult(
+        officialCount: 0,
+        osmCount: 0,
+        cancelled: true,
+      );
+    }
+    if (bundle == null) {
+      onProgress?.call(
+        const SpainRadarDownloadProgress(
+          phase: 'bundle',
+          completed: 1,
+          total: 1,
+          label: 'No se pudo descargar el inventario',
+        ),
+      );
+      return const SpainRadarDownloadResult(officialCount: 0, osmCount: 0);
+    }
+
+    final fetchedAt = bundle.updatedAt ?? DateTime.now();
+    if (bundle.official.isNotEmpty) {
+      final immutable = List<_RadarPoi>.unmodifiable(bundle.official);
+      _inventory = immutable;
+      _inventoryFetchedAt = fetchedAt;
+      await _writeDiskInventory(
+        NavigationConstants.spainRadarInventoryKey,
+        NavigationConstants.spainRadarFetchedAtKey,
+        immutable,
+        fetchedAt,
+      );
+    }
+    if (bundle.osm.isNotEmpty) {
+      final immutable = List<_RadarPoi>.unmodifiable(bundle.osm);
+      _osmInventory = immutable;
+      _osmInventoryFetchedAt = fetchedAt;
+      await _writeDiskInventory(
+        NavigationConstants.spainOsmRadarInventoryKey,
+        NavigationConstants.spainOsmRadarFetchedAtKey,
+        immutable,
+        fetchedAt,
+      );
+    }
+
+    onProgress?.call(
+      SpainRadarDownloadProgress(
+        phase: 'bundle',
+        completed: 1,
+        total: 1,
+        label:
+            'Listo: ${bundle.official.length} oficiales · ${bundle.osm.length} OSM',
+      ),
+    );
+
+    return SpainRadarDownloadResult(
+      officialCount: bundle.official.length,
+      osmCount: bundle.osm.length,
+    );
+  }
+
+  Future<({List<_RadarPoi> official, List<_RadarPoi> osm, DateTime? updatedAt})?>
+      _fetchServerBundle() async {
+    try {
+      final response = await _client
+          .get(
+            Uri.parse(NavigationConstants.spainRadarBundleUrl),
+            headers: {
+              'User-Agent': 'LocMotos/1.0 (navigation; radar bundle)',
+              'Accept': 'application/json',
+            },
+          )
+          .timeout(NavigationConstants.spainRadarBundleTimeout);
+      if (_downloadCancelled) {
+        return null;
+      }
+      if (response.statusCode != 200 || response.body.isEmpty) {
+        return null;
+      }
+      return _parseServerBundle(response.body);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  ({List<_RadarPoi> official, List<_RadarPoi> osm, DateTime? updatedAt})?
+      _parseServerBundle(String body) {
+    try {
+      final decoded = jsonDecode(body);
+      if (decoded is! Map<String, dynamic>) {
+        return null;
+      }
+      final updatedAt = DateTime.tryParse(
+        decoded['updatedAt']?.toString() ?? '',
+      );
+      final official = _parsePoiList(decoded['official']);
+      final osm = _parsePoiList(decoded['osm']);
+      if (official.isEmpty && osm.isEmpty) {
+        return null;
+      }
+      return (official: official, osm: osm, updatedAt: updatedAt);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  List<_RadarPoi> _parsePoiList(Object? raw) {
+    if (raw is! List) {
+      return const [];
+    }
+    return [
+      for (final item in raw)
+        if (item is Map<String, dynamic>)
+          _RadarPoi.fromJson(item)
+        else if (item is Map)
+          _RadarPoi.fromJson(Map<String, dynamic>.from(item)),
+    ];
+  }
 
   Future<List<RouteAlert>> fetchCamerasNearRoute(
     List<GeoPoint> polyline,
@@ -28,18 +243,22 @@ class SpainRadarDatasource {
       return const [];
     }
     final results = await Future.wait([
-      _officialNearRoute(polyline),
-      _fetchOsmNearRoute(polyline),
+      _loadOfficialInventory(),
+      _loadOsmInventory(),
     ]);
-    return _mergePreferOfficial(results[0], results[1]);
+    final official = _alertsNearRoute(results[0], polyline, idPrefix: null);
+    final osm = _alertsNearRoute(results[1], polyline, idPrefix: 'osm');
+    return _mergePreferOfficial(official, osm);
   }
 
-  Future<List<RouteAlert>> _officialNearRoute(List<GeoPoint> polyline) async {
-    final inventory = await _loadOfficialInventory();
+  List<RouteAlert> _alertsNearRoute(
+    List<_RadarPoi> inventory,
+    List<GeoPoint> polyline, {
+    required String? idPrefix,
+  }) {
     if (inventory.isEmpty) {
       return const [];
     }
-
     final buffer = NavigationConstants.routePoiBufferMeters;
     final routeBox = _routeBbox(polyline, buffer / 111320.0);
     final alerts = <RouteAlert>[];
@@ -56,8 +275,9 @@ class SpainRadarDatasource {
       if (projected == null || projected.distanceToRoute > buffer) {
         continue;
       }
+      final prefix = idPrefix ?? poi.source;
       final key =
-          '${poi.source}_${projected.alongMeters.round()}_${poi.point.lat.toStringAsFixed(4)}';
+          '${prefix}_${projected.alongMeters.round()}_${poi.point.lat.toStringAsFixed(4)}';
       if (!seen.add(key)) {
         continue;
       }
@@ -100,28 +320,157 @@ class SpainRadarDatasource {
   }
 
   Future<List<_RadarPoi>> _loadOfficialInventory() async {
-    final cached = _inventory;
-    final at = _inventoryFetchedAt;
-    if (cached != null &&
-        at != null &&
-        DateTime.now().difference(at) < NavigationConstants.spainRadarCacheTtl) {
-      return cached;
+    return _loadCachedInventory(
+      memory: () => (_inventory, _inventoryFetchedAt),
+      setMemory: (pois, at) {
+        _inventory = pois;
+        _inventoryFetchedAt = at;
+      },
+      diskKey: NavigationConstants.spainRadarInventoryKey,
+      diskAtKey: NavigationConstants.spainRadarFetchedAtKey,
+      fetchRemote: _fetchOfficialFromNetwork,
+    );
+  }
+
+  /// OSM solo desde memoria/disco (bundle del servidor vía Configuración).
+  Future<List<_RadarPoi>> _loadOsmInventory() async {
+    final mem = _osmInventory;
+    if (mem != null && mem.isNotEmpty) {
+      return mem;
     }
 
-    final results = await Future.wait([
-      _fetchDgt(),
-      _fetchSct(NavigationConstants.sctRadaresFijosUrl, trailer: false),
-      _fetchSct(NavigationConstants.sctRadaresRemolcUrl, trailer: true),
-    ]);
+    final disk = await _readDiskInventory(
+      NavigationConstants.spainOsmRadarInventoryKey,
+      NavigationConstants.spainOsmRadarFetchedAtKey,
+    );
 
-    final merged = <_RadarPoi>[
-      ...results[0],
-      ...results[1],
-      ...results[2],
-    ];
-    _inventory = List.unmodifiable(merged);
-    _inventoryFetchedAt = DateTime.now();
-    return _inventory!;
+    if (disk != null &&
+        DateTime.now().difference(disk.fetchedAt) <=
+            NavigationConstants.spainRadarDiskMaxAge) {
+      _osmInventory = disk.pois;
+      _osmInventoryFetchedAt = disk.fetchedAt;
+      return disk.pois;
+    }
+
+    return const [];
+  }
+
+  Future<List<_RadarPoi>> _loadCachedInventory({
+    required (List<_RadarPoi>?, DateTime?) Function() memory,
+    required void Function(List<_RadarPoi> pois, DateTime at) setMemory,
+    required String diskKey,
+    required String diskAtKey,
+    required Future<List<_RadarPoi>> Function() fetchRemote,
+  }) async {
+    final (mem, memAt) = memory();
+    if (mem != null &&
+        memAt != null &&
+        DateTime.now().difference(memAt) <
+            NavigationConstants.spainRadarCacheTtl) {
+      return mem;
+    }
+
+    final disk = await _readDiskInventory(diskKey, diskAtKey);
+    final diskFresh = disk != null &&
+        DateTime.now().difference(disk.fetchedAt) <
+            NavigationConstants.spainRadarCacheTtl;
+
+    if (diskFresh) {
+      setMemory(disk.pois, disk.fetchedAt);
+      return disk.pois;
+    }
+
+    final remote = await fetchRemote();
+    if (remote.isNotEmpty) {
+      final now = DateTime.now();
+      final immutable = List<_RadarPoi>.unmodifiable(remote);
+      setMemory(immutable, now);
+      await _writeDiskInventory(diskKey, diskAtKey, immutable, now);
+      return immutable;
+    }
+
+    if (disk != null &&
+        DateTime.now().difference(disk.fetchedAt) <=
+            NavigationConstants.spainRadarDiskMaxAge) {
+      setMemory(disk.pois, disk.fetchedAt);
+      return disk.pois;
+    }
+
+    setMemory(const [], DateTime.now());
+    return const [];
+  }
+
+  Future<List<_RadarPoi>> _fetchOfficialFromNetwork() async {
+    try {
+      final results = await Future.wait([
+        _fetchDgt(),
+        _fetchSct(NavigationConstants.sctRadaresFijosUrl, trailer: false),
+        _fetchSct(NavigationConstants.sctRadaresRemolcUrl, trailer: true),
+      ]);
+      return [
+        ...results[0],
+        ...results[1],
+        ...results[2],
+      ];
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  Future<({List<_RadarPoi> pois, DateTime fetchedAt})?> _readDiskInventory(
+    String inventoryKey,
+    String fetchedAtKey,
+  ) async {
+    try {
+      final box = await _openBox();
+      final raw = box.get(inventoryKey);
+      final atRaw = box.get(fetchedAtKey);
+      if (raw == null || atRaw == null) {
+        return null;
+      }
+      final fetchedAt = DateTime.tryParse(atRaw);
+      if (fetchedAt == null) {
+        return null;
+      }
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) {
+        return null;
+      }
+      final pois = <_RadarPoi>[
+        for (final item in decoded)
+          if (item is Map<String, dynamic>)
+            _RadarPoi.fromJson(item)
+          else if (item is Map)
+            _RadarPoi.fromJson(Map<String, dynamic>.from(item)),
+      ];
+      if (pois.isEmpty) {
+        return null;
+      }
+      return (
+        pois: List<_RadarPoi>.unmodifiable(pois),
+        fetchedAt: fetchedAt,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _writeDiskInventory(
+    String inventoryKey,
+    String fetchedAtKey,
+    List<_RadarPoi> pois,
+    DateTime fetchedAt,
+  ) async {
+    try {
+      final box = await _openBox();
+      await box.put(
+        inventoryKey,
+        jsonEncode([for (final p in pois) p.toJson()]),
+      );
+      await box.put(fetchedAtKey, fetchedAt.toIso8601String());
+    } catch (_) {
+      // Caché opcional: si falla el disco, seguimos en memoria.
+    }
   }
 
   Future<List<_RadarPoi>> _fetchDgt() async {
@@ -276,161 +625,6 @@ class SpainRadarDatasource {
       );
     }
     return out;
-  }
-
-  /// OSM cerca de la polilínea (urbanos / huecos que DGT no publica).
-  Future<List<RouteAlert>> _fetchOsmNearRoute(List<GeoPoint> polyline) async {
-    final boxes = _sampleBboxes(polyline);
-    if (boxes.isEmpty) {
-      return const [];
-    }
-    final parts = <String>[
-      for (final b in boxes) ...[
-        'node["highway"="speed_camera"](${b.south},${b.west},${b.north},${b.east});',
-        'node["enforcement"="maxspeed"](${b.south},${b.west},${b.north},${b.east});',
-      ],
-    ];
-    final query = '[out:json][timeout:20];'
-        '(${parts.join()});'
-        'out body;';
-    try {
-      final response = await _client
-          .post(
-            Uri.parse(NavigationConstants.overpassInterpreterUrl),
-            headers: {
-              'Content-Type': 'application/x-www-form-urlencoded',
-              'User-Agent': 'LocMotos/1.0 (navigation; osm radars)',
-            },
-            body: {'data': query},
-          )
-          .timeout(NavigationConstants.overpassRequestTimeout);
-      if (response.statusCode != 200) {
-        return const [];
-      }
-      final decoded = jsonDecode(response.body);
-      if (decoded is! Map<String, dynamic>) {
-        return const [];
-      }
-      final elements = decoded['elements'] as List<dynamic>? ?? const [];
-      final alerts = <RouteAlert>[];
-      final seen = <String>{};
-      final buffer = NavigationConstants.routePoiBufferMeters;
-
-      for (final raw in elements) {
-        if (raw is! Map<String, dynamic>) {
-          continue;
-        }
-        final lat = (raw['lat'] as num?)?.toDouble();
-        final lon = (raw['lon'] as num?)?.toDouble();
-        if (lat == null || lon == null) {
-          continue;
-        }
-        final tags = raw['tags'];
-        final tagMap = tags is Map
-            ? Map<String, dynamic>.from(tags)
-            : const <String, dynamic>{};
-        final limit = _parseMaxspeedKmh(tagMap['maxspeed']?.toString());
-        final kind = _osmRadarKind(tagMap);
-        final point = GeoPoint(lat: lat, lng: lon);
-        final projected = _projectOntoRoute(point, polyline);
-        if (projected == null || projected.distanceToRoute > buffer) {
-          continue;
-        }
-        final key =
-            'osm_${projected.alongMeters.round()}_${lat.toStringAsFixed(4)}';
-        if (!seen.add(key)) {
-          continue;
-        }
-        final speedLabel = limit != null ? ' · $limit km/h' : '';
-        alerts.add(
-          RouteAlert(
-            id: key,
-            type: RouteAlertType.speedCamera,
-            point: point,
-            distanceAlongRouteMeters: projected.alongMeters,
-            label: '${kind.voiceNoun}$speedLabel',
-            speedLimitKmh: limit,
-            radarKind: kind,
-          ),
-        );
-      }
-      return alerts;
-    } catch (_) {
-      return const [];
-    }
-  }
-
-  int? _parseMaxspeedKmh(String? raw) {
-    if (raw == null || raw.trim().isEmpty) {
-      return null;
-    }
-    final match = RegExp(r'(\d{2,3})').firstMatch(raw);
-    if (match == null) {
-      return null;
-    }
-    final value = int.tryParse(match.group(1)!);
-    if (value == null || value < 20 || value > 140) {
-      return null;
-    }
-    return value;
-  }
-
-  RadarKind _osmRadarKind(Map<String, dynamic> tags) {
-    final joined = [
-      tags['speed_camera']?.toString(),
-      tags['enforcement']?.toString(),
-      tags['camera:type']?.toString(),
-      tags['highway']?.toString(),
-    ].whereType<String>().join(' ').toLowerCase();
-    if (joined.contains('section') ||
-        joined.contains('average') ||
-        joined.contains('tram') ||
-        joined.contains('stretch')) {
-      return RadarKind.section;
-    }
-    if (joined.contains('mobile') || joined.contains('trailer')) {
-      return RadarKind.trailer;
-    }
-    if (tags['highway'] == 'speed_camera' ||
-        tags['enforcement'] == 'maxspeed') {
-      return RadarKind.fixed;
-    }
-    return RadarKind.unknown;
-  }
-
-  List<({double south, double west, double north, double east})> _sampleBboxes(
-    List<GeoPoint> polyline,
-  ) {
-    final every = NavigationConstants.overpassSampleEveryMeters;
-    final bufferDeg = NavigationConstants.routePoiBufferMeters / 111320.0;
-    final anchors = <GeoPoint>[polyline.first];
-    var traveled = 0.0;
-    for (var i = 1; i < polyline.length; i++) {
-      traveled += _haversineMeters(polyline[i - 1], polyline[i]);
-      if (traveled >= every) {
-        anchors.add(polyline[i]);
-        traveled = 0;
-      }
-    }
-    if (anchors.last != polyline.last) {
-      anchors.add(polyline.last);
-    }
-    final boxes =
-        <({double south, double west, double north, double east})>[];
-    for (var i = 0; i < anchors.length - 1; i++) {
-      final a = anchors[i];
-      final b = anchors[i + 1];
-      boxes.add((
-        south: math.min(a.lat, b.lat) - bufferDeg,
-        west: math.min(a.lng, b.lng) - bufferDeg,
-        north: math.max(a.lat, b.lat) + bufferDeg,
-        east: math.max(a.lng, b.lng) + bufferDeg,
-      ));
-    }
-    if (boxes.isEmpty && polyline.length >= 2) {
-      boxes.add(_routeBbox(polyline, bufferDeg));
-    }
-    return boxes;
   }
 
   double? _parseEuNumber(String raw) {
@@ -600,4 +794,33 @@ class _RadarPoi {
   final String label;
   final String? road;
   final int? speedLimitKmh;
+
+  Map<String, dynamic> toJson() => {
+        'lat': point.lat,
+        'lng': point.lng,
+        'source': source,
+        'kind': kind.name,
+        'label': label,
+        'road': road,
+        'speedLimitKmh': speedLimitKmh,
+      };
+
+  factory _RadarPoi.fromJson(Map<String, dynamic> json) {
+    final kindName = json['kind'] as String? ?? 'unknown';
+    final kind = RadarKind.values.firstWhere(
+      (k) => k.name == kindName,
+      orElse: () => RadarKind.unknown,
+    );
+    return _RadarPoi(
+      point: GeoPoint(
+        lat: (json['lat'] as num).toDouble(),
+        lng: (json['lng'] as num).toDouble(),
+      ),
+      source: json['source'] as String? ?? 'unknown',
+      kind: kind,
+      label: json['label'] as String? ?? 'Radar',
+      road: json['road'] as String?,
+      speedLimitKmh: (json['speedLimitKmh'] as num?)?.toInt(),
+    );
+  }
 }

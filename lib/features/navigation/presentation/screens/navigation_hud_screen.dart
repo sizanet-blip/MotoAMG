@@ -9,6 +9,8 @@ import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
 import 'package:loc_motos/features/navigation/data/services/route_alerts_service.dart';
 import 'package:loc_motos/features/navigation/data/services/route_guidance_service.dart';
 import 'package:loc_motos/features/navigation/data/services/route_progress_simulator.dart';
+import 'package:loc_motos/features/navigation/domain/entities/alert_preferences.dart';
+import 'package:loc_motos/features/navigation/domain/entities/fuel_alert_display.dart';
 import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
 import 'package:loc_motos/features/navigation/domain/entities/navigation_maneuver.dart';
 import 'package:loc_motos/features/navigation/domain/entities/navigation_route.dart';
@@ -16,8 +18,8 @@ import 'package:loc_motos/features/navigation/domain/entities/route_alert.dart';
 import 'package:loc_motos/features/navigation/domain/exceptions/navigation_exceptions.dart';
 import 'package:loc_motos/features/navigation/domain/exceptions/navigation_user_message.dart';
 import 'package:loc_motos/features/navigation/presentation/providers/navigation_providers.dart';
-import 'package:loc_motos/features/navigation/presentation/theme/navigation_hud_theme.dart';
-import 'package:loc_motos/features/navigation/presentation/widgets/map_network_resume_binder.dart';
+import 'package:loc_motos/features/navigation/presentation/theme/fuel_brand_style.dart';
+import 'package:loc_motos/features/navigation/presentation/theme/navigation_hud_theme.dart';import 'package:loc_motos/features/navigation/presentation/widgets/map_network_resume_binder.dart';
 import 'package:loc_motos/features/navigation/presentation/widgets/navigation_map_view.dart';
 import 'package:loc_motos/features/navigation/presentation/widgets/navigation_maneuver_card.dart';
 import 'package:loc_motos/features/navigation/presentation/widgets/navigation_status_bar.dart';
@@ -66,17 +68,25 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
   var _arrived = false;
   RouteAlert? _upcomingAlert;
   double _upcomingAlertMeters = 0;
+  RouteAlert? _upcomingFuel;
+  double _upcomingFuelMeters = 0;
+  RouteAlert? _upcomingToll;
+  double _upcomingTollMeters = 0;
   final _announcedAlertIds = <String>{};
   final _announcedManeuverIndices = <int>{};
   var _arrivalAnnounced = false;
 
   bool get _showSimulatorControls =>
-      !_arrived && (_simulating || !_hideSimulatorForRealNav);
+      !_arrived && (_simulating || _simulator != null || !_hideSimulatorForRealNav);
 
   @override
   void initState() {
     super.initState();
     _route = widget.route;
+    // Evitar arrastrar coordenadas de una simulación anterior.
+    try {
+      ref.read(routeSimulationActiveProvider.notifier).state = false;
+    } catch (_) {}
     _bootstrapGuidance(_route);
     if (!_route.hasAlerts) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -84,6 +94,7 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
       });
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_restoreRealGpsPosition(updateGuidance: true));
       final maneuver = _route.maneuvers.elementAtOrNull(_maneuverIndex);
       if (maneuver != null) {
         _maybeAnnounceManeuver(
@@ -129,15 +140,80 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
         route.origin,
         route.polyline,
       );
-      final next = RouteAlertsService().nextRadar(
+      final prefs = ref.read(alertPreferencesProvider);
+      _syncUpcomingFromAlong(route, along, prefs);
+    }
+  }
+
+  void _syncUpcomingFromAlong(
+    NavigationRoute route,
+    double along,
+    AlertPreferences prefs,
+  ) {
+    final alerts = RouteAlertsService();
+    final grace = NavigationConstants.alertPassedGraceMeters;
+
+    if (prefs.radarsEnabled) {
+      final next = alerts.nextRadar(
         route: route,
         alongMeters: along,
-        graceMeters: NavigationConstants.alertPassedGraceMeters,
+        graceMeters: grace,
       );
-      _upcomingAlert = next;
-      _upcomingAlertMeters = next == null
+      final meters = next == null
           ? 0.0
           : (next.distanceAlongRouteMeters - along).clamp(0.0, 1e9);
+      if (next != null && meters <= prefs.radarHudMeters) {
+        _upcomingAlert = next;
+        _upcomingAlertMeters = meters;
+      } else {
+        _upcomingAlert = null;
+        _upcomingAlertMeters = 0;
+      }
+    } else {
+      _upcomingAlert = null;
+      _upcomingAlertMeters = 0;
+    }
+
+    if (prefs.fuelEnabled) {
+      final fuel = alerts.nextFuel(
+        route: route,
+        alongMeters: along,
+        graceMeters: grace,
+      );
+      final fuelMeters = fuel == null
+          ? 0.0
+          : (fuel.distanceAlongRouteMeters - along).clamp(0.0, 1e9);
+      if (fuel != null && fuelMeters <= prefs.fuelAnnounceMeters) {
+        _upcomingFuel = fuel;
+        _upcomingFuelMeters = fuelMeters;
+      } else {
+        _upcomingFuel = null;
+        _upcomingFuelMeters = 0;
+      }
+    } else {
+      _upcomingFuel = null;
+      _upcomingFuelMeters = 0;
+    }
+
+    if (prefs.tollsEnabled) {
+      final toll = alerts.nextToll(
+        route: route,
+        alongMeters: along,
+        graceMeters: grace,
+      );
+      final tollMeters = toll == null
+          ? 0.0
+          : (toll.distanceAlongRouteMeters - along).clamp(0.0, 1e9);
+      if (toll != null && tollMeters <= prefs.tollAnnounceMeters) {
+        _upcomingToll = toll;
+        _upcomingTollMeters = tollMeters;
+      } else {
+        _upcomingToll = null;
+        _upcomingTollMeters = 0;
+      }
+    } else {
+      _upcomingToll = null;
+      _upcomingTollMeters = 0;
     }
   }
 
@@ -153,6 +229,29 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
       // Widget ya desmontado.
     }
     super.dispose();
+  }
+
+  /// Vuelve a escribir la posición GPS real (la simulación pisa [ownDevicePositionProvider]).
+  Future<void> _restoreRealGpsPosition({bool updateGuidance = false}) async {
+    try {
+      ref.read(routeSimulationActiveProvider.notifier).state = false;
+      final position =
+          await ref.read(deviceLocationServiceProvider).readPosition();
+      if (position == null) {
+        return;
+      }
+      ref.read(ownDevicePositionProvider.notifier).state = ownDevicePosition(
+        lat: position.latitude,
+        lng: position.longitude,
+        heading: position.heading >= 0 ? position.heading : null,
+        speedMps: position.speed >= 0 ? position.speed : 0,
+      );
+      if (mounted && updateGuidance && !_simulating) {
+        _updateGuidance();
+      }
+    } catch (_) {
+      // Sin GPS: el watcher volverá a escribir cuando haya fix.
+    }
   }
 
   NavigationManeuver? get _currentManeuver =>
@@ -252,14 +351,68 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
     );
     final along = guidance.distanceAlongRouteMeters(position, _route.polyline);
     final alertsService = ref.read(routeAlertsServiceProvider);
-    final upcomingAlert = alertsService.nextRadar(
-      route: _route,
-      alongMeters: along,
-      graceMeters: NavigationConstants.alertPassedGraceMeters,
-    );
-    final upcomingAlertMeters = upcomingAlert == null
+    final prefs = ref.read(alertPreferencesProvider);
+    final grace = NavigationConstants.alertPassedGraceMeters;
+
+    RouteAlert? upcomingAlert;
+    var upcomingAlertMeters = 0.0;
+    if (prefs.radarsEnabled) {
+      final nextRadar = alertsService.nextRadar(
+        route: _route,
+        alongMeters: along,
+        graceMeters: grace,
+      );
+      final meters = nextRadar == null
+          ? 0.0
+          : (nextRadar.distanceAlongRouteMeters - along).clamp(0.0, 1e9);
+      if (nextRadar != null && meters <= prefs.radarHudMeters) {
+        upcomingAlert = nextRadar;
+        upcomingAlertMeters = meters;
+      }
+    }
+
+    RouteAlert? nextFuel;
+    var nextFuelMeters = 0.0;
+    var showFuel = false;
+    if (prefs.fuelEnabled) {
+      nextFuel = alertsService.nextFuel(
+        route: _route,
+        alongMeters: along,
+        graceMeters: grace,
+      );
+      nextFuelMeters = nextFuel == null
+          ? 0.0
+          : (nextFuel.distanceAlongRouteMeters - along).clamp(0.0, 1e9);
+      showFuel =
+          nextFuel != null && nextFuelMeters <= prefs.fuelAnnounceMeters;
+    }
+
+    RouteAlert? nextToll;
+    var nextTollMeters = 0.0;
+    var showToll = false;
+    if (prefs.tollsEnabled) {
+      nextToll = alertsService.nextToll(
+        route: _route,
+        alongMeters: along,
+        graceMeters: grace,
+      );
+      nextTollMeters = nextToll == null
+          ? 0.0
+          : (nextToll.distanceAlongRouteMeters - along).clamp(0.0, 1e9);
+      showToll =
+          nextToll != null && nextTollMeters <= prefs.tollAnnounceMeters;
+    }
+
+    final nextCurve = prefs.curvesEnabled && prefs.curvesVoiceEnabled
+        ? alertsService.nextCurve(
+            route: _route,
+            alongMeters: along,
+            graceMeters: grace,
+          )
+        : null;
+    final nextCurveMeters = nextCurve == null
         ? 0.0
-        : (upcomingAlert.distanceAlongRouteMeters - along).clamp(0.0, 1e9);
+        : (nextCurve.distanceAlongRouteMeters - along).clamp(0.0, 1e9);
 
     final maneuverChanged = upcomingIndex != _maneuverIndex;
     final metersChanged = (remaining - _remainingMeters).abs() > 5;
@@ -270,13 +423,21 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
     final limitChanged = speedLimit != _speedLimitKmh;
     final alertChanged = upcomingAlert?.id != _upcomingAlert?.id ||
         (upcomingAlertMeters - _upcomingAlertMeters).abs() > 10;
+    final fuelChanged =
+        (showFuel ? nextFuel!.id : null) != _upcomingFuel?.id ||
+            (showFuel && (nextFuelMeters - _upcomingFuelMeters).abs() > 15);
+    final tollChanged =
+        (showToll ? nextToll!.id : null) != _upcomingToll?.id ||
+            (showToll && (nextTollMeters - _upcomingTollMeters).abs() > 15);
 
     if (maneuverChanged ||
         metersChanged ||
         routeMetersChanged ||
         durationChanged ||
         limitChanged ||
-        alertChanged) {
+        alertChanged ||
+        fuelChanged ||
+        tollChanged) {
       setState(() {
         _maneuverIndex = upcomingIndex;
         _remainingMeters = remaining;
@@ -285,6 +446,10 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
         _speedLimitKmh = speedLimit;
         _upcomingAlert = upcomingAlert;
         _upcomingAlertMeters = upcomingAlertMeters;
+        _upcomingFuel = showFuel ? nextFuel : null;
+        _upcomingFuelMeters = showFuel ? nextFuelMeters : 0;
+        _upcomingToll = showToll ? nextToll : null;
+        _upcomingTollMeters = showToll ? nextTollMeters : 0;
       });
     }
     final upcoming = _route.maneuvers.elementAtOrNull(upcomingIndex);
@@ -292,32 +457,64 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
       _maybeAnnounceManeuver(upcoming, remainingMeters: remaining);
     }
     if (upcomingAlert != null) {
-      _maybeAnnounceRadar(upcomingAlert, upcomingAlertMeters);
+      _maybeAnnounceTypedAlert(
+        upcomingAlert,
+        upcomingAlertMeters,
+        prefs: prefs,
+      );
+    }
+    if (showFuel && nextFuel != null) {
+      _maybeAnnounceTypedAlert(nextFuel, nextFuelMeters, prefs: prefs);
+    }
+    if (showToll && nextToll != null) {
+      _maybeAnnounceTypedAlert(nextToll, nextTollMeters, prefs: prefs);
+    }
+    if (nextCurve != null &&
+        nextCurveMeters <= prefs.announceMetersFor(RouteAlertType.sharpCurve)) {
+      _maybeAnnounceTypedAlert(nextCurve, nextCurveMeters, prefs: prefs);
     }
   }
 
-  void _maybeAnnounceRadar(RouteAlert alert, double metersAhead) {
-    if (alert.type != RouteAlertType.speedCamera) {
+  void _maybeAnnounceTypedAlert(
+    RouteAlert alert,
+    double metersAhead, {
+    required AlertPreferences prefs,
+  }) {
+    if (!prefs.voiceEnabledFor(alert.type)) {
       return;
     }
     final session = ref.read(navigationSessionProvider.notifier);
-    final approachKey = '${alert.id}_approach';
-    final imminentKey = '${alert.id}_imminent';
 
-    if (metersAhead <= NavigationConstants.radarImminentAnnounceMeters) {
-      if (!_announcedAlertIds.contains(imminentKey)) {
-        _announcedAlertIds.add(approachKey);
-        _announcedAlertIds.add(imminentKey);
+    if (alert.type == RouteAlertType.speedCamera) {
+      final thresholds = prefs.radarThresholdsDescending;
+      final strongest = prefs.radarImminentMeters;
+      for (final threshold in thresholds) {
+        if (metersAhead > threshold) {
+          continue;
+        }
+        final key = '${alert.id}_at_${threshold.round()}';
+        if (_announcedAlertIds.contains(key)) {
+          continue;
+        }
+        _announcedAlertIds.add(key);
+        final imminent = (threshold - strongest).abs() < 0.5;
         unawaited(
           session.announceManeuver(
-            alert.announcementForDistance(metersAhead, imminent: true),
+            alert.announcementForDistance(
+              metersAhead,
+              imminent: imminent,
+            ),
           ),
         );
+        // Una sola voz por tick (la más lejana pendiente).
+        break;
       }
       return;
     }
 
-    if (metersAhead <= NavigationConstants.alertAnnounceMeters &&
+    final approachKey = '${alert.id}_approach';
+    final announceAt = prefs.announceMetersFor(alert.type);
+    if (metersAhead <= announceAt &&
         !_announcedAlertIds.contains(approachKey)) {
       _announcedAlertIds.add(approachKey);
       unawaited(
@@ -496,6 +693,10 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
         _rerouteError = null;
         _upcomingAlert = null;
         _upcomingAlertMeters = 0;
+        _upcomingFuel = null;
+        _upcomingFuelMeters = 0;
+        _upcomingToll = null;
+        _upcomingTollMeters = 0;
         _announcedAlertIds.clear();
         _announcedManeuverIndices.clear();
         _arrivalAnnounced = false;
@@ -534,10 +735,45 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
 
   void _toggleSimulation() {
     if (_simulating) {
-      _stopSimulation();
+      _pauseSimulation();
+    } else if (_simulator != null && !_simulator!.isFinished) {
+      _resumeSimulation();
     } else {
       _startSimulation();
     }
+  }
+
+  void _pauseSimulation() {
+    _simulationTimer?.cancel();
+    _simulationTimer = null;
+    if (!mounted) {
+      return;
+    }
+    // Mantener [routeSimulationActiveProvider] para que el GPS no pise la posición.
+    final own = ref.read(ownDevicePositionProvider);
+    if (own != null) {
+      ref.read(ownDevicePositionProvider.notifier).state = ownDevicePosition(
+        lat: own.lat,
+        lng: own.lng,
+        heading: own.heading,
+        speedMps: 0,
+      );
+    }
+    setState(() => _simulating = false);
+  }
+
+  void _resumeSimulation() {
+    if (_simulator == null || _simulator!.isFinished) {
+      _startSimulation();
+      return;
+    }
+    ref.read(routeSimulationActiveProvider.notifier).state = true;
+    setState(() => _simulating = true);
+    _simulationTimer?.cancel();
+    _simulationTimer = Timer.periodic(
+      NavigationConstants.simulationTickInterval,
+      (_) => _onSimulationTick(),
+    );
   }
 
   void _startSimulation() {
@@ -632,15 +868,20 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
       ref.read(routeSimulationActiveProvider.notifier).state = false;
       setState(() => _simulating = false);
       if (!keepLastPosition) {
-        // El GPS real volverá a escribir en cuanto llegue el siguiente fix.
+        unawaited(_restoreRealGpsPosition(updateGuidance: true));
       }
     }
   }
 
-  Future<void> _stop() async {
-    _stopSimulation(keepLastPosition: true);
+  Future<void> _cleanupLeavingHud() async {
+    _stopSimulation(keepLastPosition: false);
     _rerouteDebounceTimer?.cancel();
     await ref.read(navigationSessionProvider.notifier).stopNavigation();
+    await _restoreRealGpsPosition();
+  }
+
+  Future<void> _stop() async {
+    await _cleanupLeavingHud();
     if (mounted) {
       Navigator.of(context).pop();
     }
@@ -649,7 +890,14 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
   Future<void> _enrichActiveRouteAlerts() async {
     try {
       final enriched =
-          await ref.read(routeAlertsServiceProvider).enrich(_route);
+          await ref.read(routeAlertsServiceProvider).enrich(
+                _route,
+                preferredFuel: resolveNavigationPreferredFuel(
+                  user: widget.user,
+                  vehicleId: ref.read(navigationVehicleIdProvider),
+                ),
+                preferences: ref.read(alertPreferencesProvider),
+              );
       if (!mounted || enriched.id != _route.id) {
         return;
       }
@@ -689,7 +937,16 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
     final showOffRouteBanner =
         !_arrived && (_offRoute || _rerouting || _rerouteError != null);
 
-    return OwnPositionWatcher(
+    return PopScope(
+      canPop: true,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) {
+          return;
+        }
+        // Atrás del sistema / AppBar: no dejar coords de simulación.
+        unawaited(_cleanupLeavingHud());
+      },
+      child: OwnPositionWatcher(
       child: MapNetworkResumeBinder(
         child: Scaffold(
           backgroundColor: Colors.black,
@@ -710,20 +967,25 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
                 longitude: own?.lng,
                 bearing: bearing,
                 pitch: NavigationConstants.defaultMapPitch,
+                alertPreferences: ref.watch(alertPreferencesProvider),
+                puckStyle: resolveNavigationPuckStyle(
+                  user: widget.user,
+                  vehicleId: ref.watch(navigationVehicleIdProvider),
+                ),
               ),
               Positioned(
                 top: 0,
                 left: 0,
                 right: 0,
-                height: topInset + 140,
+                height: topInset + 72,
                 child: DecoratedBox(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
                       colors: [
-                        Colors.black.withValues(alpha: 0.45),
-                        Colors.black.withValues(alpha: 0.12),
+                        Colors.black.withValues(alpha: 0.28),
+                        Colors.black.withValues(alpha: 0.06),
                         Colors.transparent,
                       ],
                     ),
@@ -758,31 +1020,72 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
                     onDone: _stop,
                   ),
                 )
-              else if (maneuver != null)
+              else if (maneuver != null) ...[
                 Positioned(
                   top: topInset + (showOffRouteBanner ? 64 : 8),
                   left: 12,
-                  right: 12,
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       NavigationManeuverCard(
                         maneuver: maneuver,
                         nextManeuver: _nextManeuver,
                         remainingMeters: _remainingMeters,
-                        onClose: _stop,
                       ),
                       if (_upcomingAlert != null) ...[
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 6),
                         _UpcomingRadarBanner(
                           alert: _upcomingAlert!,
                           remainingMeters: _upcomingAlertMeters,
+                          imminentMeters: ref
+                              .watch(alertPreferencesProvider)
+                              .radarImminentMeters,
+                        ),
+                      ],
+                      if (_upcomingToll != null) ...[
+                        const SizedBox(height: 6),
+                        _UpcomingTollBanner(
+                          alert: _upcomingToll!,
+                          remainingMeters: _upcomingTollMeters,
+                        ),
+                      ],
+                      if (_upcomingFuel != null) ...[
+                        const SizedBox(height: 6),
+                        _UpcomingFuelBanner(
+                          alert: _upcomingFuel!,
+                          remainingMeters: _upcomingFuelMeters,
+                          showPrice: ref
+                              .watch(alertPreferencesProvider)
+                              .fuelShowPrice,
                         ),
                       ],
                     ],
                   ),
                 ),
+                Positioned(
+                  top: topInset + (showOffRouteBanner ? 64 : 8),
+                  right: 12,
+                  child: Material(
+                    color: NavigationHudTheme.panel.withValues(alpha: 0.92),
+                    shape: const CircleBorder(),
+                    elevation: 3,
+                    child: InkWell(
+                      customBorder: const CircleBorder(),
+                      onTap: _stop,
+                      child: const SizedBox(
+                        width: 40,
+                        height: 40,
+                        child: Icon(
+                          Icons.close_rounded,
+                          color: NavigationHudTheme.textPrimary,
+                          size: 22,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
               if (_showSimulatorControls) ...[
                 Positioned(
                   left: 12,
@@ -807,7 +1110,11 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
                     foregroundColor: NavigationHudTheme.textPrimary,
                     onPressed: _toggleSimulation,
                     icon: Icon(_simulating ? Icons.pause : Icons.play_arrow),
-                    label: Text(_simulating ? 'Pausar' : 'Simular'),
+                    label: Text(
+                      _simulating
+                          ? 'Pausar'
+                          : (_simulator != null ? 'Reanudar' : 'Simular'),
+                    ),
                   ),
                 ),
               ],
@@ -828,12 +1135,267 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
         ),
       ),
       ),
+      ),
     );
   }
 }
 
 class _UpcomingRadarBanner extends StatelessWidget {
   const _UpcomingRadarBanner({
+    required this.alert,
+    required this.remainingMeters,
+    required this.imminentMeters,
+  });
+
+  final RouteAlert alert;
+  final double remainingMeters;
+  final double imminentMeters;
+
+  @override
+  Widget build(BuildContext context) {
+    final speed = alert.speedLimitKmh;
+    final imminent = remainingMeters <= imminentMeters;
+    final kind = alert.effectiveRadarKind;
+    final title = imminent ? '${kind.shortLabel} · ahora' : kind.shortLabel;
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(22),
+        color: (imminent ? const Color(0xFF3A1212) : const Color(0xFF252A31))
+            .withValues(alpha: 0.94),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x55000000),
+            blurRadius: 10,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(6, 5, 12, 5),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _RadarSpeedSign(speedKmh: speed, urgent: imminent, compact: true),
+            const SizedBox(width: 8),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 110),
+              child: Text(
+                title,
+                style: TextStyle(
+                  color: imminent
+                      ? const Color(0xFFFFCDD2)
+                      : const Color(0xFFFFEBEE),
+                  fontWeight: FontWeight.w800,
+                  fontSize: 13,
+                  height: 1.1,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              formatRideDistance(remainingMeters),
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w800,
+                fontSize: 13,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Aviso compacto de gasolinera: marca + precios apilados + distancia.
+class _UpcomingFuelBanner extends StatelessWidget {
+  const _UpcomingFuelBanner({
+    required this.alert,
+    required this.remainingMeters,
+    required this.showPrice,
+  });
+
+  final RouteAlert alert;
+  final double remainingMeters;
+  final bool showPrice;
+
+  @override
+  Widget build(BuildContext context) {
+    final parts = parseFuelAlertParts(alert);
+    final brand = FuelBrandStyle.resolve(parts.brand);
+    final showFuelPrice = showPrice && parts.hasPrice;
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        color: const Color(0xFF1A1F24).withValues(alpha: 0.95),
+        border: Border.all(
+          color: brand.primary.withValues(alpha: 0.45),
+          width: 1,
+        ),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x55000000),
+            blurRadius: 10,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(6, 6, 10, 6),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _FuelBrandBadge(style: brand),
+            const SizedBox(width: 8),
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 96),
+                      child: Text(
+                        parts.brand,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 12,
+                          height: 1.05,
+                          letterSpacing: 0.2,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      formatRideDistance(remainingMeters),
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.88),
+                        fontWeight: FontWeight.w800,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+                if (showFuelPrice) ...[
+                  const SizedBox(height: 4),
+                  for (var i = 0; i < parts.prices.length; i++) ...[
+                    if (i > 0) const SizedBox(height: 2),
+                    _FuelPriceRow(line: parts.prices[i]),
+                  ],
+                ],
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FuelPriceRow extends StatelessWidget {
+  const _FuelPriceRow({required this.line});
+
+  final FuelPriceLine line;
+
+  @override
+  Widget build(BuildContext context) {
+    final grade = line.grade;
+    final accent = grade.isEmpty
+        ? FuelNozzleColors.fallback
+        : FuelNozzleColors.accentForGrade(grade);
+    final chip = grade.isEmpty
+        ? const Color(0xFF546E7A)
+        : FuelNozzleColors.chipForGrade(grade);
+    final onChip = grade.isEmpty
+        ? Colors.white
+        : FuelNozzleColors.onChipForGrade(grade);
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (grade.isNotEmpty) ...[
+          Container(
+            constraints: const BoxConstraints(minWidth: 40, maxWidth: 58),
+            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+            decoration: BoxDecoration(
+              color: chip,
+              borderRadius: BorderRadius.circular(6),
+              border: chip == FuelNozzleColors.gasoleoChip
+                  ? Border.all(color: Colors.white24)
+                  : null,
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              grade,
+              style: TextStyle(
+                color: onChip,
+                fontWeight: FontWeight.w800,
+                fontSize: grade.length > 3 ? 9 : 10,
+                height: 1.1,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: 6),
+        ],
+        Text(
+          line.priceText,
+          style: TextStyle(
+            color: accent,
+            fontWeight: FontWeight.w900,
+            fontSize: 12,
+            height: 1.1,
+            letterSpacing: -0.2,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _FuelBrandBadge extends StatelessWidget {
+  const _FuelBrandBadge({required this.style});
+
+  final FuelBrandStyle style;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 30,
+      height: 30,
+      decoration: BoxDecoration(
+        color: style.primary,
+        borderRadius: BorderRadius.circular(9),
+        boxShadow: [
+          BoxShadow(
+            color: style.primary.withValues(alpha: 0.35),
+            blurRadius: 6,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      alignment: Alignment.center,
+      child: Icon(
+        Icons.local_gas_station_rounded,
+        color: style.onPrimary,
+        size: 17,
+      ),
+    );
+  }
+}
+
+class _UpcomingTollBanner extends StatelessWidget {
+  const _UpcomingTollBanner({
     required this.alert,
     required this.remainingMeters,
   });
@@ -843,149 +1405,58 @@ class _UpcomingRadarBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final speed = alert.speedLimitKmh;
-    final imminent =
-        remainingMeters <= NavigationConstants.radarImminentAnnounceMeters;
-    final announceAt = NavigationConstants.alertAnnounceMeters;
-    final progress = (1.0 - (remainingMeters / announceAt)).clamp(0.05, 1.0);
-
     return DecoratedBox(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
+        borderRadius: BorderRadius.circular(22),
+        color: const Color(0xFF2A1F3D).withValues(alpha: 0.94),
+        boxShadow: const [
           BoxShadow(
-            color: (imminent ? const Color(0xFFE53935) : const Color(0xFF000000))
-                .withValues(alpha: imminent ? 0.45 : 0.35),
-            blurRadius: imminent ? 22 : 16,
-            offset: const Offset(0, 8),
+            color: Color(0x55000000),
+            blurRadius: 10,
+            offset: Offset(0, 3),
           ),
         ],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(18),
-        child: Stack(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(6, 5, 12, 5),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: imminent
-                        ? const [Color(0xFF3A1212), Color(0xFF1A1D21)]
-                        : const [Color(0xFF252A31), Color(0xFF1A1D21)],
-                  ),
+            Container(
+              width: 28,
+              height: 28,
+              decoration: const BoxDecoration(
+                color: Color(0xFF6A1B9A),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.toll_rounded,
+                color: Colors.white,
+                size: 16,
+              ),
+            ),
+            const SizedBox(width: 8),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 120),
+              child: Text(
+                alert.label,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                  height: 1.1,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
-            Positioned(
-              left: 0,
-              top: 0,
-              bottom: 0,
-              width: 5,
-              child: ColoredBox(
-                color: imminent
-                    ? const Color(0xFFFF5252)
-                    : const Color(0xFFE53935),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 14, 12),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    children: [
-                      _RadarSpeedSign(speedKmh: speed, urgent: imminent),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.photo_camera_rounded,
-                                  size: 16,
-                                  color: imminent
-                                      ? const Color(0xFFFF8A80)
-                                      : const Color(0xFFFFAB91),
-                                ),
-                                const SizedBox(width: 6),
-                                Flexible(
-                                  child: Text(
-                                    imminent
-                                        ? '${alert.effectiveRadarKind.titleLabel} · AHORA'
-                                        : alert.effectiveRadarKind.titleLabel,
-                                    style: TextStyle(
-                                      color: imminent
-                                          ? const Color(0xFFFFCDD2)
-                                          : const Color(0xFFFFEBEE),
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: 13,
-                                      letterSpacing: 0.8,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              speed != null && speed > 0
-                                  ? 'Límite $speed km/h'
-                                  : alert.effectiveRadarKind == RadarKind.unknown
-                                      ? 'Control de velocidad'
-                                      : alert.effectiveRadarKind.shortLabel,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 18,
-                                height: 1.15,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.14),
-                          ),
-                        ),
-                        child: Text(
-                          formatRideDistance(remainingMeters),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 17,
-                            letterSpacing: -0.2,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(99),
-                    child: LinearProgressIndicator(
-                      value: progress,
-                      minHeight: 4,
-                      backgroundColor: Colors.white.withValues(alpha: 0.12),
-                      color: imminent
-                          ? const Color(0xFFFF5252)
-                          : const Color(0xFFE53935),
-                    ),
-                  ),
-                ],
+            const SizedBox(width: 8),
+            Text(
+              formatRideDistance(remainingMeters),
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w800,
+                fontSize: 13,
               ),
             ),
           ],
@@ -1000,32 +1471,27 @@ class _RadarSpeedSign extends StatelessWidget {
   const _RadarSpeedSign({
     required this.speedKmh,
     required this.urgent,
+    this.compact = false,
   });
 
   final int? speedKmh;
   final bool urgent;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
     final hasSpeed = speedKmh != null && speedKmh! > 0;
+    final size = compact ? 32.0 : 62.0;
     return Container(
-      width: 62,
-      height: 62,
+      width: size,
+      height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: Colors.white,
         border: Border.all(
           color: urgent ? const Color(0xFFFF1744) : const Color(0xFFE53935),
-          width: 5.5,
+          width: compact ? 3.2 : 5.5,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: (urgent ? const Color(0xFFFF1744) : const Color(0xFFE53935))
-                .withValues(alpha: 0.35),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
       ),
       alignment: Alignment.center,
       child: Text(
@@ -1034,8 +1500,10 @@ class _RadarSpeedSign extends StatelessWidget {
           color: const Color(0xFF1A1A1A),
           fontWeight: FontWeight.w900,
           fontSize: hasSpeed
-              ? (speedKmh! >= 100 ? 20 : 24)
-              : 28,
+              ? (compact
+                  ? (speedKmh! >= 100 ? 11 : 13)
+                  : (speedKmh! >= 100 ? 20 : 24))
+              : (compact ? 16 : 28),
           height: 1,
         ),
       ),

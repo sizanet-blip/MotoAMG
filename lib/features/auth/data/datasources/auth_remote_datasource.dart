@@ -457,6 +457,8 @@ class AuthRemoteDataSource {
         'bikeYear': user.bikeYear,
         'bikeColor': user.bikeColor,
         'bikePlate': user.bikePlate,
+        'vehicles': [for (final v in user.vehicles) v.toJson()],
+        'activeVehicleId': user.activeVehicleId,
       }, SetOptions(merge: true));
       await _syncProfileToGroups(user);
       final updated = await doc.get();

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:loc_motos/core/widgets/app_popup_menu.dart';
+import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
 import 'package:loc_motos/features/auth/presentation/providers/auth_providers.dart';
 import 'package:loc_motos/features/auth/presentation/screens/profile_screen.dart';
 import 'package:loc_motos/features/auth/presentation/widgets/reveal_recovery_key_dialog.dart';
@@ -17,10 +19,37 @@ class AccountMenuButton extends ConsumerWidget {
     final username = user?.username?.trim().isNotEmpty == true
         ? user!.username!.trim()
         : (user?.isUsernameAccount == true ? user!.displayName.trim() : '');
+    final colors = Theme.of(context).colorScheme;
 
     return PopupMenuButton<String>(
       tooltip: 'Cuenta',
-      icon: const Icon(Icons.more_vert),
+      offset: AppPopupMenus.offset,
+      elevation: AppPopupMenus.elevation,
+      shadowColor: AppPopupMenus.shadowColor,
+      surfaceTintColor: AppPopupMenus.surfaceTintOf(context),
+      color: AppPopupMenus.colorOf(context),
+      shape: AppPopupMenus.shapeOf(context),
+      padding: EdgeInsets.zero,
+      icon: Builder(
+        builder: (context) {
+          final photoUrl = user?.photoUrl;
+          final hasPhoto = photoUrl != null && photoUrl.isNotEmpty;
+          return CircleAvatar(
+            radius: 16,
+            backgroundColor: colors.primaryContainer,
+            foregroundColor: colors.onPrimaryContainer,
+            backgroundImage: hasPhoto ? NetworkImage(photoUrl) : null,
+            child: hasPhoto
+                ? null
+                : Icon(
+                    isGuest
+                        ? Icons.person_outline_rounded
+                        : Icons.person_rounded,
+                    size: 18,
+                  ),
+          );
+        },
+      ),
       onSelected: (value) {
         if (value == 'logout') {
           ref.read(authActionControllerProvider.notifier).signOut();
@@ -41,27 +70,110 @@ class AccountMenuButton extends ConsumerWidget {
         }
       },
       itemBuilder: (context) => [
-        if (isGuest)
-          const PopupMenuItem(
-            enabled: false,
-            child: Text('Cuenta de invitado'),
-          ),
-        const PopupMenuItem(
-          value: 'profile',
-          child: Text('Mi perfil'),
+        PopupMenuItem<String>(
+          enabled: false,
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
+          child: _AccountMenuHeader(user: user, isGuest: isGuest),
         ),
-        const PopupMenuItem(
+        const PopupMenuDivider(height: 1),
+        appPopupMenuItem(
+          value: 'profile',
+          icon: Icons.badge_outlined,
+          label: 'Mi perfil',
+          tint: colors.primary,
+        ),
+        appPopupMenuItem(
           value: 'settings',
-          child: Text('Configuración'),
+          icon: Icons.settings_outlined,
+          label: 'Configuración',
+          tint: colors.tertiary,
         ),
         if (username.isNotEmpty)
-          const PopupMenuItem(
+          appPopupMenuItem(
             value: 'recovery',
-            child: Text('Ver clave de recuperación'),
+            icon: Icons.key_outlined,
+            label: 'Clave de recuperación',
+            tint: colors.secondary,
           ),
-        PopupMenuItem(
+        const PopupMenuDivider(height: 8),
+        appPopupMenuItem(
           value: 'logout',
-          child: Text(isGuest ? 'Salir de invitado' : 'Cerrar sesión'),
+          icon: Icons.logout_rounded,
+          label: isGuest ? 'Salir de invitado' : 'Cerrar sesión',
+          destructive: true,
+          padding: const EdgeInsets.fromLTRB(8, 2, 8, 6),
+        ),
+      ],
+    );
+  }
+}
+
+class _AccountMenuHeader extends StatelessWidget {
+  const _AccountMenuHeader({
+    required this.user,
+    required this.isGuest,
+  });
+
+  final AppUser? user;
+  final bool isGuest;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final name = (user?.displayName.trim().isNotEmpty == true)
+        ? user!.displayName.trim()
+        : (isGuest ? 'Invitado' : 'Cuenta');
+    final subtitle = isGuest
+        ? 'Sesión temporal'
+        : (user?.email?.trim().isNotEmpty == true
+            ? user!.email!.trim()
+            : (user?.username?.trim().isNotEmpty == true
+                ? '@${user!.username!.trim()}'
+                : 'LocMotos'));
+    final photoUrl = user?.photoUrl;
+    final hasPhoto = photoUrl != null && photoUrl.isNotEmpty;
+
+    return Row(
+      children: [
+        CircleAvatar(
+          radius: 20,
+          backgroundColor: colors.primary,
+          foregroundColor: colors.onPrimary,
+          backgroundImage: hasPhoto ? NetworkImage(photoUrl) : null,
+          child: hasPhoto
+              ? null
+              : Text(
+                  name.isNotEmpty ? name[0].toUpperCase() : '?',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                  ),
+                ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: colors.onSurfaceVariant,
+                    ),
+              ),
+            ],
+          ),
         ),
       ],
     );

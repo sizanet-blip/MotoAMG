@@ -1,6 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:loc_motos/core/widgets/app_popup_menu.dart';
 import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
+import 'package:loc_motos/features/auth/domain/entities/user_vehicle.dart';
+import 'package:loc_motos/features/auth/domain/entities/vehicle_map_marker.dart';
 import 'package:loc_motos/features/auth/presentation/providers/auth_providers.dart';
 import 'package:loc_motos/features/auth/presentation/utils/auth_validators.dart';
 import 'package:loc_motos/features/auth/presentation/widgets/reveal_recovery_key_dialog.dart';
@@ -19,15 +24,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   final _passwordKey = GlobalKey<FormState>();
   late final TextEditingController _name;
   late final TextEditingController _phone;
-  late final TextEditingController _brand;
-  late final TextEditingController _model;
-  late final TextEditingController _year;
-  late final TextEditingController _color;
-  late final TextEditingController _plate;
   final _currentPassword = TextEditingController();
   final _newPassword = TextEditingController();
   final _confirmPassword = TextEditingController();
   var _obscure = true;
+  late List<UserVehicle> _vehicles;
+  String? _activeVehicleId;
 
   AppUser get _user {
     final local = ref.watch(signedInUserProvider);
@@ -41,22 +43,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final user = widget.user;
     _name = TextEditingController(text: user.displayName);
     _phone = TextEditingController(text: user.phoneNumber ?? '');
-    _brand = TextEditingController(text: user.bikeBrand ?? '');
-    _model = TextEditingController(text: user.bikeModel ?? '');
-    _year = TextEditingController(text: user.bikeYear ?? '');
-    _color = TextEditingController(text: user.bikeColor ?? '');
-    _plate = TextEditingController(text: user.bikePlate ?? '');
+    _vehicles = List<UserVehicle>.from(user.resolvedVehicles);
+    _activeVehicleId = user.activeVehicle?.id;
   }
 
   @override
   void dispose() {
     _name.dispose();
     _phone.dispose();
-    _brand.dispose();
-    _model.dispose();
-    _year.dispose();
-    _color.dispose();
-    _plate.dispose();
     _currentPassword.dispose();
     _newPassword.dispose();
     _confirmPassword.dispose();
@@ -73,14 +67,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       return;
     }
     await ref.read(authActionControllerProvider.notifier).updateProfile(
-      displayName: _name.text,
-      phoneNumber: _blankToNull(_phone.text),
-      bikeBrand: _blankToNull(_brand.text),
-      bikeModel: _blankToNull(_model.text),
-      bikeYear: _blankToNull(_year.text),
-      bikeColor: _blankToNull(_color.text),
-      bikePlate: _blankToNull(_plate.text)?.toUpperCase(),
-    );
+          displayName: _name.text,
+          phoneNumber: _blankToNull(_phone.text),
+          vehicles: _vehicles,
+          activeVehicleId: _activeVehicleId,
+          clearActiveVehicleId: _activeVehicleId == null,
+        );
     if (!mounted) {
       return;
     }
@@ -97,9 +89,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       return;
     }
     await ref.read(authActionControllerProvider.notifier).changePassword(
-      currentPassword: _currentPassword.text,
-      newPassword: _newPassword.text,
-    );
+          currentPassword: _currentPassword.text,
+          newPassword: _newPassword.text,
+        );
     if (!mounted) {
       return;
     }
@@ -114,70 +106,54 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
+  Future<void> _editVehicle({UserVehicle? existing}) async {
+    final result = await showModalBottomSheet<UserVehicle>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => _VehicleEditorSheet(initial: existing),
+    );
+    if (result == null || !mounted) {
+      return;
+    }
+    setState(() {
+      final index = _vehicles.indexWhere((v) => v.id == result.id);
+      if (index >= 0) {
+        _vehicles[index] = result;
+      } else {
+        _vehicles = [..._vehicles, result];
+        _activeVehicleId ??= result.id;
+      }
+    });
+  }
+
+  void _deleteVehicle(String id) {
+    setState(() {
+      _vehicles = _vehicles.where((v) => v.id != id).toList();
+      if (_activeVehicleId == id) {
+        _activeVehicleId =
+            _vehicles.isEmpty ? null : _vehicles.first.id;
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = _user;
     final isLoading = ref.watch(authActionControllerProvider).isLoading;
-    final username = user.username?.trim().isNotEmpty == true
-        ? user.username!.trim()
-        : (user.isUsernameAccount ? user.displayName.trim() : '');
-
-    ref.listen(authActionControllerProvider, (previous, next) {
-      next.whenOrNull(
-        error: (error, _) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(error.toString())),
-          );
-        },
-      );
-    });
+    final error = ref.watch(authActionControllerProvider).asError?.error;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Mi perfil')),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+        padding: const EdgeInsets.all(16),
         children: [
-          if (user.isAnonymous) ...[
-            const Card(
-              child: ListTile(
-                leading: Icon(Icons.badge_outlined),
-                title: Text('Cuenta de invitado'),
-                subtitle: Text(
-                  'Al salir se borra todo, incluida la moto. '
-                  'Crea una cuenta para guardarlo.',
-                ),
-              ),
+          if (error != null) ...[
+            Text(
+              '$error',
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
           ],
-          Text('Cuenta', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
-          Card(
-            child: Column(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.person_outline),
-                  title: const Text('Tipo'),
-                  subtitle: Text(_accountType(user)),
-                ),
-                if (user.email != null && user.email!.isNotEmpty)
-                  ListTile(
-                    leading: const Icon(Icons.mail_outline),
-                    title: const Text('Correo'),
-                    subtitle: Text(user.email!),
-                  ),
-                if (username.isNotEmpty)
-                  ListTile(
-                    leading: const Icon(Icons.alternate_email),
-                    title: const Text('Usuario'),
-                    subtitle: Text(username),
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-          Text('Tus datos', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
           Form(
             key: _profileKey,
             child: Column(
@@ -207,73 +183,127 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   validator: AuthValidators.optionalPhone,
                 ),
                 const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Mis vehículos',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: isLoading
+                          ? null
+                          : () => _editVehicle(),
+                      icon: const Icon(Icons.add),
+                      label: const Text('Añadir'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
                 Text(
-                  'Tu moto',
-                  style: Theme.of(context).textTheme.titleMedium,
+                  'El vehículo activo define el tipo de ruta (moto/coche/camión) '
+                  'y el combustible de las gasolineras.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                 ),
                 const SizedBox(height: 8),
-                TextFormField(
-                  controller: _brand,
-                  enabled: !isLoading,
-                  textCapitalization: TextCapitalization.words,
-                  textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(
-                    labelText: 'Marca',
-                    hintText: 'Honda, Yamaha, BMW…',
-                    border: OutlineInputBorder(),
+                if (_vehicles.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    child: Text(
+                      'Sin vehículos. Las gasolineras mostrarán todos los precios.',
+                    ),
+                  )
+                else
+                  for (final vehicle in _vehicles) ...[
+                    Card(
+                      child: ListTile(
+                        leading: Radio<String>(
+                          value: vehicle.id,
+                          groupValue: _activeVehicleId,
+                          onChanged: isLoading
+                              ? null
+                              : (value) {
+                                  setState(() => _activeVehicleId = value);
+                                },
+                        ),
+                        title: Text(vehicle.displayLabel),
+                        subtitle: Text(
+                          '${vehicle.kind.label} · ${vehicle.fuelType.label}'
+                          '${vehicle.plate != null ? ' · ${vehicle.plate}' : ''}',
+                        ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (vehicle.navigationPuckStyle != null)
+                              Padding(
+                                padding: const EdgeInsets.only(right: 4),
+                                child: CircleAvatar(
+                                  radius: 14,
+                                  backgroundColor:
+                                      vehicle.navigationPuckStyle!.color,
+                                  child: Icon(
+                                    vehicle.navigationPuckStyle!.icon.iconData,
+                                    size: 16,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            PopupMenuButton<String>(
+                              tooltip: 'Opciones del vehículo',
+                              offset: AppPopupMenus.offset,
+                              elevation: AppPopupMenus.elevation,
+                              shadowColor: AppPopupMenus.shadowColor,
+                              surfaceTintColor:
+                                  AppPopupMenus.surfaceTintOf(context),
+                              color: AppPopupMenus.colorOf(context),
+                              shape: AppPopupMenus.shapeOf(context),
+                              onSelected: (action) {
+                                if (action == 'edit') {
+                                  unawaited(_editVehicle(existing: vehicle));
+                                } else if (action == 'delete') {
+                                  _deleteVehicle(vehicle.id);
+                                }
+                              },
+                              itemBuilder: (context) => [
+                                appPopupMenuItem(
+                                  value: 'edit',
+                                  icon: Icons.edit_outlined,
+                                  label: 'Editar',
+                                  tint: Theme.of(context).colorScheme.primary,
+                                ),
+                                const PopupMenuDivider(height: 8),
+                                appPopupMenuItem(
+                                  value: 'delete',
+                                  icon: Icons.delete_outline_rounded,
+                                  label: 'Eliminar',
+                                  destructive: true,
+                                  padding:
+                                      const EdgeInsets.fromLTRB(8, 2, 8, 6),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        onTap: isLoading
+                            ? null
+                            : () => setState(
+                                  () => _activeVehicleId = vehicle.id,
+                                ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                if (_vehicles.isNotEmpty)
+                  TextButton(
+                    onPressed: isLoading
+                        ? null
+                        : () => setState(() => _activeVehicleId = null),
+                    child: const Text('Ningún vehículo activo'),
                   ),
-                  validator: AuthValidators.optionalBikeField,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _model,
-                  enabled: !isLoading,
-                  textCapitalization: TextCapitalization.words,
-                  textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(
-                    labelText: 'Modelo',
-                    hintText: 'CB500X, MT-07…',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: AuthValidators.optionalBikeField,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _year,
-                  enabled: !isLoading,
-                  keyboardType: TextInputType.number,
-                  textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(
-                    labelText: 'Año',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: AuthValidators.optionalBikeYear,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _color,
-                  enabled: !isLoading,
-                  textCapitalization: TextCapitalization.sentences,
-                  textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(
-                    labelText: 'Color',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: AuthValidators.optionalBikeField,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _plate,
-                  enabled: !isLoading,
-                  textCapitalization: TextCapitalization.characters,
-                  textInputAction: TextInputAction.done,
-                  decoration: const InputDecoration(
-                    labelText: 'Matrícula',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: AuthValidators.optionalPlate,
-                ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 8),
                 FilledButton(
                   onPressed: isLoading ? null : _saveProfile,
                   child: isLoading
@@ -290,7 +320,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           if (user.canChangePassword) ...[
             const SizedBox(height: 32),
             Text(
-              'Contraseña',
+              'Cambiar contraseña',
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 8),
@@ -301,26 +331,29 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 children: [
                   TextFormField(
                     controller: _currentPassword,
-                    enabled: !isLoading,
                     obscureText: _obscure,
+                    enabled: !isLoading,
                     decoration: InputDecoration(
                       labelText: 'Contraseña actual',
                       border: const OutlineInputBorder(),
                       suffixIcon: IconButton(
-                        tooltip: _obscure ? 'Mostrar' : 'Ocultar',
-                        onPressed: () => setState(() => _obscure = !_obscure),
+                        onPressed: () =>
+                            setState(() => _obscure = !_obscure),
                         icon: Icon(
-                          _obscure ? Icons.visibility : Icons.visibility_off,
+                          _obscure
+                              ? Icons.visibility
+                              : Icons.visibility_off,
                         ),
                       ),
                     ),
-                    validator: AuthValidators.loginPassword,
+                    validator: (v) =>
+                        (v == null || v.isEmpty) ? 'Obligatoria' : null,
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _newPassword,
-                    enabled: !isLoading,
                     obscureText: _obscure,
+                    enabled: !isLoading,
                     decoration: const InputDecoration(
                       labelText: 'Nueva contraseña',
                       border: OutlineInputBorder(),
@@ -330,42 +363,35 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _confirmPassword,
-                    enabled: !isLoading,
                     obscureText: _obscure,
+                    enabled: !isLoading,
                     decoration: const InputDecoration(
-                      labelText: 'Repetir contraseña',
+                      labelText: 'Confirmar contraseña',
                       border: OutlineInputBorder(),
                     ),
-                    validator: (value) => AuthValidators.confirmPassword(
-                      value,
+                    validator: (v) => AuthValidators.confirmPassword(
+                      v,
                       _newPassword.text,
                     ),
                   ),
                   const SizedBox(height: 16),
                   OutlinedButton(
                     onPressed: isLoading ? null : _savePassword,
-                    child: const Text('Cambiar contraseña'),
+                    child: const Text('Actualizar contraseña'),
                   ),
                 ],
               ),
             ),
           ],
-          if (user.provider == AuthProviderType.google) ...[
+          if (user.isUsernameAccount) ...[
             const SizedBox(height: 24),
-            Text(
-              'Entras con Google. La contraseña se gestiona en esa cuenta.',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ],
-          if (username.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            TextButton(
-              onPressed: isLoading
+            OutlinedButton(
+              onPressed: isLoading || user.username == null
                   ? null
                   : () => RevealRecoveryKeyDialog.show(
-                      context,
-                      username: username,
-                    ),
+                        context,
+                        username: user.username!,
+                      ),
               child: const Text('Ver clave de recuperación'),
             ),
           ],
@@ -373,13 +399,390 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       ),
     );
   }
+}
 
-  String _accountType(AppUser user) {
-    return switch (user.provider) {
-      AuthProviderType.google => 'Google',
-      AuthProviderType.email => 'Correo y contraseña',
-      AuthProviderType.username => 'Usuario y contraseña',
-      AuthProviderType.anonymous => 'Invitado',
-    };
+class _VehicleEditorSheet extends StatefulWidget {
+  const _VehicleEditorSheet({this.initial});
+
+  final UserVehicle? initial;
+
+  @override
+  State<_VehicleEditorSheet> createState() => _VehicleEditorSheetState();
+}
+
+class _VehicleEditorSheetState extends State<_VehicleEditorSheet> {
+  late final TextEditingController _brand;
+  late final TextEditingController _model;
+  late final TextEditingController _year;
+  late final TextEditingController _color;
+  late final TextEditingController _plate;
+  late VehicleKind _kind;
+  late VehicleFuelType _fuel;
+  VehicleMapIcon? _mapIcon;
+  late Color _mapColor;
+  final _formKey = GlobalKey<FormState>();
+
+  @override
+  void initState() {
+    super.initState();
+    final v = widget.initial;
+    _brand = TextEditingController(text: v?.brand ?? '');
+    _model = TextEditingController(text: v?.model ?? '');
+    _year = TextEditingController(text: v?.year ?? '');
+    _color = TextEditingController(text: v?.color ?? '');
+    _plate = TextEditingController(text: v?.plate ?? '');
+    _kind = v?.kind ?? VehicleKind.motorcycle;
+    _fuel = v?.fuelType ?? VehicleFuelType.gasolina95;
+    _mapIcon = v?.mapIcon;
+    _mapColor = VehicleMapColors.tryParseHex(v?.mapColorHex) ??
+        VehicleMapColors.defaultFor(
+          _mapIcon ?? VehicleMapIcon.motorcycle,
+        );
+  }
+
+  @override
+  void dispose() {
+    _brand.dispose();
+    _model.dispose();
+    _year.dispose();
+    _color.dispose();
+    _plate.dispose();
+    super.dispose();
+  }
+
+  String? _blankToNull(String value) {
+    final text = value.trim();
+    return text.isEmpty ? null : text;
+  }
+
+  void _submit() {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+    final id = widget.initial?.id ??
+        'v_${DateTime.now().millisecondsSinceEpoch}';
+    Navigator.pop(
+      context,
+      UserVehicle(
+        id: id,
+        kind: _kind,
+        fuelType: _fuel,
+        brand: _blankToNull(_brand.text),
+        model: _blankToNull(_model.text),
+        year: _blankToNull(_year.text),
+        color: _blankToNull(_color.text),
+        plate: _blankToNull(_plate.text)?.toUpperCase(),
+        mapIcon: _mapIcon,
+        mapColorHex:
+            _mapIcon == null ? null : VehicleMapColors.toHex(_mapColor),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottom = MediaQuery.viewInsetsOf(context).bottom;
+    final colors = Theme.of(context).colorScheme;
+    final suggested = _kind.suggestedMapIcons;
+    final otherIcons = VehicleMapIcon.values
+        .where((icon) => !suggested.contains(icon))
+        .toList();
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + bottom),
+      child: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                widget.initial == null ? 'Nuevo vehículo' : 'Editar vehículo',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<VehicleKind>(
+                // ignore: deprecated_member_use
+                value: _kind,
+                decoration: const InputDecoration(
+                  labelText: 'Tipo',
+                  border: OutlineInputBorder(),
+                ),
+                items: [
+                  for (final kind in VehicleKind.values)
+                    DropdownMenuItem(value: kind, child: Text(kind.label)),
+                ],
+                onChanged: (value) {
+                  if (value == null) {
+                    return;
+                  }
+                  setState(() {
+                    _kind = value;
+                    if (_mapIcon != null &&
+                        !value.suggestedMapIcons.contains(_mapIcon)) {
+                      _mapIcon = value.suggestedMapIcons.first;
+                      _mapColor = VehicleMapColors.defaultFor(_mapIcon!);
+                    }
+                  });
+                },
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<VehicleFuelType>(
+                // ignore: deprecated_member_use
+                value: _fuel,
+                decoration: const InputDecoration(
+                  labelText: 'Combustible',
+                  border: OutlineInputBorder(),
+                ),
+                items: [
+                  for (final fuel in VehicleFuelType.values)
+                    DropdownMenuItem(value: fuel, child: Text(fuel.label)),
+                ],
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() => _fuel = value);
+                  }
+                },
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Icono en el mapa (navegación)',
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Si no eliges ninguno, se usa el punto GPS azul habitual.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: colors.onSurfaceVariant,
+                    ),
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _MapIconChoice(
+                    selected: _mapIcon == null,
+                    color: colors.surfaceContainerHighest,
+                    icon: Icons.gps_fixed_rounded,
+                    label: 'Por defecto',
+                    onTap: () => setState(() => _mapIcon = null),
+                    selectedBorder: colors.primary,
+                  ),
+                  for (final icon in suggested)
+                    _MapIconChoice(
+                      selected: _mapIcon == icon,
+                      color: _mapIcon == icon
+                          ? _mapColor
+                          : const Color(0xFF607D8B),
+                      icon: icon.iconData,
+                      label: icon.label,
+                      onTap: () => setState(() {
+                        final firstPick = _mapIcon == null;
+                        _mapIcon = icon;
+                        if (firstPick) {
+                          _mapColor = VehicleMapColors.defaultFor(icon);
+                        }
+                      }),
+                      selectedBorder: colors.primary,
+                    ),
+                  for (final icon in otherIcons)
+                    _MapIconChoice(
+                      selected: _mapIcon == icon,
+                      color: _mapIcon == icon
+                          ? _mapColor
+                          : const Color(0xFF78909C),
+                      icon: icon.iconData,
+                      label: icon.label,
+                      onTap: () => setState(() {
+                        final firstPick = _mapIcon == null;
+                        _mapIcon = icon;
+                        if (firstPick) {
+                          _mapColor = VehicleMapColors.defaultFor(icon);
+                        }
+                      }),
+                      selectedBorder: colors.primary,
+                    ),
+                ],
+              ),
+              if (_mapIcon != null) ...[
+                const SizedBox(height: 14),
+                Text(
+                  'Color del marcador',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final color in VehicleMapColors.palette)
+                      InkWell(
+                        onTap: () => setState(() => _mapColor = color),
+                        borderRadius: BorderRadius.circular(999),
+                        child: Container(
+                          width: 34,
+                          height: 34,
+                          decoration: BoxDecoration(
+                            color: color,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: _mapColor.toARGB32() == color.toARGB32()
+                                  ? colors.onSurface
+                                  : Colors.white54,
+                              width: _mapColor.toARGB32() == color.toARGB32()
+                                  ? 3
+                                  : 1,
+                            ),
+                          ),
+                          child: _mapColor.toARGB32() == color.toARGB32()
+                              ? const Icon(
+                                  Icons.check_rounded,
+                                  size: 18,
+                                  color: Colors.white,
+                                )
+                              : null,
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: CircleAvatar(
+                    radius: 28,
+                    backgroundColor: _mapColor,
+                    child: Icon(
+                      _mapIcon!.iconData,
+                      color: Colors.white,
+                      size: 30,
+                    ),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _brand,
+                textCapitalization: TextCapitalization.words,
+                decoration: const InputDecoration(
+                  labelText: 'Marca',
+                  border: OutlineInputBorder(),
+                ),
+                validator: AuthValidators.optionalBikeField,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _model,
+                textCapitalization: TextCapitalization.words,
+                decoration: const InputDecoration(
+                  labelText: 'Modelo',
+                  border: OutlineInputBorder(),
+                ),
+                validator: AuthValidators.optionalBikeField,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _year,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Año',
+                  border: OutlineInputBorder(),
+                ),
+                validator: AuthValidators.optionalBikeYear,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _color,
+                decoration: const InputDecoration(
+                  labelText: 'Color (descripción)',
+                  border: OutlineInputBorder(),
+                ),
+                validator: AuthValidators.optionalBikeField,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _plate,
+                textCapitalization: TextCapitalization.characters,
+                decoration: const InputDecoration(
+                  labelText: 'Matrícula',
+                  border: OutlineInputBorder(),
+                ),
+                validator: AuthValidators.optionalPlate,
+              ),
+              const SizedBox(height: 16),
+              FilledButton(
+                onPressed: _submit,
+                child: const Text('Guardar vehículo'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MapIconChoice extends StatelessWidget {
+  const _MapIconChoice({
+    required this.selected,
+    required this.color,
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    required this.selectedBorder,
+  });
+
+  final bool selected;
+  final Color color;
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final Color selectedBorder;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        width: 76,
+        padding: const EdgeInsets.fromLTRB(8, 10, 8, 8),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: selected ? selectedBorder : Colors.black12,
+            width: selected ? 2 : 1,
+          ),
+          color: selected
+              ? selectedBorder.withValues(alpha: 0.08)
+              : Colors.transparent,
+        ),
+        child: Column(
+          children: [
+            CircleAvatar(
+              radius: 18,
+              backgroundColor: color,
+              child: Icon(icon, color: Colors.white, size: 20),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                  ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

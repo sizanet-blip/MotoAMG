@@ -13,6 +13,8 @@ class OverpassPoiDatasource {
 
   final http.Client _client;
 
+  /// Legacy Overpass. Prefer [SpainFuelDatasource.fetchFuelNearRoute].
+  @Deprecated('Usar SpainFuelDatasource (caché MITECO)')
   Future<List<RouteAlert>> fetchFuelNearRoute(
     List<GeoPoint> polyline,
   ) async {

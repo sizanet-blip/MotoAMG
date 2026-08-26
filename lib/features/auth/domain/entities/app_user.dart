@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:loc_motos/features/auth/domain/entities/user_vehicle.dart';
 
 enum AuthProviderType { google, email, username, anonymous }
 
@@ -19,6 +20,8 @@ class AppUser extends Equatable {
     this.bikeYear,
     this.bikeColor,
     this.bikePlate,
+    this.vehicles = const [],
+    this.activeVehicleId,
   });
 
   final String uid;
@@ -30,11 +33,16 @@ class AppUser extends Equatable {
   final String? username;
   final String? photoUrl;
   final String? currentGroupId;
+
+  /// Campos legacy (compatibilidad grupos / docs antiguos).
   final String? bikeBrand;
   final String? bikeModel;
   final String? bikeYear;
   final String? bikeColor;
   final String? bikePlate;
+
+  final List<UserVehicle> vehicles;
+  final String? activeVehicleId;
 
   bool get isAnonymous => provider == AuthProviderType.anonymous;
 
@@ -44,7 +52,55 @@ class AppUser extends Equatable {
       provider == AuthProviderType.email ||
       provider == AuthProviderType.username;
 
+  /// Vehículos con migración desde `bike*` si la lista está vacía.
+  List<UserVehicle> get resolvedVehicles {
+    if (vehicles.isNotEmpty) {
+      return vehicles;
+    }
+    final hasLegacy = [
+      bikeBrand,
+      bikeModel,
+      bikeYear,
+      bikeColor,
+      bikePlate,
+    ].any((v) => v != null && v.trim().isNotEmpty);
+    if (!hasLegacy) {
+      return const [];
+    }
+    return [
+      UserVehicle(
+        id: 'legacy_bike',
+        kind: VehicleKind.motorcycle,
+        fuelType: VehicleFuelType.unspecified,
+        brand: bikeBrand,
+        model: bikeModel,
+        year: bikeYear,
+        color: bikeColor,
+        plate: bikePlate,
+      ),
+    ];
+  }
+
+  UserVehicle? get activeVehicle {
+    final list = resolvedVehicles;
+    if (list.isEmpty) {
+      return null;
+    }
+    if (activeVehicleId != null) {
+      for (final v in list) {
+        if (v.id == activeVehicleId) {
+          return v;
+        }
+      }
+    }
+    return list.first;
+  }
+
   String get bikeLabel {
+    final active = activeVehicle;
+    if (active != null) {
+      return active.displayLabel;
+    }
     final parts = [
       bikeBrand,
       bikeModel,
@@ -71,7 +127,10 @@ class AppUser extends Equatable {
     String? bikeYear,
     String? bikeColor,
     String? bikePlate,
+    List<UserVehicle>? vehicles,
+    String? activeVehicleId,
     bool clearCurrentGroupId = false,
+    bool clearActiveVehicleId = false,
   }) {
     return AppUser(
       uid: uid ?? this.uid,
@@ -90,24 +149,30 @@ class AppUser extends Equatable {
       bikeYear: bikeYear ?? this.bikeYear,
       bikeColor: bikeColor ?? this.bikeColor,
       bikePlate: bikePlate ?? this.bikePlate,
+      vehicles: vehicles ?? this.vehicles,
+      activeVehicleId: clearActiveVehicleId
+          ? null
+          : activeVehicleId ?? this.activeVehicleId,
     );
   }
 
   @override
   List<Object?> get props => [
-    uid,
-    displayName,
-    createdAt,
-    provider,
-    phoneNumber,
-    email,
-    username,
-    photoUrl,
-    currentGroupId,
-    bikeBrand,
-    bikeModel,
-    bikeYear,
-    bikeColor,
-    bikePlate,
-  ];
+        uid,
+        displayName,
+        createdAt,
+        provider,
+        phoneNumber,
+        email,
+        username,
+        photoUrl,
+        currentGroupId,
+        bikeBrand,
+        bikeModel,
+        bikeYear,
+        bikeColor,
+        bikePlate,
+        vehicles,
+        activeVehicleId,
+      ];
 }

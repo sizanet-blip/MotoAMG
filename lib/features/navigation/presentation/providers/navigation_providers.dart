@@ -1,18 +1,27 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:loc_motos/core/constants/navigation_constants.dart';
+import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
+import 'package:loc_motos/features/auth/domain/entities/user_vehicle.dart';
+import 'package:loc_motos/features/auth/domain/entities/vehicle_map_marker.dart';
+import 'package:loc_motos/features/auth/presentation/providers/auth_providers.dart';
 import 'package:loc_motos/features/navigation/data/datasources/hive_route_cache_datasource.dart';
 import 'package:loc_motos/features/navigation/data/datasources/geocoding_datasource_factory.dart';
 import 'package:loc_motos/features/navigation/data/datasources/valhalla_remote_datasource.dart';
 import 'package:loc_motos/features/navigation/data/repositories/geocoding_repository_impl.dart';
 import 'package:loc_motos/features/navigation/data/repositories/map_region_repository_impl.dart';
 import 'package:loc_motos/features/navigation/data/repositories/navigation_repository_impl.dart';
+import 'package:loc_motos/features/navigation/data/repositories/alert_preferences_repository.dart';
 import 'package:loc_motos/features/navigation/data/repositories/recent_places_repository.dart';
 import 'package:loc_motos/features/navigation/data/repositories/route_preferences_repository.dart';
 import 'package:loc_motos/features/navigation/data/services/navigation_map_style_service.dart';
 import 'package:loc_motos/features/navigation/data/services/navigation_voice_service.dart';
+import 'package:loc_motos/features/navigation/data/datasources/spain_fuel_datasource.dart';
+import 'package:loc_motos/features/navigation/data/datasources/spain_radar_datasource.dart';
 import 'package:loc_motos/features/navigation/data/services/route_alerts_service.dart';
 import 'package:loc_motos/features/navigation/data/services/route_deviation_service.dart';
 import 'package:loc_motos/features/navigation/data/services/route_guidance_service.dart';
+import 'package:loc_motos/features/navigation/domain/entities/alert_preferences.dart';
 import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
 import 'package:loc_motos/features/navigation/domain/entities/hybrid_map_styles.dart';
 import 'package:loc_motos/features/navigation/domain/entities/map_region.dart';
@@ -47,6 +56,19 @@ final routePreferencesProvider =
     NotifierProvider<RoutePreferencesController, RoutePreferences>(
   RoutePreferencesController.new,
 );
+
+final alertPreferencesRepositoryProvider =
+    Provider<AlertPreferencesRepository>((ref) {
+  return AlertPreferencesRepository();
+});
+
+final alertPreferencesProvider =
+    NotifierProvider<AlertPreferencesController, AlertPreferences>(
+  AlertPreferencesController.new,
+);
+
+/// Id del vehículo elegido para planificar (`null` = sin vehículo / moto por defecto).
+final navigationVehicleIdProvider = StateProvider<String?>((ref) => null);
 
 class RoutePreferencesController extends Notifier<RoutePreferences> {
   @override
@@ -87,6 +109,31 @@ class RoutePreferencesController extends Notifier<RoutePreferences> {
   }
 }
 
+class AlertPreferencesController extends Notifier<AlertPreferences> {
+  @override
+  AlertPreferences build() {
+    Future.microtask(_hydrate);
+    return AlertPreferences.defaults;
+  }
+
+  Future<void> _hydrate() async {
+    final loaded =
+        await ref.read(alertPreferencesRepositoryProvider).load();
+    state = loaded;
+  }
+
+  Future<void> _persist(AlertPreferences next) async {
+    state = next;
+    await ref.read(alertPreferencesRepositoryProvider).save(next);
+  }
+
+  Future<void> update(AlertPreferences Function(AlertPreferences) fn) {
+    return _persist(fn(state));
+  }
+
+  Future<void> reset() => _persist(AlertPreferences.defaults);
+}
+
 final mapRegionRepositoryProvider = Provider<MapRegionRepository>((ref) {
   return MapRegionRepositoryImpl();
 });
@@ -103,9 +150,238 @@ final routeGuidanceServiceProvider = Provider<RouteGuidanceService>((ref) {
   return RouteGuidanceService();
 });
 
-final routeAlertsServiceProvider = Provider<RouteAlertsService>((ref) {
-  return RouteAlertsService();
+final spainRadarDatasourceProvider = Provider<SpainRadarDatasource>((ref) {
+  return SpainRadarDatasource();
 });
+
+final spainFuelDatasourceProvider = Provider<SpainFuelDatasource>((ref) {
+  return SpainFuelDatasource();
+});
+
+final routeAlertsServiceProvider = Provider<RouteAlertsService>((ref) {
+  return RouteAlertsService(
+    spainFuel: ref.watch(spainFuelDatasourceProvider),
+    spainRadars: ref.watch(spainRadarDatasourceProvider),
+  );
+});
+
+final spainRadarCacheStatusProvider =
+    FutureProvider<SpainRadarCacheStatus>((ref) {
+  return ref.watch(spainRadarDatasourceProvider).readCacheStatus();
+});
+
+final spainFuelCacheStatusProvider =
+    FutureProvider<SpainFuelCacheStatus>((ref) {
+  return ref.watch(spainFuelDatasourceProvider).readCacheStatus();
+});
+
+/// Vehículo elegido al planificar (`null` = sin vehículo / ruta moto por defecto).
+UserVehicle? resolveNavigationVehicle({
+  required AppUser? user,
+  String? vehicleId,
+}) {
+  if (vehicleId == NavigationConstants.navigationNoVehicleId) {
+    return null;
+  }
+  if (user == null) {
+    return null;
+  }
+  final vehicles = user.resolvedVehicles;
+  if (vehicles.isEmpty) {
+    return null;
+  }
+  UserVehicle? selected;
+  final id = vehicleId ?? user.activeVehicleId;
+  if (id != null && id != NavigationConstants.navigationNoVehicleId) {
+    for (final v in vehicles) {
+      if (v.id == id) {
+        selected = v;
+        break;
+      }
+    }
+  }
+  if (vehicleId == null) {
+    selected ??= user.activeVehicle;
+  }
+  return selected;
+}
+
+/// Combustible del vehículo elegido al planificar (null = mostrar todos).
+VehicleFuelType? resolveNavigationPreferredFuel({
+  required AppUser? user,
+  String? vehicleId,
+}) {
+  final selected = resolveNavigationVehicle(user: user, vehicleId: vehicleId);
+  final fuel = selected?.fuelType;
+  if (fuel == null || fuel == VehicleFuelType.unspecified) {
+    return null;
+  }
+  return fuel;
+}
+
+/// Estilo del puck GPS (`null` = círculo azul por defecto).
+NavigationPuckStyle? resolveNavigationPuckStyle({
+  required AppUser? user,
+  String? vehicleId,
+}) {
+  return resolveNavigationVehicle(
+    user: user,
+    vehicleId: vehicleId,
+  )?.navigationPuckStyle;
+}
+
+class RadarCacheDownloadState {
+  const RadarCacheDownloadState({
+    this.downloading = false,
+    this.progress,
+    this.snackMessage,
+  });
+
+  final bool downloading;
+  final SpainRadarDownloadProgress? progress;
+  final String? snackMessage;
+
+  RadarCacheDownloadState copyWith({
+    bool? downloading,
+    SpainRadarDownloadProgress? progress,
+    String? snackMessage,
+    bool clearProgress = false,
+    bool clearSnack = false,
+  }) {
+    return RadarCacheDownloadState(
+      downloading: downloading ?? this.downloading,
+      progress: clearProgress ? null : (progress ?? this.progress),
+      snackMessage: clearSnack ? null : (snackMessage ?? this.snackMessage),
+    );
+  }
+}
+
+class RadarCacheDownloadController extends Notifier<RadarCacheDownloadState> {
+  @override
+  RadarCacheDownloadState build() => const RadarCacheDownloadState();
+
+  Future<void> download() async {
+    if (state.downloading) {
+      return;
+    }
+    state = const RadarCacheDownloadState(downloading: true);
+    try {
+      final result =
+          await ref.read(spainRadarDatasourceProvider).downloadToCache(
+        onProgress: (progress) {
+          state = state.copyWith(downloading: true, progress: progress);
+        },
+      );
+      ref.invalidate(spainRadarCacheStatusProvider);
+      if (result.cancelled) {
+        state = const RadarCacheDownloadState(
+          snackMessage: 'Descarga cancelada.',
+        );
+        return;
+      }
+      if (result.officialCount == 0 && result.osmCount == 0) {
+        state = const RadarCacheDownloadState(
+          snackMessage:
+              'No se pudieron descargar radares. Revisa la conexión.',
+        );
+        return;
+      }
+      state = RadarCacheDownloadState(
+        snackMessage:
+            'Radares listos: ${result.officialCount} oficiales · ${result.osmCount} OSM.',
+      );
+    } catch (_) {
+      state = const RadarCacheDownloadState(
+        snackMessage: 'Error al descargar radares.',
+      );
+    }
+  }
+
+  void cancel() {
+    ref.read(spainRadarDatasourceProvider).cancelDownload();
+  }
+}
+
+final radarCacheDownloadProvider =
+    NotifierProvider<RadarCacheDownloadController, RadarCacheDownloadState>(
+  RadarCacheDownloadController.new,
+);
+
+class FuelCacheDownloadState {
+  const FuelCacheDownloadState({
+    this.downloading = false,
+    this.progress,
+    this.snackMessage,
+  });
+
+  final bool downloading;
+  final SpainFuelDownloadProgress? progress;
+  final String? snackMessage;
+
+  FuelCacheDownloadState copyWith({
+    bool? downloading,
+    SpainFuelDownloadProgress? progress,
+    String? snackMessage,
+    bool clearProgress = false,
+    bool clearSnack = false,
+  }) {
+    return FuelCacheDownloadState(
+      downloading: downloading ?? this.downloading,
+      progress: clearProgress ? null : (progress ?? this.progress),
+      snackMessage: clearSnack ? null : (snackMessage ?? this.snackMessage),
+    );
+  }
+}
+
+class FuelCacheDownloadController extends Notifier<FuelCacheDownloadState> {
+  @override
+  FuelCacheDownloadState build() => const FuelCacheDownloadState();
+
+  Future<void> download() async {
+    if (state.downloading) {
+      return;
+    }
+    state = const FuelCacheDownloadState(downloading: true);
+    try {
+      final result =
+          await ref.read(spainFuelDatasourceProvider).downloadToCache(
+        onProgress: (progress) {
+          state = state.copyWith(downloading: true, progress: progress);
+        },
+      );
+      ref.invalidate(spainFuelCacheStatusProvider);
+      if (result.cancelled) {
+        state = const FuelCacheDownloadState(
+          snackMessage: 'Descarga cancelada.',
+        );
+        return;
+      }
+      if (result.count == 0) {
+        state = const FuelCacheDownloadState(
+          snackMessage:
+              'No se pudieron descargar gasolineras. Revisa la conexión.',
+        );
+        return;
+      }
+      state = FuelCacheDownloadState(
+        snackMessage: 'Gasolineras listas: ${result.count} estaciones.',
+      );
+    } catch (_) {
+      state = const FuelCacheDownloadState(
+        snackMessage: 'Error al descargar gasolineras.',
+      );
+    }
+  }
+
+  void cancel() {
+    ref.read(spainFuelDatasourceProvider).cancelDownload();
+  }
+}
+
+final fuelCacheDownloadProvider =
+    NotifierProvider<FuelCacheDownloadController, FuelCacheDownloadState>(
+  FuelCacheDownloadController.new,
+);
 
 final navigationVoiceServiceProvider = Provider<NavigationVoiceService>((ref) {
   return NavigationVoiceService();
@@ -139,34 +415,47 @@ final mapNetworkAvailableProvider = StreamProvider<bool>((ref) async* {
   }
 });
 
-/// Estilos híbridos: PMTiles local dentro de la CCAA descargada; OpenFreeMap fuera.
+/// Estilos híbridos: mismo Protomaps en España (PMTiles local o remoto).
+/// Fuera de CCAA con red: OpenFreeMap (fallback).
 final hybridMapStylesProvider = FutureProvider<HybridMapStyles>((ref) async {
   final regions = await ref.watch(availableMapRegionsProvider.future);
-  final offline = <OfflineMapStyle>[];
+  final coverage = <OfflineMapStyle>[];
   for (final region in regions) {
-    final path = region.localPath;
-    if (!region.isDownloaded ||
-        path == null ||
-        path.startsWith('assets/') ||
-        !path.endsWith('.pmtiles')) {
-      continue;
-    }
     try {
-      offline.add(
-        OfflineMapStyle(
-          regionId: region.id,
-          bounds: region.bounds,
-          styleString: await NavigationMapStyleService.localPmtilesStyle(path),
-        ),
-      );
+      final path = region.localPath;
+      final useLocal = region.isDownloaded &&
+          path != null &&
+          !path.startsWith('assets/') &&
+          path.endsWith('.pmtiles');
+      if (useLocal) {
+        coverage.add(
+          OfflineMapStyle(
+            regionId: region.id,
+            bounds: region.bounds,
+            styleString:
+                await NavigationMapStyleService.localPmtilesStyle(path),
+          ),
+        );
+      } else if (region.downloadUrl.endsWith('.pmtiles')) {
+        coverage.add(
+          OfflineMapStyle(
+            regionId: region.id,
+            bounds: region.bounds,
+            requiresNetwork: true,
+            styleString: await NavigationMapStyleService.remotePmtilesStyle(
+              region.downloadUrl,
+            ),
+          ),
+        );
+      }
     } catch (_) {
-      // Si un pack falla, el resto / online siguen disponibles.
+      // Si un pack falla, el resto sigue disponible.
     }
   }
   return HybridMapStyles(
     onlineStyle: await NavigationMapStyleService.onlineStyle(),
     unavailableStyle: NavigationMapStyleService.unavailableStyle(),
-    offline: offline,
+    offline: coverage,
   );
 });
 
@@ -203,6 +492,20 @@ class NavigationSessionController extends Notifier<AsyncValue<void>> {
       ref.read(routeDeviationServiceProvider);
   NavigationVoiceService get _voice => ref.read(navigationVoiceServiceProvider);
 
+  String _resolveCosting() {
+    final vehicleId = ref.read(navigationVehicleIdProvider);
+    final user = resolveSessionUser(
+      ref.read(signedInUserProvider),
+      ref.read(authStateProvider).asData?.value,
+    );
+    final selected = resolveNavigationVehicle(
+      user: user,
+      vehicleId: vehicleId,
+    );
+    return selected?.kind.valhallaCosting ??
+        NavigationConstants.valhallaCosting;
+  }
+
   Future<RoutePlan> planRoute({
     required GeoPoint destination,
     GeoPoint? origin,
@@ -221,11 +524,13 @@ class NavigationSessionController extends Notifier<AsyncValue<void>> {
               : throw const NavigationException(
                   'Activa la ubicación o escribe una dirección.',
                 ));
+      final costing = _resolveCosting();
       final plan = await _repo.planRoute(
         origin: start,
         destination: destination,
         waypoints: waypoints,
         preferences: ref.read(routePreferencesProvider),
+        costing: costing,
         originLabel: originLabel,
         destinationLabel: destinationLabel,
         includeAlternates: true,
@@ -269,6 +574,7 @@ class NavigationSessionController extends Notifier<AsyncValue<void>> {
         destination: currentRoute.destination,
         waypoints: currentRoute.waypoints,
         preferences: ref.read(routePreferencesProvider),
+        costing: _resolveCosting(),
         originLabel: 'Mi ubicación',
         destinationLabel:
             currentRoute.destinationLabel ?? currentRoute.destinationDisplay,

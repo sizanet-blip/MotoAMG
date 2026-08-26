@@ -5,9 +5,14 @@ import 'package:loc_motos/features/navigation/presentation/providers/navigation_
 
 /// Botones Curvatura / Evitaciones (estilo Kurviger) para el sheet del itinerario.
 class RoutePreferencesBar extends ConsumerWidget {
-  const RoutePreferencesBar({super.key, this.enabled = true});
+  const RoutePreferencesBar({
+    super.key,
+    this.enabled = true,
+    this.showCurvature = true,
+  });
 
   final bool enabled;
+  final bool showCurvature;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -16,32 +21,35 @@ class RoutePreferencesBar extends ConsumerWidget {
 
     return Row(
       children: [
-        Expanded(
-          child: OutlinedButton(
-            onPressed: enabled
-                ? () => _openCurvatureSheet(context, ref, prefs)
-                : null,
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.route, size: 18, color: colors.primary),
-                const SizedBox(width: 6),
-                Flexible(
-                  child: Text(
-                    prefs.curvature.label,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.w600),
+        if (showCurvature) ...[
+          Expanded(
+            child: OutlinedButton(
+              onPressed: enabled
+                  ? () => _openCurvatureSheet(context, ref, prefs)
+                  : null,
+              style: OutlinedButton.styleFrom(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.route, size: 18, color: colors.primary),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      prefs.curvature.label,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
                   ),
-                ),
-                const Icon(Icons.expand_more, size: 18),
-              ],
+                  const Icon(Icons.expand_more, size: 18),
+                ],
+              ),
             ),
           ),
-        ),
-        const SizedBox(width: 8),
+          const SizedBox(width: 8),
+        ],
         Expanded(
           child: OutlinedButton(
             onPressed: enabled

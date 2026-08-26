@@ -1,4 +1,5 @@
 import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
+import 'package:loc_motos/features/auth/domain/entities/user_vehicle.dart';
 import 'package:loc_motos/features/auth/domain/entities/username_registration.dart';
 
 abstract class AuthRepository {
@@ -52,6 +53,9 @@ abstract class AuthRepository {
     String? bikeYear,
     String? bikeColor,
     String? bikePlate,
+    List<UserVehicle>? vehicles,
+    String? activeVehicleId,
+    bool clearActiveVehicleId = false,
   });
 
   Future<void> changePassword({

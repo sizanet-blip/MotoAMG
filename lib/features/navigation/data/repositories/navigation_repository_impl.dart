@@ -20,6 +20,7 @@ class NavigationRepositoryImpl implements NavigationRepository {
     required GeoPoint destination,
     List<GeoPoint> waypoints = const [],
     RoutePreferences preferences = RoutePreferences.defaults,
+    String costing = 'motorcycle',
     String? originLabel,
     String? destinationLabel,
     bool includeAlternates = true,
@@ -31,6 +32,7 @@ class NavigationRepositoryImpl implements NavigationRepository {
         destination: destination,
         waypoints: waypoints,
         preferences: preferences,
+        costing: costing,
         maxAlternates: includeAlternates ? null : 0,
         attachSpeedLimits: true,
       );

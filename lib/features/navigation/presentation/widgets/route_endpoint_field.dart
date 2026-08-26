@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:loc_motos/core/widgets/app_popup_menu.dart';
 import 'package:loc_motos/features/navigation/domain/entities/geocoding_place.dart';
 import 'package:loc_motos/features/navigation/presentation/models/route_endpoint_input_mode.dart';
 import 'package:loc_motos/features/navigation/presentation/widgets/coordinate_endpoint_field.dart';
@@ -130,6 +131,12 @@ class RoutePlanFormatMenu extends StatelessWidget {
     return PopupMenuButton<_FormatMenuAction>(
       tooltip: 'Formato origen / destino',
       enabled: enabled,
+      offset: AppPopupMenus.offset,
+      elevation: AppPopupMenus.elevation,
+      shadowColor: AppPopupMenus.shadowColor,
+      surfaceTintColor: AppPopupMenus.surfaceTintOf(context),
+      color: AppPopupMenus.colorOf(context),
+      shape: AppPopupMenus.shapeOf(context),
       icon: Icon(
         usingCoords ? Icons.gps_not_fixed : Icons.place_outlined,
       ),
@@ -155,73 +162,49 @@ class RoutePlanFormatMenu extends StatelessWidget {
             onApply(dest: RouteEndpointInputMode.address);
         }
       },
-      itemBuilder: (context) => [
-        const PopupMenuItem(
-          value: _FormatMenuAction.allAddress,
-          child: ListTile(
-            leading: Icon(Icons.place_outlined),
-            title: Text('Todo en direcciones'),
-            contentPadding: EdgeInsets.zero,
+      itemBuilder: (context) {
+        final colors = Theme.of(context).colorScheme;
+        return [
+          appPopupMenuItem(
+            value: _FormatMenuAction.allAddress,
+            icon: Icons.place_outlined,
+            label: 'Todo en direcciones',
+            tint: colors.primary,
           ),
-        ),
-        const PopupMenuItem(
-          value: _FormatMenuAction.allCoordinates,
-          child: ListTile(
-            leading: Icon(Icons.gps_not_fixed),
-            title: Text('Todo en coordenadas'),
-            contentPadding: EdgeInsets.zero,
+          appPopupMenuItem(
+            value: _FormatMenuAction.allCoordinates,
+            icon: Icons.gps_not_fixed,
+            label: 'Todo en coordenadas',
+            tint: colors.tertiary,
           ),
-        ),
-        const PopupMenuDivider(),
-        PopupMenuItem(
-          value: _FormatMenuAction.originAddress,
-          child: ListTile(
-            leading: Icon(
-              originMode == RouteEndpointInputMode.address
-                  ? Icons.check
-                  : Icons.trip_origin,
-            ),
-            title: const Text('Origen: dirección'),
-            contentPadding: EdgeInsets.zero,
+          const PopupMenuDivider(height: 8),
+          appPopupMenuItem(
+            value: _FormatMenuAction.originAddress,
+            icon: Icons.trip_origin,
+            label: 'Origen: dirección',
+            selected: originMode == RouteEndpointInputMode.address,
           ),
-        ),
-        PopupMenuItem(
-          value: _FormatMenuAction.originCoordinates,
-          child: ListTile(
-            leading: Icon(
-              originMode == RouteEndpointInputMode.coordinates
-                  ? Icons.check
-                  : Icons.trip_origin,
-            ),
-            title: const Text('Origen: coordenadas'),
-            contentPadding: EdgeInsets.zero,
+          appPopupMenuItem(
+            value: _FormatMenuAction.originCoordinates,
+            icon: Icons.my_location_outlined,
+            label: 'Origen: coordenadas',
+            selected: originMode == RouteEndpointInputMode.coordinates,
           ),
-        ),
-        PopupMenuItem(
-          value: _FormatMenuAction.destAddress,
-          child: ListTile(
-            leading: Icon(
-              destMode == RouteEndpointInputMode.address
-                  ? Icons.check
-                  : Icons.flag_outlined,
-            ),
-            title: const Text('Destino: dirección'),
-            contentPadding: EdgeInsets.zero,
+          appPopupMenuItem(
+            value: _FormatMenuAction.destAddress,
+            icon: Icons.flag_outlined,
+            label: 'Destino: dirección',
+            selected: destMode == RouteEndpointInputMode.address,
           ),
-        ),
-        PopupMenuItem(
-          value: _FormatMenuAction.destCoordinates,
-          child: ListTile(
-            leading: Icon(
-              destMode == RouteEndpointInputMode.coordinates
-                  ? Icons.check
-                  : Icons.flag_outlined,
-            ),
-            title: const Text('Destino: coordenadas'),
-            contentPadding: EdgeInsets.zero,
+          appPopupMenuItem(
+            value: _FormatMenuAction.destCoordinates,
+            icon: Icons.flag,
+            label: 'Destino: coordenadas',
+            selected: destMode == RouteEndpointInputMode.coordinates,
+            padding: const EdgeInsets.fromLTRB(8, 2, 8, 6),
           ),
-        ),
-      ],
+        ];
+      },
     );
   }
 }

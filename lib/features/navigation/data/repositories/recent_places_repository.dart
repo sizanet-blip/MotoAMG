@@ -48,17 +48,36 @@ class RecentPlacesRepository {
     final current = await list(limit: 20);
     final next = <GeocodingPlace>[
       place,
-      ...current.where(
-        (item) =>
-            item.location.lat != place.location.lat ||
-            item.location.lng != place.location.lng,
-      ),
+      ...current.where((item) => !_samePlace(item, place)),
     ].take(NavigationConstants.recentPlacesMaxEntries).toList();
 
+    await _persist(box, next);
+  }
+
+  Future<void> remove(GeocodingPlace place) async {
+    final box = await _open();
+    final current = await list(limit: 20);
+    final next = current.where((item) => !_samePlace(item, place)).toList();
+    await _persist(box, next);
+  }
+
+  Future<void> clear() async {
+    final box = await _open();
+    await box.delete(NavigationConstants.recentPlacesKey);
+  }
+
+  bool _samePlace(GeocodingPlace a, GeocodingPlace b) =>
+      a.location.lat == b.location.lat && a.location.lng == b.location.lng;
+
+  Future<void> _persist(Box<String> box, List<GeocodingPlace> places) async {
+    if (places.isEmpty) {
+      await box.delete(NavigationConstants.recentPlacesKey);
+      return;
+    }
     await box.put(
       NavigationConstants.recentPlacesKey,
       jsonEncode(
-        next
+        places
             .map(
               (item) => {
                 'displayName': item.displayName,

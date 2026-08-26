@@ -6,6 +6,8 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:loc_motos/core/constants/navigation_constants.dart';
 import 'package:loc_motos/core/utils/navigation_duration_format.dart';
+import 'package:loc_motos/features/auth/domain/entities/vehicle_map_marker.dart';
+import 'package:loc_motos/features/navigation/domain/entities/alert_preferences.dart';
 import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
 import 'package:loc_motos/features/navigation/domain/entities/hybrid_map_styles.dart';
 import 'package:loc_motos/features/navigation/domain/entities/navigation_route.dart';
@@ -16,7 +18,7 @@ import 'package:maplibre_gl/maplibre_gl.dart';
 
 /// Mapa MapLibre: seguimiento en HUD o encuadre de ruta en vista previa.
 ///
-/// Usa PMTiles offline dentro de la CCAA descargada y OpenFreeMap al salir.
+/// Usa PMTiles Protomaps (local o remoto) en España; OpenFreeMap fuera.
 class NavigationMapView extends StatefulWidget {
   const NavigationMapView({
     super.key,
@@ -30,6 +32,8 @@ class NavigationMapView extends StatefulWidget {
     this.pitch = NavigationConstants.defaultMapPitch,
     this.cameraMode = NavigationMapCameraMode.followDevice,
     this.fitBoundsBottomExtra = 0,
+    this.alertPreferences = AlertPreferences.defaults,
+    this.puckStyle,
     this.onControllerReady,
   });
 
@@ -45,6 +49,10 @@ class NavigationMapView extends StatefulWidget {
   final double pitch;
   final NavigationMapCameraMode cameraMode;
   final double fitBoundsBottomExtra;
+  final AlertPreferences alertPreferences;
+
+  /// Si es `null`, se usa el puck azul circular por defecto.
+  final NavigationPuckStyle? puckStyle;
   final ValueChanged<MapLibreMapController>? onControllerReady;
 
   bool get _isPreview => cameraMode == NavigationMapCameraMode.fitRoute;
@@ -71,13 +79,8 @@ class _NavigationMapViewState extends State<NavigationMapView> {
   static const _alertIconCameraId = 'locmotos-alert-camera';
   static const _alertIconFuelId = 'locmotos-alert-fuel';
   static const _alertIconTollId = 'locmotos-alert-toll';
-
-  /// Tipos que se pintan en el mapa (no curvas: saturan el trazado).
-  static const _mapAlertTypes = {
-    RouteAlertType.speedCamera,
-    RouteAlertType.fuel,
-    RouteAlertType.toll,
-  };
+  static const _alertIconCurveId = 'locmotos-alert-curve';
+  static const _puckIconImageId = 'locmotos-nav-puck-icon-v2';
 
   /// Refs tipo A-23 / N-234 / CV-624 / AP-7 (no calles largas).
   static final _roadRefPattern = RegExp(
@@ -88,6 +91,8 @@ class _NavigationMapViewState extends State<NavigationMapView> {
   MapLibreMapController? _controller;
   Circle? _puck;
   Circle? _puckHalo;
+  Symbol? _puckSymbol;
+  NavigationPuckStyle? _loadedPuckStyle;
   final List<Circle> _endpointMarkers = [];
   var _routeDrawn = false;
   var _routeLayersReady = false;
@@ -163,6 +168,12 @@ class _NavigationMapViewState extends State<NavigationMapView> {
       unawaited(_drawRoute());
       return;
     }
+    if (oldWidget.alertPreferences != widget.alertPreferences) {
+      unawaited(_syncAlertsSource());
+    }
+    if (oldWidget.puckStyle != widget.puckStyle) {
+      unawaited(_resetPuckAnnotations());
+    }
     if (!_routeDrawn || widget._isPreview) {
       return;
     }
@@ -190,6 +201,8 @@ class _NavigationMapViewState extends State<NavigationMapView> {
     _alertIconsReady = false;
     _puck = null;
     _puckHalo = null;
+    _puckSymbol = null;
+    _loadedPuckStyle = null;
     _endpointMarkers.clear();
     _mapConfigured = false;
     _styleSwitching = false;
@@ -284,12 +297,19 @@ class _NavigationMapViewState extends State<NavigationMapView> {
     final alertsGeoJson = _alertsGeoJson();
 
     if (_routeLayersReady) {
-      await controller.setGeoJsonSource(_altsSourceId, altsGeoJson);
-      await controller.setGeoJsonSource(_routeSourceId, selectedGeoJson);
-      await controller.setGeoJsonSource(_routeLabelsSourceId, labelsGeoJson);
-      await controller.setGeoJsonSource(_etaSourceId, etaGeoJson);
-      await controller.setGeoJsonSource(_alertsSourceId, alertsGeoJson);
-    } else {
+      try {
+        await controller.setGeoJsonSource(_altsSourceId, altsGeoJson);
+        await controller.setGeoJsonSource(_routeSourceId, selectedGeoJson);
+        await controller.setGeoJsonSource(_routeLabelsSourceId, labelsGeoJson);
+        await controller.setGeoJsonSource(_etaSourceId, etaGeoJson);
+        await controller.setGeoJsonSource(_alertsSourceId, alertsGeoJson);
+      } catch (_) {
+        // Estilo/fuentes recreados: volver a crear capas.
+        _routeLayersReady = false;
+        _alertIconsReady = false;
+      }
+    }
+    if (!_routeLayersReady) {
       await _addRouteLayersBelowLabels(
         controller,
         altsGeoJson: altsGeoJson,
@@ -368,9 +388,8 @@ class _NavigationMapViewState extends State<NavigationMapView> {
                 RouteAlertType.speedCamera => _alertIconCameraId,
                 RouteAlertType.fuel => _alertIconFuelId,
                 RouteAlertType.toll => _alertIconTollId,
-                RouteAlertType.sharpCurve => _alertIconCameraId,
+                RouteAlertType.sharpCurve => _alertIconCurveId,
               },
-              'label': alert.label,
             },
             'geometry': {
               'type': 'Point',
@@ -383,7 +402,7 @@ class _NavigationMapViewState extends State<NavigationMapView> {
 
   List<RouteAlert> _alertsForMap() {
     final mapped = widget.route.alerts
-        .where((a) => _mapAlertTypes.contains(a.type))
+        .where((a) => widget.alertPreferences.showTypeOnMap(a.type))
         .toList(growable: false);
     if (mapped.isEmpty) {
       return const [];
@@ -767,7 +786,7 @@ class _NavigationMapViewState extends State<NavigationMapView> {
       const LineLayerProperties(
         lineColor: '#1A73E8',
         lineWidth: 8,
-        lineOpacity: 1,
+        lineOpacity: 0.88,
         lineJoin: 'round',
       ),
       belowLayerId: belowLayerId,
@@ -856,6 +875,7 @@ class _NavigationMapViewState extends State<NavigationMapView> {
 
     await controller.addGeoJsonSource(_alertsSourceId, alertsGeoJson);
     await _ensureAlertIconImages(controller);
+    // Iconos discretos (radar / gasolinera / peaje). El precio sale en el HUD al acercarte.
     await controller.addSymbolLayer(
       _alertsSourceId,
       _alertsSymbolLayerId,
@@ -895,6 +915,13 @@ class _NavigationMapViewState extends State<NavigationMapView> {
         await _buildAlertMarkerPng(
           icon: Icons.toll_rounded,
           background: const Color(0xFF6A1B9A),
+        ),
+      );
+      await controller.addImage(
+        _alertIconCurveId,
+        await _buildAlertMarkerPng(
+          icon: Icons.turn_sharp_right_rounded,
+          background: const Color(0xFF00897B),
         ),
       );
       _alertIconsReady = true;
@@ -949,7 +976,8 @@ class _NavigationMapViewState extends State<NavigationMapView> {
       ),
     );
 
-    final image = await recorder.endRecording().toImage(size.toInt(), size.toInt());
+    final image =
+        await recorder.endRecording().toImage(size.toInt(), size.toInt());
     final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
     return bytes!.buffer.asUint8List();
   }
@@ -1036,6 +1064,28 @@ class _NavigationMapViewState extends State<NavigationMapView> {
         lower.contains('poi');
   }
 
+  Future<void> _resetPuckAnnotations() async {
+    final controller = _controller;
+    if (controller != null) {
+      try {
+        if (_puckSymbol != null) {
+          await controller.removeSymbol(_puckSymbol!);
+        }
+        if (_puck != null) {
+          await controller.removeCircle(_puck!);
+        }
+        if (_puckHalo != null) {
+          await controller.removeCircle(_puckHalo!);
+        }
+      } catch (_) {}
+    }
+    _puckSymbol = null;
+    _puck = null;
+    _puckHalo = null;
+    _loadedPuckStyle = null;
+    await _syncPuck();
+  }
+
   /// Marcador de posición de navegación (GPS o simulación).
   Future<void> _syncPuck() async {
     final controller = _controller;
@@ -1046,6 +1096,25 @@ class _NavigationMapViewState extends State<NavigationMapView> {
     }
 
     final geometry = LatLng(lat, lng);
+    final style = widget.puckStyle;
+    if (style != null) {
+      await _syncCustomPuck(
+        controller: controller,
+        geometry: geometry,
+        style: style,
+      );
+      return;
+    }
+
+    // Sin vehículo / sin icono: puck azul clásico.
+    if (_puckSymbol != null) {
+      try {
+        await controller.removeSymbol(_puckSymbol!);
+      } catch (_) {}
+      _puckSymbol = null;
+      _loadedPuckStyle = null;
+    }
+
     const haloOptions = CircleOptions(
       circleRadius: 18,
       circleColor: '#1A73E8',
@@ -1082,6 +1151,120 @@ class _NavigationMapViewState extends State<NavigationMapView> {
         puckOptions.copyWith(CircleOptions(geometry: geometry)),
       );
     }
+  }
+
+  Future<void> _syncCustomPuck({
+    required MapLibreMapController controller,
+    required LatLng geometry,
+    required NavigationPuckStyle style,
+  }) async {
+    // Un solo Symbol limpio (sin círculo aparte).
+    if (_puck != null || _puckHalo != null) {
+      try {
+        if (_puck != null) {
+          await controller.removeCircle(_puck!);
+        }
+        if (_puckHalo != null) {
+          await controller.removeCircle(_puckHalo!);
+        }
+      } catch (_) {}
+      _puck = null;
+      _puckHalo = null;
+    }
+
+    if (_loadedPuckStyle != style) {
+      try {
+        await controller.addImage(
+          _puckIconImageId,
+          await _buildNavPuckPng(style: style),
+        );
+        _loadedPuckStyle = style;
+      } catch (_) {
+        _loadedPuckStyle = null;
+        return;
+      }
+      if (_puckSymbol != null) {
+        try {
+          await controller.removeSymbol(_puckSymbol!);
+        } catch (_) {}
+        _puckSymbol = null;
+      }
+    }
+
+    final symbolOptions = SymbolOptions(
+      geometry: geometry,
+      iconImage: _puckIconImageId,
+      iconSize: 1.15,
+      iconRotate: 0,
+      iconAnchor: 'center',
+    );
+
+    if (_puckSymbol == null) {
+      _puckSymbol = await controller.addSymbol(symbolOptions);
+    } else {
+      await controller.updateSymbol(_puckSymbol!, symbolOptions);
+    }
+  }
+
+  /// Badge circular nítido: sin blur (el blur rellena el PNG cuadrado y se ve
+  /// como una “sombra rectangular” en el mapa).
+  Future<Uint8List> _buildNavPuckPng({
+    required NavigationPuckStyle style,
+  }) async {
+    const size = 96.0;
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+    // Fondo totalmente transparente.
+    canvas.drawRect(
+      const Rect.fromLTWH(0, 0, size, size),
+      Paint()..color = const Color(0x00000000),
+    );
+
+    final center = const Offset(size / 2, size / 2);
+    const radius = 28.0;
+
+    // Anillo exterior blanco fino (definición sobre el mapa).
+    canvas.drawCircle(
+      center,
+      radius + 3,
+      Paint()..color = Colors.white,
+    );
+    // Disco de color corporativo.
+    canvas.drawCircle(center, radius, Paint()..color = style.color);
+    // Contorno interior sutil para volumen.
+    canvas.drawCircle(
+      center,
+      radius - 1.5,
+      Paint()
+        ..color = Colors.white.withValues(alpha: 0.22)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2,
+    );
+
+    final icon = style.icon.iconData;
+    final textPainter = TextPainter(textDirection: TextDirection.ltr)
+      ..text = TextSpan(
+        text: String.fromCharCode(icon.codePoint),
+        style: TextStyle(
+          fontSize: 34,
+          fontFamily: icon.fontFamily,
+          package: icon.fontPackage,
+          color: Colors.white,
+        ),
+      )
+      ..layout();
+    textPainter.paint(
+      canvas,
+      Offset(
+        (size - textPainter.width) / 2,
+        (size - textPainter.height) / 2,
+      ),
+    );
+
+    final image =
+        await recorder.endRecording().toImage(size.toInt(), size.toInt());
+    final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+    return bytes!.buffer.asUint8List();
   }
 
   Future<void> _drawEndpointMarkers(MapLibreMapController controller) async {
