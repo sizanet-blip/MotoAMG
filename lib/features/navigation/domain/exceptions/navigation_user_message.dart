@@ -12,6 +12,10 @@ abstract final class NavigationUserMessages {
   static const noViableRoute = 'No hay una ruta viable hasta ese destino.';
   static const rerouteFailed =
       'No se pudo actualizar la ruta. Inténtalo de nuevo.';
+  static const rerouteOffline =
+      'Sin conexión — no se puede recalcular. Sigue el trazado o vuelve a la ruta.';
+  static const offlineGuidance =
+      'Sin conexión · guía con la ruta ya calculada';
   static const searchFailed =
       'No se pudo buscar la dirección. Inténtalo de nuevo.';
   static const searchUnavailable =
@@ -28,7 +32,10 @@ abstract final class NavigationUserMessages {
       'No se pudo descargar el mapa. Inténtalo de nuevo.';
   static const mapIncomplete =
       'La descarga quedó incompleta. Vuelve a intentarlo.';
-  static const mapDownloadCancelled = 'Descarga cancelada.';
+  static const mapDownloadCancelled =
+      'Descarga pausada. Puedes continuar más tarde.';
+  static const mapInsufficientSpace =
+      'No hay espacio suficiente en el dispositivo para este mapa.';
   static const generic = 'Algo salió mal. Inténtalo de nuevo.';
 }
 

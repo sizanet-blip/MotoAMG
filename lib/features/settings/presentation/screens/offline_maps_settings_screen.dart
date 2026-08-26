@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:loc_motos/core/utils/storage_space.dart';
 import 'package:loc_motos/features/navigation/domain/entities/map_region.dart';
 import 'package:loc_motos/features/navigation/domain/exceptions/navigation_user_message.dart';
 import 'package:loc_motos/features/navigation/presentation/providers/navigation_providers.dart';
@@ -94,6 +95,7 @@ class OfflineMapsSettingsScreen extends ConsumerWidget {
               Text(
                 'Descarga un mapa para usarlo sin internet dentro de esa zona '
                 '(calles, nombres e iconos). '
+                'Si se corta la descarga, pulsa Continuar para reanudarla. '
                 'Fuera de la región (con internet) se usa el mapa online.',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: colors.onSurfaceVariant,
@@ -176,7 +178,10 @@ class _RegionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final sizeLabel = _formatMb(region.sizeBytes);
+    final sizeLabel = formatStorageMb(region.sizeBytes);
+    final partialLabel = region.hasPartialDownload
+        ? '${formatStorageMb(region.partialBytes)} de $sizeLabel'
+        : null;
 
     return Card(
       child: Padding(
@@ -189,10 +194,14 @@ class _RegionCard extends StatelessWidget {
                 Icon(
                   region.isDownloaded
                       ? Icons.download_done
-                      : Icons.map_outlined,
+                      : region.hasPartialDownload
+                          ? Icons.pause_circle_outline
+                          : Icons.map_outlined,
                   color: region.isDownloaded
                       ? colors.primary
-                      : colors.onSurfaceVariant,
+                      : region.hasPartialDownload
+                          ? colors.tertiary
+                          : colors.onSurfaceVariant,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -207,9 +216,13 @@ class _RegionCard extends StatelessWidget {
                       Text(
                         region.isDownloaded
                             ? 'Descargado · $sizeLabel'
-                            : '$sizeLabel aprox.',
+                            : region.hasPartialDownload
+                                ? 'Descarga a medias · $partialLabel'
+                                : '$sizeLabel aprox.',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: colors.onSurfaceVariant,
+                              color: region.hasPartialDownload
+                                  ? colors.tertiary
+                                  : colors.onSurfaceVariant,
                             ),
                       ),
                     ],
@@ -228,10 +241,20 @@ class _RegionCard extends StatelessWidget {
                 else
                   FilledButton(
                     onPressed: busy ? null : onDownload,
-                    child: const Text('Descargar'),
+                    child: Text(
+                      region.hasPartialDownload ? 'Continuar' : 'Descargar',
+                    ),
                   ),
               ],
             ),
+            if (region.hasPartialDownload && !downloading) ...[
+              const SizedBox(height: 10),
+              LinearProgressIndicator(
+                value: region.partialProgress,
+                minHeight: 5,
+                borderRadius: BorderRadius.circular(99),
+              ),
+            ],
             if (downloading) ...[
               const SizedBox(height: 12),
               LinearProgressIndicator(
@@ -251,14 +274,6 @@ class _RegionCard extends StatelessWidget {
     );
   }
 
-  static String _formatMb(int bytes) {
-    final mb = bytes / (1024 * 1024);
-    if (mb < 10) {
-      return '${mb.toStringAsFixed(1)} MB';
-    }
-    return '${mb.round()} MB';
-  }
-
   static String _progressLabel(
     double? progress,
     ({int received, int? total})? bytes,
@@ -266,9 +281,9 @@ class _RegionCard extends StatelessWidget {
     if (bytes == null) {
       return 'Preparando descarga…';
     }
-    final received = _formatMb(bytes.received);
+    final received = formatStorageMb(bytes.received);
     if (bytes.total != null && bytes.total! > 0) {
-      final total = _formatMb(bytes.total!);
+      final total = formatStorageMb(bytes.total!);
       final pct = progress == null
           ? ''
           : ' · ${(progress * 100).clamp(0, 100).round()} %';

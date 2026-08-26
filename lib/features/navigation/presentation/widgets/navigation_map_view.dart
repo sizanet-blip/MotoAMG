@@ -151,15 +151,27 @@ class _NavigationMapViewState extends State<NavigationMapView> {
     return _fallbackTarget;
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _activeStyle = widget.mapStyles.resolve(
-      _cameraTarget.latitude,
-      _cameraTarget.longitude,
+  /// En preview con red usamos siempre el mapa online: el encuadre puede
+  /// abarcar varias CCAA y un PMTiles regional deja zonas sin teselas (gris).
+  String _resolveActiveStyle(LatLng point) {
+    if (widget._isPreview && widget.hasNetwork) {
+      if (widget.preferDarkMap) {
+        return widget.mapStyles.onlineStyleDark ?? widget.mapStyles.onlineStyle;
+      }
+      return widget.mapStyles.onlineStyle;
+    }
+    return widget.mapStyles.resolve(
+      point.latitude,
+      point.longitude,
       hasNetwork: widget.hasNetwork,
       preferDark: widget.preferDarkMap,
     );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _activeStyle = _resolveActiveStyle(_cameraTarget);
   }
 
   @override
@@ -303,12 +315,7 @@ class _NavigationMapViewState extends State<NavigationMapView> {
 
   Future<void> _syncStyleForPoint(LatLng point) async {
     final controller = _controller;
-    final next = widget.mapStyles.resolve(
-      point.latitude,
-      point.longitude,
-      hasNetwork: widget.hasNetwork,
-      preferDark: widget.preferDarkMap,
-    );
+    final next = _resolveActiveStyle(point);
     if (next == _activeStyle) {
       return;
     }

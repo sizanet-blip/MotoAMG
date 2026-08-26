@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 
 /// Copiloto por voz (flutter_tts).
@@ -17,6 +18,12 @@ class NavigationVoiceService {
     await _tts.setLanguage('es-ES');
     await _tts.setSpeechRate(0.48);
     await _tts.setVolume(1);
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      await _tts.setAudioAttributesForNavigation();
+      await _tts.setQueueMode(1);
+    } else if (defaultTargetPlatform == TargetPlatform.iOS) {
+      await _tts.setSharedInstance(true);
+    }
     _ready = true;
   }
 
@@ -28,12 +35,16 @@ class NavigationVoiceService {
   }
 
   Future<void> speak(String text) async {
-    if (_muted) {
+    if (_muted || text.trim().isEmpty) {
       return;
     }
     await init();
     await _tts.stop();
-    await _tts.speak(text);
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      await _tts.speak(text, focus: true);
+    } else {
+      await _tts.speak(text);
+    }
   }
 
   Future<void> stop() => _tts.stop();

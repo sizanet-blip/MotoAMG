@@ -735,10 +735,21 @@ class MapRegionActionController extends Notifier<AsyncValue<void>> {
     _cancelRequested = false;
     state = const AsyncLoading();
     ref.read(mapDownloadingRegionIdProvider.notifier).state = regionId;
-    ref.read(mapDownloadProgressProvider.notifier).state = 0;
-    ref.read(mapDownloadBytesProvider.notifier).state =
-        (received: 0, total: null);
     ref.read(mapRegionLastActionProvider.notifier).state = null;
+
+    final regions = ref.read(availableMapRegionsProvider).asData?.value;
+    final region = regions?.where((item) => item.id == regionId).firstOrNull;
+    final initialBytes = region?.partialBytes ?? 0;
+    final totalBytes = region?.sizeBytes;
+    ref.read(mapDownloadBytesProvider.notifier).state = (
+      received: initialBytes,
+      total: totalBytes,
+    );
+    ref.read(mapDownloadProgressProvider.notifier).state =
+        totalBytes != null && totalBytes > 0
+            ? (initialBytes / totalBytes).clamp(0.0, 1.0)
+            : 0;
+
     try {
       await ref.read(mapRegionRepositoryProvider).downloadRegion(
         regionId,
@@ -759,8 +770,11 @@ class MapRegionActionController extends Notifier<AsyncValue<void>> {
       ref.read(mapRegionLastActionProvider.notifier).state = 'download';
       state = const AsyncData(null);
     } catch (error, stackTrace) {
+      ref.invalidate(availableMapRegionsProvider);
       state = AsyncError(
-        NavigationException(navigationUserMessage(error)),
+        error is NavigationException
+            ? error
+            : NavigationException(navigationUserMessage(error)),
         stackTrace,
       );
     } finally {

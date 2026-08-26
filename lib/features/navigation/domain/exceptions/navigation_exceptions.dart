@@ -1,3 +1,5 @@
+import 'package:loc_motos/features/navigation/domain/exceptions/navigation_user_message.dart';
+
 class NavigationException implements Exception {
   const NavigationException(this.message);
 
@@ -27,6 +29,6 @@ class MapRegionDownloadException extends NavigationException {
 /// El usuario canceló la descarga del mapa.
 class MapRegionDownloadCancelledException extends NavigationException {
   const MapRegionDownloadCancelledException([
-    super.message = 'Descarga cancelada.',
+    super.message = NavigationUserMessages.mapDownloadCancelled,
   ]);
 }

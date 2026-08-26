@@ -321,6 +321,9 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
           isMe: isMe,
           heading: location.heading,
           isStale: stale,
+          staleLabel: stale
+              ? formatGpsStaleLabel(location.updatedAt, now)
+              : null,
           distanceLabel: isMe || stale
               ? null
               : formatRideDistance(

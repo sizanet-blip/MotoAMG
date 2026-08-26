@@ -40,13 +40,38 @@ class DeviceLocationService {
     return Geolocator.getPositionStream(locationSettings: _watchSettings());
   }
 
-  /// GPS en primer plano (navegación sin servicio de grupo en segundo plano).
+  /// GPS para planificar o previsualizar (sin notificación persistente).
   Stream<Position> watchNavigationPosition() {
     return Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
+      locationSettings: _navigationWatchSettings(foregroundService: false),
+    );
+  }
+
+  /// GPS en ruta activa: en Android usa servicio en primer plano + notificación.
+  Stream<Position> watchActiveNavigationPosition() {
+    return Geolocator.getPositionStream(
+      locationSettings: _navigationWatchSettings(foregroundService: true),
+    );
+  }
+
+  LocationSettings _navigationWatchSettings({required bool foregroundService}) {
+    if (defaultTargetPlatform == TargetPlatform.android && foregroundService) {
+      return AndroidSettings(
         accuracy: LocationAccuracy.high,
         distanceFilter: 5,
-      ),
+        foregroundNotificationConfig: const ForegroundNotificationConfig(
+          notificationTitle: AppConstants.navigationNotificationTitle,
+          notificationText: AppConstants.navigationNotificationText,
+          notificationChannelName: AppConstants.navigationNotificationChannel,
+          setOngoing: true,
+          enableWakeLock: true,
+          enableWifiLock: true,
+        ),
+      );
+    }
+    return const LocationSettings(
+      accuracy: LocationAccuracy.high,
+      distanceFilter: 5,
     );
   }
 

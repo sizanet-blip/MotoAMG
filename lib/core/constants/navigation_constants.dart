@@ -9,7 +9,8 @@ abstract final class NavigationConstants {
   static const String photonBaseUrl = 'https://photon.albertomaestre.es';
 
   /// Idioma de respuestas Photon. Este servidor admite: default, de, en, fr.
-  static const String photonLanguage = 'en';
+  /// `default` usa los nombres OSM (mejor para España que forzar inglés).
+  static const String photonLanguage = 'default';
 
   /// Timeout para peticiones de ruta (rutas largas pueden tardar varios segundos).
   static const Duration valhallaRequestTimeout = Duration(seconds: 45);

@@ -59,9 +59,10 @@ class ValhallaRemoteDataSource {
       );
     }
 
-    // Siempre pedimos alternativas en preview (estilo Sygic); en recálculo 0.
-    final alternates = maxAlternates ??
-        math.max(2, preferences.curvature.alternateCount);
+    // Alternativas solo con origen+destino (Valhalla no las soporta en multipunto).
+    final alternates = locations.length > 2
+        ? 0
+        : (maxAlternates ?? math.max(2, preferences.curvature.alternateCount));
 
     final uri = Uri.parse('${NavigationConstants.valhallaBaseUrl}/route');
     final requestBody = <String, dynamic>{
@@ -88,6 +89,10 @@ class ValhallaRemoteDataSource {
         )
         .timeout(NavigationConstants.valhallaRequestTimeout);
     if (response.statusCode != 200) {
+      final friendly = _valhallaErrorMessage(response.body);
+      if (friendly != null) {
+        throw NavigationException(friendly);
+      }
       if (_looksLikeNoRoute(response.body)) {
         throw const RouteNotFoundException();
       }
@@ -339,6 +344,28 @@ class ValhallaRemoteDataSource {
   int _tripTimeSeconds(Map<String, dynamic> trip) {
     final summary = trip['summary'] as Map<String, dynamic>?;
     return (summary?['time'] as num?)?.round() ?? 1 << 30;
+  }
+
+  String? _valhallaErrorMessage(String body) {
+    try {
+      final json = jsonDecode(body);
+      if (json is! Map<String, dynamic>) {
+        return null;
+      }
+      final code = json['error_code'];
+      final error = '${json['error'] ?? ''}'.toLowerCase();
+      if (code == 154 || error.contains('max distance limit')) {
+        return 'El itinerario es demasiado largo o las paradas están muy '
+            'separadas. Prueba con menos paradas o un recorrido más corto.';
+      }
+      if (error.contains('Exceeded max') && error.contains('location')) {
+        return 'Hay demasiadas paradas en el itinerario. Reduce el número '
+            'de paradas e inténtalo de nuevo.';
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
   }
 
   bool _looksLikeNoRoute(String body) {

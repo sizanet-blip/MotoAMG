@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:loc_motos/core/constants/navigation_constants.dart';
+import 'package:loc_motos/core/utils/storage_space.dart';
 import 'package:loc_motos/features/navigation/domain/entities/geo_bounds.dart';
 import 'package:loc_motos/features/navigation/domain/entities/map_region.dart';
 import 'package:loc_motos/features/navigation/domain/exceptions/navigation_exceptions.dart';
@@ -102,8 +103,13 @@ class MapRegionRepositoryImpl implements MapRegionRepository {
   @override
   Future<List<MapRegion>> listAvailableRegions() async {
     final box = await _openBox();
+    final mapsDir = await _mapsDir();
     return NavigationConstants.availableRegions.map((catalog) {
       final cached = _regionFromCache(catalog.id, box);
+      final partialBytes = _readPartialBytes(
+        mapsDir: mapsDir,
+        regionId: catalog.id,
+      );
       return MapRegion(
         id: catalog.id,
         name: catalog.name,
@@ -117,8 +123,24 @@ class MapRegionRepositoryImpl implements MapRegionRepository {
         ),
         isDownloaded: cached != null,
         localPath: cached?.localPath,
+        partialBytes: cached != null ? 0 : partialBytes,
       );
     }).toList(growable: false);
+  }
+
+  int _readPartialBytes({
+    required Directory mapsDir,
+    required String regionId,
+  }) {
+    final partial = File('${_filePathFor(mapsDir, regionId)}.partial');
+    if (!partial.existsSync()) {
+      return 0;
+    }
+    final length = partial.lengthSync();
+    if (length <= 0) {
+      return 0;
+    }
+    return length;
   }
 
   @override
@@ -133,6 +155,24 @@ class MapRegionRepositoryImpl implements MapRegionRepository {
     void Function(int receivedBytes, int? totalBytes)? onProgress,
     bool Function()? isCancelled,
   }) async {
+    try {
+      return await _downloadRegionImpl(
+        regionId,
+        onProgress: onProgress,
+        isCancelled: isCancelled,
+      );
+    } on NavigationException {
+      rethrow;
+    } catch (error) {
+      throw NavigationException(navigationUserMessage(error));
+    }
+  }
+
+  Future<MapRegion> _downloadRegionImpl(
+    String regionId, {
+    void Function(int receivedBytes, int? totalBytes)? onProgress,
+    bool Function()? isCancelled,
+  }) async {
     final catalog = NavigationConstants.availableRegions
         .where((region) => region.id == regionId)
         .firstOrNull;
@@ -143,9 +183,6 @@ class MapRegionRepositoryImpl implements MapRegionRepository {
     final mapsDir = await _mapsDir();
     final target = File(_filePathFor(mapsDir, catalog.id));
     final temp = File('${target.path}.partial');
-    if (await temp.exists()) {
-      await temp.delete();
-    }
 
     void throwIfCancelled() {
       if (isCancelled?.call() == true) {
@@ -153,88 +190,181 @@ class MapRegionRepositoryImpl implements MapRegionRepository {
       }
     }
 
-    try {
+    if (await target.exists()) {
+      final existing = await target.length();
+      if (_looksComplete(existing, catalog.sizeBytes)) {
+        return _finalizeRegion(
+          catalog: catalog,
+          target: target,
+          sizeBytes: existing,
+        );
+      }
+      await target.delete();
+    }
+
+    var offset = _readPartialBytes(mapsDir: mapsDir, regionId: catalog.id);
+    if (offset > 0 && _looksComplete(offset, catalog.sizeBytes)) {
+      if (await target.exists()) {
+        await target.delete();
+      }
+      await temp.rename(target.path);
+      return _finalizeRegion(
+        catalog: catalog,
+        target: target,
+        sizeBytes: offset,
+      );
+    }
+
+    final bytesStillNeeded = (catalog.sizeBytes - offset).clamp(0, catalog.sizeBytes);
+    await _ensureFreeSpace(
+      bytesNeeded: bytesStillNeeded + mapDownloadSpaceBufferBytes,
+      directoryPath: mapsDir.path,
+    );
+
+    onProgress?.call(offset, catalog.sizeBytes);
+
+    var retriedWithoutRange = false;
+    while (true) {
       throwIfCancelled();
+
       final request = http.Request('GET', Uri.parse(catalog.url));
+      if (offset > 0 && !retriedWithoutRange) {
+        request.headers['Range'] = 'bytes=$offset-';
+      }
+
       final response = await _client.send(request).timeout(
             const Duration(minutes: 30),
           );
+
       if (response.statusCode == 404 || response.statusCode == 403) {
         throw const MapRegionDownloadException(
           NavigationUserMessages.mapNotOnServer,
         );
       }
-      if (response.statusCode < 200 || response.statusCode >= 300) {
+
+      if (response.statusCode == 416) {
+        final current = await temp.length();
+        if (_looksComplete(current, catalog.sizeBytes)) {
+          offset = current;
+          break;
+        }
+        await temp.delete();
+        offset = 0;
+        retriedWithoutRange = false;
+        continue;
+      }
+
+      if (offset > 0 && response.statusCode == 200) {
+        await temp.delete();
+        offset = 0;
+        retriedWithoutRange = true;
+        onProgress?.call(0, catalog.sizeBytes);
+        continue;
+      }
+
+      if (response.statusCode != 200 && response.statusCode != 206) {
         throw const MapRegionDownloadException(
           NavigationUserMessages.mapDownloadFailed,
         );
       }
 
-      final total = response.contentLength ?? catalog.sizeBytes;
-      var received = 0;
-      final sink = temp.openWrite();
+      var received = offset;
+      final sink = temp.openWrite(
+        mode: offset > 0 ? FileMode.append : FileMode.write,
+      );
       try {
         await for (final chunk in response.stream) {
           throwIfCancelled();
           sink.add(chunk);
           received += chunk.length;
-          onProgress?.call(received, total > 0 ? total : null);
+          onProgress?.call(received, catalog.sizeBytes);
         }
       } finally {
         await sink.close();
       }
 
       throwIfCancelled();
-
-      if (!_looksComplete(received, catalog.sizeBytes) &&
-          (response.contentLength == null ||
-              !_looksComplete(received, response.contentLength!))) {
-        throw const MapRegionDownloadException(
-          NavigationUserMessages.mapIncomplete,
-        );
-      }
-
-      if (await target.exists()) {
-        await target.delete();
-      }
-      await temp.rename(target.path);
-
-      final region = MapRegion(
-        id: catalog.id,
-        name: catalog.name,
-        downloadUrl: catalog.url,
-        sizeBytes: received > 0 ? received : catalog.sizeBytes,
-        bounds: GeoBounds(
-          west: catalog.west,
-          south: catalog.south,
-          east: catalog.east,
-          north: catalog.north,
-        ),
-        localPath: target.path,
-        isDownloaded: true,
-      );
-      final box = await _openBox();
-      await box.put(
-        catalog.id,
-        jsonEncode({
-          'name': region.name,
-          'downloadUrl': region.downloadUrl,
-          'sizeBytes': region.sizeBytes,
-          'localPath': region.localPath,
-        }),
-      );
-      return region;
-    } on NavigationException {
-      if (await temp.exists()) {
-        await temp.delete();
-      }
-      rethrow;
-    } catch (error) {
-      if (await temp.exists()) {
-        await temp.delete();
-      }
-      throw NavigationException(navigationUserMessage(error));
+      offset = received;
+      break;
     }
+
+    if (!_looksComplete(offset, catalog.sizeBytes)) {
+      throw const MapRegionDownloadException(
+        NavigationUserMessages.mapIncomplete,
+      );
+    }
+
+    if (await target.exists()) {
+      await target.delete();
+    }
+    if (await temp.exists()) {
+      await temp.rename(target.path);
+    }
+
+    return _finalizeRegion(
+      catalog: catalog,
+      target: target,
+      sizeBytes: offset,
+    );
+  }
+
+  Future<void> _ensureFreeSpace({
+    required int bytesNeeded,
+    required String directoryPath,
+  }) async {
+    final freeBytes = await readFreeBytesForPath(directoryPath);
+    if (freeBytes == null) {
+      return;
+    }
+    if (freeBytes < bytesNeeded) {
+      throw MapRegionDownloadException(
+        formatMapInsufficientSpace(
+          neededBytes: bytesNeeded,
+          freeBytes: freeBytes,
+        ),
+      );
+    }
+  }
+
+  Future<MapRegion> _finalizeRegion({
+    required ({
+      String id,
+      String name,
+      String url,
+      int sizeBytes,
+      double west,
+      double south,
+      double east,
+      double north,
+    }) catalog,
+    required File target,
+    required int sizeBytes,
+  }) async {
+    final region = MapRegion(
+      id: catalog.id,
+      name: catalog.name,
+      downloadUrl: catalog.url,
+      sizeBytes: sizeBytes > 0 ? sizeBytes : catalog.sizeBytes,
+      bounds: GeoBounds(
+        west: catalog.west,
+        south: catalog.south,
+        east: catalog.east,
+        north: catalog.north,
+      ),
+      localPath: target.path,
+      isDownloaded: true,
+    );
+    final box = await _openBox();
+    await box.put(
+      catalog.id,
+      jsonEncode({
+        'name': region.name,
+        'downloadUrl': region.downloadUrl,
+        'sizeBytes': region.sizeBytes,
+        'localPath': region.localPath,
+      }),
+    );
+    return region;
   }
 
   @override

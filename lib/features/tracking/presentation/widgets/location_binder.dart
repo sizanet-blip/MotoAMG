@@ -34,6 +34,8 @@ class _LocationBinderState extends ConsumerState<LocationBinder>
   Timer? _heartbeat;
   Timer? _gpsCheck;
   Position? _lastPosition;
+  DateTime? _lastPublishedAt;
+  bool? _lastPublishedHasSignal;
   var _started = false;
   var _checkingGps = false;
   var _notifiedPublishError = false;
@@ -180,6 +182,9 @@ class _LocationBinderState extends ConsumerState<LocationBinder>
 
   Future<void> _publish(Position position) async {
     final hasSignal = !ref.read(ownGpsLostProvider);
+    if (!_shouldPublishToGroup(position, hasSignal)) {
+      return;
+    }
     try {
       await ref.read(locationRepositoryProvider).publishLocation(
         LiveLocation(
@@ -194,6 +199,8 @@ class _LocationBinderState extends ConsumerState<LocationBinder>
           hasSignal: hasSignal,
         ),
       );
+      _lastPublishedAt = DateTime.now();
+      _lastPublishedHasSignal = hasSignal;
     } catch (error) {
       if (!mounted || _notifiedPublishError) {
         return;
@@ -203,6 +210,26 @@ class _LocationBinderState extends ConsumerState<LocationBinder>
         SnackBar(content: Text(error.toString())),
       );
     }
+  }
+
+  bool _shouldPublishToGroup(Position position, bool hasSignal) {
+    if (_lastPublishedHasSignal != null &&
+        _lastPublishedHasSignal != hasSignal) {
+      return true;
+    }
+    final speed = position.speed.isFinite && position.speed >= 0
+        ? position.speed
+        : 0.0;
+    final stopped = speed < AppConstants.locationStoppedSpeedMps;
+    if (!stopped) {
+      return true;
+    }
+    final lastAt = _lastPublishedAt;
+    if (lastAt == null) {
+      return true;
+    }
+    return DateTime.now().difference(lastAt) >=
+        AppConstants.locationStoppedPublishInterval;
   }
 
   Future<void> _stop({required bool clearRemote}) async {
@@ -215,6 +242,8 @@ class _LocationBinderState extends ConsumerState<LocationBinder>
     await _subscription?.cancel();
     _subscription = null;
     _lastPosition = null;
+    _lastPublishedAt = null;
+    _lastPublishedHasSignal = null;
     _started = false;
     if (mounted) {
       if (ref.read(ownPositionWatchSourceProvider) ==

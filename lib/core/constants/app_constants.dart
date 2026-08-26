@@ -7,6 +7,12 @@ abstract final class AppConstants {
   /// Intervalo de envío de GPS al nodo RTDB `live_locations`.
   static const Duration locationUpdateInterval = Duration(seconds: 3);
 
+  /// Con la moto parada, no escribir en RTDB más a menudo que esto.
+  static const Duration locationStoppedPublishInterval = Duration(seconds: 30);
+
+  /// Por debajo de esta velocidad se considera «parado» (~5 km/h).
+  static const double locationStoppedSpeedMps = 1.4;
+
   /// Distancia mínima (metros) para considerar un movimiento y escribir.
   static const int locationDistanceFilterMeters = 8;
 
@@ -14,12 +20,17 @@ abstract final class AppConstants {
   static const Duration gpsCheckInterval = Duration(seconds: 5);
 
   /// Si un compañero no actualiza en este tiempo, su moto muestra «Sin señal».
-  static const Duration gpsStaleAfter = Duration(seconds: 30);
+  static const Duration gpsStaleAfter = Duration(minutes: 2);
 
   static const String locationNotificationTitle = 'LocMotos';
   static const String locationNotificationText =
       'Compartiendo tu ubicación con el grupo';
   static const String locationNotificationChannel = 'Ubicación en ruta';
+
+  /// Notificación mientras navegas con ruta activa (servicio en primer plano).
+  static const String navigationNotificationTitle = 'LocMotos';
+  static const String navigationNotificationText = 'Navegando en ruta';
+  static const String navigationNotificationChannel = 'Navegación GPS';
 
   /// Longitud del código de sala (letras/números sin caracteres ambiguos).
   static const int groupCodeLength = 6;

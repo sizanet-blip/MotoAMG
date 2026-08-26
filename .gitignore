@@ -47,3 +47,5 @@ app.*.map.json
 # Mapas offline locales (PMTiles pesados) y CLI de extracción
 /maps/offline/
 /tools/pmtiles/
+/tool/pmtiles.exe
+/tool/pmtiles

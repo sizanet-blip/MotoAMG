@@ -11,6 +11,7 @@ class MotoMarker extends StatelessWidget {
     this.heading = 0,
     this.distanceLabel,
     this.isStale = false,
+    this.staleLabel,
   });
 
   final String name;
@@ -19,6 +20,7 @@ class MotoMarker extends StatelessWidget {
   final double heading;
   final String? distanceLabel;
   final bool isStale;
+  final String? staleLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -59,11 +61,11 @@ class MotoMarker extends StatelessWidget {
                   ),
                 ),
                 if (isStale)
-                  const Text(
-                    'Sin señal',
+                  Text(
+                    staleLabel ?? 'Sin señal',
                     maxLines: 1,
                     textAlign: TextAlign.center,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w800,
                       color: Color(0xFFC62828),

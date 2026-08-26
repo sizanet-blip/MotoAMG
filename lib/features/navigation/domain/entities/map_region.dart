@@ -11,6 +11,7 @@ class MapRegion extends Equatable {
     required this.bounds,
     this.localPath,
     this.isDownloaded = false,
+    this.partialBytes = 0,
   });
 
   final String id;
@@ -21,10 +22,19 @@ class MapRegion extends Equatable {
   final String? localPath;
   final bool isDownloaded;
 
+  /// Bytes ya descargados en `.partial` (descarga interrumpida).
+  final int partialBytes;
+
+  bool get hasPartialDownload => !isDownloaded && partialBytes > 0;
+
+  double get partialProgress =>
+      sizeBytes > 0 ? (partialBytes / sizeBytes).clamp(0.0, 1.0) : 0;
+
   MapRegion copyWith({
     String? localPath,
     bool? isDownloaded,
     GeoBounds? bounds,
+    int? partialBytes,
   }) {
     return MapRegion(
       id: id,
@@ -34,17 +44,19 @@ class MapRegion extends Equatable {
       bounds: bounds ?? this.bounds,
       localPath: localPath ?? this.localPath,
       isDownloaded: isDownloaded ?? this.isDownloaded,
+      partialBytes: partialBytes ?? this.partialBytes,
     );
   }
 
   @override
   List<Object?> get props => [
-    id,
-    name,
-    downloadUrl,
-    sizeBytes,
-    bounds,
-    localPath,
-    isDownloaded,
-  ];
+        id,
+        name,
+        downloadUrl,
+        sizeBytes,
+        bounds,
+        localPath,
+        isDownloaded,
+        partialBytes,
+      ];
 }

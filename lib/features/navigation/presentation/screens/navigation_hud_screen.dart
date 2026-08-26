@@ -20,8 +20,10 @@ import 'package:loc_motos/features/navigation/domain/exceptions/navigation_excep
 import 'package:loc_motos/features/navigation/domain/exceptions/navigation_user_message.dart';
 import 'package:loc_motos/features/navigation/presentation/providers/navigation_providers.dart';
 import 'package:loc_motos/features/navigation/presentation/theme/fuel_brand_style.dart';
-import 'package:loc_motos/features/navigation/presentation/theme/navigation_hud_theme.dart';import 'package:loc_motos/features/navigation/presentation/widgets/map_network_resume_binder.dart';
+import 'package:loc_motos/features/navigation/presentation/theme/navigation_hud_theme.dart';
+import 'package:loc_motos/features/navigation/presentation/widgets/map_network_resume_binder.dart';
 import 'package:loc_motos/features/navigation/presentation/widgets/navigation_map_view.dart';
+import 'package:loc_motos/features/navigation/presentation/widgets/offline_map_banner.dart';
 import 'package:loc_motos/features/navigation/presentation/widgets/navigation_maneuver_card.dart';
 import 'package:loc_motos/features/navigation/presentation/widgets/navigation_status_bar.dart';
 import 'package:loc_motos/features/tracking/domain/entities/device_position.dart';
@@ -627,6 +629,13 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
     if (_arrived || _simulating || _rerouting) {
       return;
     }
+    if (!_hasNetwork()) {
+      setState(() {
+        _rerouting = false;
+        _rerouteError = NavigationUserMessages.rerouteOffline;
+      });
+      return;
+    }
     // No reiniciar si ya hay un intento pendiente.
     if (_rerouteDebounceTimer?.isActive ?? false) {
       return;
@@ -637,7 +646,7 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
   }
 
   void _scheduleRerouteAfterCooldown() {
-    if (_simulating || !_offRoute) {
+    if (_simulating || !_offRoute || !_hasNetwork()) {
       return;
     }
     final last = _lastRerouteAt;
@@ -660,11 +669,21 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
         NavigationConstants.rerouteCooldown;
   }
 
+  bool _hasNetwork() =>
+      ref.read(mapNetworkAvailableProvider).asData?.value ?? true;
+
   Future<void> _rerouteIfNeeded({bool force = false}) async {
     if (!mounted || _simulating || _rerouting) {
       return;
     }
     if (!_offRoute && !force) {
+      return;
+    }
+    if (!_hasNetwork()) {
+      setState(() {
+        _rerouting = false;
+        _rerouteError = NavigationUserMessages.rerouteOffline;
+      });
       return;
     }
     if (!force && !_canRerouteNow) {
@@ -961,6 +980,13 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
         _updateGuidance();
       }
     });
+    ref.listen(mapNetworkAvailableProvider, (previous, next) {
+      final online = next.asData?.value ?? true;
+      final wasOnline = previous?.asData?.value ?? true;
+      if (online && !wasOnline && _offRoute && !_rerouting && !_arrived) {
+        _scheduleReroute();
+      }
+    });
 
     final own = ref.watch(ownDevicePositionProvider);
     final mapStyleAsync = ref.watch(hybridMapStylesProvider);
@@ -995,7 +1021,8 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
         unawaited(_cleanupLeavingHud());
       },
       child: OwnPositionWatcher(
-      child: MapNetworkResumeBinder(
+        useForegroundService: true,
+        child: MapNetworkResumeBinder(
         child: Scaffold(
           backgroundColor: Colors.black,
           body: mapStyleAsync.when(
@@ -1057,7 +1084,10 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
                   child: _OffRouteBanner(
                     rerouting: _rerouting,
                     error: _rerouteError,
-                    onRetry: () => unawaited(_rerouteIfNeeded(force: true)),
+                    offline: !hasNetwork,
+                    onRetry: hasNetwork
+                        ? () => unawaited(_rerouteIfNeeded(force: true))
+                        : null,
                     onDismiss: () {
                       _rerouteDebounceTimer?.cancel();
                       setState(() {
@@ -1214,6 +1244,13 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
                   ),
                 ),
               ],
+              if (!hasNetwork && !_arrived)
+                Positioned(
+                  left: 12,
+                  right: 12,
+                  bottom: bottomInset + 92,
+                  child: const OfflineMapBanner(compact: true),
+                ),
               Positioned(
                 left: 0,
                 right: 0,
@@ -1851,20 +1888,25 @@ class _OffRouteBanner extends StatelessWidget {
   const _OffRouteBanner({
     required this.rerouting,
     required this.error,
+    required this.offline,
     required this.onRetry,
     required this.onDismiss,
   });
 
   final bool rerouting;
   final String? error;
-  final VoidCallback onRetry;
+  final bool offline;
+  final VoidCallback? onRetry;
   final VoidCallback onDismiss;
 
   @override
   Widget build(BuildContext context) {
     final message = rerouting
         ? 'Recalculando ruta…'
-        : (error ?? 'Fuera de ruta · recalculando automáticamente');
+        : (error ??
+            (offline
+                ? NavigationUserMessages.rerouteOffline
+                : 'Fuera de ruta · recalculando automáticamente'));
 
     return Material(
       color: NavigationHudTheme.warning.withValues(alpha: 0.95),
@@ -1880,7 +1922,10 @@ class _OffRouteBanner extends StatelessWidget {
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
             else
-              const Icon(Icons.alt_route_rounded, size: 20),
+              Icon(
+                offline ? Icons.wifi_off_rounded : Icons.alt_route_rounded,
+                size: 20,
+              ),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
@@ -1891,7 +1936,7 @@ class _OffRouteBanner extends StatelessWidget {
                 ),
               ),
             ),
-            if (error != null && !rerouting)
+            if (onRetry != null && error != null && !rerouting)
               TextButton(
                 onPressed: onRetry,
                 child: const Text('Reintentar'),

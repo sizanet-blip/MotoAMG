@@ -1,0 +1,27 @@
+Cómo funciona (automático)
+Generar mapas
+
+cd C:\Users\Alberto\Documents\Proyectos\flutter\LocMotos
+
+Listar ficheros
+python deploy\pmtiles\list_protomaps_builds.py
+
+Para proobar Mellila que es pequeña
+python deploy\pmtiles\build_ccaa_pmtiles.py --source https://build.protomaps.com/20260826.pmtiles --only melilla
+
+Para forzar dsescarga
+python deploy\pmtiles\build_ccaa_pmtiles.py --source https://build.protomaps.com/20260826.pmtiles --only melilla --force
+
+Necesitas tools\pmtiles\pmtiles.exe instalado. Tarda un rato según tu conexión.
+
+Todas las CCAA (1–4 horas, mucho disco):
+
+python deploy\pmtiles\build_ccaa_pmtiles.py --source https://build.protomaps.com/20260826.pmtiles
+Salida en maps\offline\.
+
+Subir al VPS (cuando termine):
+
+python deploy\pmtiles\build_ccaa_pmtiles.py --source https://build.protomaps.com/20260826.pmtiles --upload ubuntu@TU_IP:/var/www/maps/
+O solo Aragón subido:
+
+scp maps\offline\aragon.pmtiles ubuntu@TU_IP:/var/www/maps/

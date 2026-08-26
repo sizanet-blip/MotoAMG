@@ -4,7 +4,10 @@ import android.app.LocaleManager
 import android.os.Build
 import android.os.Bundle
 import android.os.LocaleList
+import android.os.StatFs
 import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.plugin.common.MethodChannel
 
 /// Fuerza español para diálogos nativos (p. ej. permiso de notificaciones en Android 13+).
 /// `MaterialApp.locale` solo afecta a Flutter; el prompt del sistema usa el idioma de la app.
@@ -12,6 +15,32 @@ class MainActivity : FlutterActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         ensureSpanishAppLocales()
         super.onCreate(savedInstanceState)
+    }
+
+    override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
+        super.configureFlutterEngine(flutterEngine)
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            "com.locmotos.loc_motos/storage",
+        ).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "getFreeBytesForPath" -> {
+                    val path = call.argument<String>("path")
+                    if (path.isNullOrBlank()) {
+                        result.success(null)
+                        return@setMethodCallHandler
+                    }
+                    try {
+                        val stat = StatFs(path)
+                        val freeBytes = stat.availableBlocksLong * stat.blockSizeLong
+                        result.success(freeBytes)
+                    } catch (_: Exception) {
+                        result.success(null)
+                    }
+                }
+                else -> result.notImplemented()
+            }
+        }
     }
 
     private fun ensureSpanishAppLocales() {

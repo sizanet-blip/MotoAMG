@@ -233,7 +233,7 @@ class _RoutePreviewScreenState extends ConsumerState<RoutePreviewScreen> {
                   onSelect: _selectAlternative,
                   onShare: () => unawaited(_shareGpx()),
                   onStart: _startNavigation,
-                  maxHeight: MediaQuery.sizeOf(context).height * 0.48,
+                  maxHeight: MediaQuery.sizeOf(context).height * 0.46,
                 ),
               ],
             ),
@@ -402,6 +402,27 @@ class _RoutePreviewSheet extends StatelessWidget {
     return bestIndex;
   }
 
+  String? _alertsSummaryLine(Map<RouteAlertType, int> counts) {
+    final parts = <String>[];
+    final tolls = counts[RouteAlertType.toll] ?? 0;
+    final fuel = counts[RouteAlertType.fuel] ?? 0;
+    final radars = counts[RouteAlertType.speedCamera] ?? 0;
+    final curves = counts[RouteAlertType.sharpCurve] ?? 0;
+    if (tolls > 0) {
+      parts.add('$tolls peaje${tolls == 1 ? '' : 's'}');
+    }
+    if (fuel > 0) {
+      parts.add('$fuel gasolinera${fuel == 1 ? '' : 's'}');
+    }
+    if (radars > 0) {
+      parts.add('$radars radar${radars == 1 ? '' : 'es'}');
+    }
+    if (curves > 0) {
+      parts.add('$curves curva${curves == 1 ? '' : 's'}');
+    }
+    return parts.isEmpty ? null : parts.join(' · ');
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -417,6 +438,13 @@ class _RoutePreviewSheet extends StatelessWidget {
     final comparingLabel = plan.hasAlternatives
         ? 'Comparando rutas…'
         : 'Buscando avisos en la ruta…';
+    final alertsLine = _alertsSummaryLine(alertCounts);
+    final staleMessages = [
+      if (!enriching && fuelAlertsEnabled && fuelStaleMessage != null)
+        fuelStaleMessage!,
+      if (!enriching && radarAlertsEnabled && radarStaleMessage != null)
+        radarStaleMessage!,
+    ];
 
     return Material(
       elevation: 12,
@@ -426,205 +454,275 @@ class _RoutePreviewSheet extends StatelessWidget {
         top: false,
         child: ConstrainedBox(
           constraints: BoxConstraints(maxHeight: maxHeight),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-              Center(
-                child: Container(
-                  width: 36,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: colors.outlineVariant,
-                    borderRadius: BorderRadius.circular(99),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                route.hasWaypoints
-                    ? 'Vista previa del circuito'
-                    : 'Vista previa de la ruta',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              if (plan.hasAlternatives) ...[
-                const SizedBox(height: 12),
-                Text(
-                  'Elige una ruta',
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    color: colors.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Row(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    for (var index = 0;
-                        index < plan.alternatives.length;
-                        index++) ...[
-                      if (index > 0) const SizedBox(width: 6),
-                      Expanded(
-                        child: _RouteAlternativeChip(
-                          index: index,
-                          route: plan.alternatives[index],
-                          selected: index == plan.selectedIndex,
-                          enriched:
-                              enrichedRouteIds.contains(
-                            plan.alternatives[index].id,
-                          ),
-                          isFastest: fastestIndex == index,
-                          onTap: () => onSelect(index),
+                    Center(
+                      child: Container(
+                        width: 36,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: colors.outlineVariant,
+                          borderRadius: BorderRadius.circular(99),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      route.hasWaypoints
+                          ? 'Vista previa del circuito'
+                          : 'Vista previa de la ruta',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    if (!plan.hasAlternatives) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        '${formatRideDistance(route.distanceMeters)} · '
+                        '${formatNavigationDurationCompact(route.durationSeconds)} · '
+                        '$preferencesSummary',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colors.onSurfaceVariant,
                         ),
                       ),
                     ],
                   ],
                 ),
-              ],
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  _RouteStatChip(
-                    icon: Icons.straighten,
-                    label: formatRideDistance(route.distanceMeters),
-                  ),
-                  _RouteStatChip(
-                    icon: Icons.schedule,
-                    label: formatNavigationDuration(route.durationSeconds),
-                  ),
-                  if (route.hasWaypoints)
-                    _RouteStatChip(
-                      icon: Icons.place_outlined,
-                      label: '${route.waypoints.length} parada'
-                          '${route.waypoints.length == 1 ? '' : 's'}',
-                    ),
-                  _RouteStatChip(
-                    icon: Icons.tune,
-                    label: preferencesSummary,
-                  ),
-                ],
               ),
-              if (enriching) ...[
+              if (plan.hasAlternatives) ...[
                 const SizedBox(height: 10),
-                Row(
-                  children: [
-                    SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: colors.primary,
-                      ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Row(
+                    children: [
+                      for (var index = 0;
+                          index < plan.alternatives.length;
+                          index++) ...[
+                        if (index > 0) const SizedBox(width: 6),
+                        Expanded(
+                          child: _RouteAlternativeChip(
+                            index: index,
+                            route: plan.alternatives[index],
+                            selected: index == plan.selectedIndex,
+                            enriched: enrichedRouteIds.contains(
+                              plan.alternatives[index].id,
+                            ),
+                            isFastest: fastestIndex == index,
+                            onTap: () => onSelect(index),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Text(
+                    preferencesSummary,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: colors.onSurfaceVariant,
                     ),
-                    const SizedBox(width: 8),
-                    Text(
-                      comparingLabel,
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        color: colors.onSurfaceVariant,
+                  ),
+                ),
+              ],
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 10, 20, 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (enriching)
+                        Row(
+                          children: [
+                            SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: colors.primary,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                comparingLabel,
+                                style: theme.textTheme.labelMedium?.copyWith(
+                                  color: colors.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                          ],
+                        )
+                      else if (alertsLine != null)
+                        Text(
+                          alertsLine,
+                          style: theme.textTheme.labelMedium?.copyWith(
+                            color: colors.onSurfaceVariant,
+                          ),
+                        )
+                      else if (fuelAlertsEnabled && !fuelCacheReady)
+                        Text(
+                          'Descarga gasolineras en Configuración para ver precios en la ruta.',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: colors.onSurfaceVariant,
+                          ),
+                        ),
+                      if (staleMessages.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        _SpainDataStaleHint(message: staleMessages.join(' ')),
+                      ],
+                      const SizedBox(height: 12),
+                      _RouteTripEndpointsCompact(
+                        origin: route.originDisplay,
+                        destination: route.destinationDisplay,
+                        waypointCount:
+                            route.hasWaypoints ? route.waypoints.length : 0,
                       ),
+                    ],
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+                decoration: BoxDecoration(
+                  color: colors.surface,
+                  border: Border(
+                    top: BorderSide(color: colors.outlineVariant.withValues(alpha: 0.5)),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    FilledButton.icon(
+                      onPressed: enriching ? null : onStart,
+                      icon: const Icon(Icons.navigation),
+                      label: const Text('Empezar navegación'),
+                    ),
+                    const SizedBox(height: 8),
+                    OutlinedButton.icon(
+                      onPressed: enriching ? null : onShare,
+                      icon: const Icon(Icons.ios_share_rounded),
+                      label: const Text('Compartir GPX'),
                     ),
                   ],
                 ),
-              ] else if (route.hasAlerts) ...[
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    if ((alertCounts[RouteAlertType.toll] ?? 0) > 0)
-                      _RouteStatChip(
-                        icon: Icons.toll_outlined,
-                        label: '${alertCounts[RouteAlertType.toll]} peaje'
-                            '${(alertCounts[RouteAlertType.toll] ?? 0) == 1 ? '' : 's'}',
-                      ),
-                    if ((alertCounts[RouteAlertType.fuel] ?? 0) > 0)
-                      _RouteStatChip(
-                        icon: Icons.local_gas_station_outlined,
-                        label: '${alertCounts[RouteAlertType.fuel]} gasolinera'
-                            '${(alertCounts[RouteAlertType.fuel] ?? 0) == 1 ? '' : 's'}',
-                      ),
-                    if ((alertCounts[RouteAlertType.speedCamera] ?? 0) > 0)
-                      _RouteStatChip(
-                        icon: Icons.camera_alt_outlined,
-                        label:
-                            '${alertCounts[RouteAlertType.speedCamera]} radar'
-                            '${(alertCounts[RouteAlertType.speedCamera] ?? 0) == 1 ? '' : 'es'}',
-                      ),
-                    if ((alertCounts[RouteAlertType.sharpCurve] ?? 0) > 0)
-                      _RouteStatChip(
-                        icon: Icons.turn_sharp_right,
-                        label: '${alertCounts[RouteAlertType.sharpCurve]} curva'
-                            '${(alertCounts[RouteAlertType.sharpCurve] ?? 0) == 1 ? '' : 's'}',
-                      ),
-                  ],
-                ),
-              ] else if (!enriching &&
-                  fuelAlertsEnabled &&
-                  !fuelCacheReady) ...[
-                const SizedBox(height: 10),
-                Text(
-                  'Descarga gasolineras en Configuración para ver precios en la ruta.',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: colors.onSurfaceVariant,
-                  ),
-                ),
-              ],
-              if (!enriching && fuelAlertsEnabled && fuelStaleMessage != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 10),
-                  child: _SpainDataStaleHint(message: fuelStaleMessage!),
-                ),
-              if (!enriching && radarAlertsEnabled && radarStaleMessage != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 10),
-                  child: _SpainDataStaleHint(message: radarStaleMessage!),
-                ),
-              const SizedBox(height: 16),
-              _RouteEndpointRow(
-                icon: Icons.trip_origin,
-                iconColor: const Color(0xFF2E7D32),
-                title: 'Origen',
-                subtitle: route.originDisplay,
-              ),
-              if (route.hasWaypoints) ...[
-                const SizedBox(height: 8),
-                _RouteEndpointRow(
-                  icon: Icons.radio_button_checked,
-                  iconColor: const Color(0xFFF9A825),
-                  title: '${route.waypoints.length} parada'
-                      '${route.waypoints.length == 1 ? '' : 's'} intermedia'
-                      '${route.waypoints.length == 1 ? '' : 's'}',
-                  subtitle: 'Visibles en el mapa (no listadas una a una).',
-                ),
-              ],
-              const SizedBox(height: 8),
-              _RouteEndpointRow(
-                icon: Icons.flag_outlined,
-                iconColor: const Color(0xFFC62828),
-                title: 'Destino',
-                subtitle: route.destinationDisplay,
-              ),
-              const SizedBox(height: 16),
-              OutlinedButton.icon(
-                onPressed: enriching ? null : onShare,
-                icon: const Icon(Icons.ios_share_rounded),
-                label: const Text('Compartir GPX'),
-              ),
-              const SizedBox(height: 8),
-              FilledButton.icon(
-                onPressed: enriching ? null : onStart,
-                icon: const Icon(Icons.navigation),
-                label: const Text('Empezar navegación'),
               ),
             ],
           ),
         ),
-        ),
       ),
+    );
+  }
+}
+
+class _RouteTripEndpointsCompact extends StatelessWidget {
+  const _RouteTripEndpointsCompact({
+    required this.origin,
+    required this.destination,
+    this.waypointCount = 0,
+  });
+
+  final String origin;
+  final String destination;
+  final int waypointCount;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerHighest.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _RouteEndpointLine(
+            icon: Icons.trip_origin,
+            iconColor: const Color(0xFF2E7D32),
+            label: origin,
+          ),
+          if (waypointCount > 0) ...[
+            Padding(
+              padding: const EdgeInsets.only(left: 9, top: 2, bottom: 2),
+              child: Row(
+                children: [
+                  Container(
+                    width: 2,
+                    height: 12,
+                    color: colors.outlineVariant,
+                  ),
+                  const SizedBox(width: 17),
+                  Text(
+                    waypointCount == 1
+                        ? '1 parada intermedia'
+                        : '$waypointCount paradas intermedias',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: colors.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ] else
+            Padding(
+              padding: const EdgeInsets.only(left: 9),
+              child: Container(
+                width: 2,
+                height: 10,
+                color: colors.outlineVariant,
+              ),
+            ),
+          _RouteEndpointLine(
+            icon: Icons.flag_outlined,
+            iconColor: const Color(0xFFC62828),
+            label: destination,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RouteEndpointLine extends StatelessWidget {
+  const _RouteEndpointLine({
+    required this.icon,
+    required this.iconColor,
+    required this.label,
+  });
+
+  final IconData icon;
+  final Color iconColor;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, color: iconColor, size: 18),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -734,82 +832,6 @@ class _RouteAlternativeChip extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _RouteStatChip extends StatelessWidget {
-  const _RouteStatChip({required this.icon, required this.label});
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: colors.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: colors.primary),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _RouteEndpointRow extends StatelessWidget {
-  const _RouteEndpointRow({
-    required this.icon,
-    required this.iconColor,
-    required this.title,
-    required this.subtitle,
-  });
-
-  final IconData icon;
-  final Color iconColor;
-  final String title;
-  final String subtitle;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Row(
-      children: [
-        Icon(icon, color: iconColor, size: 20),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: theme.textTheme.labelMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-              Text(
-                subtitle,
-                style: theme.textTheme.bodyMedium,
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 }
