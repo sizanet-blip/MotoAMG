@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:loc_motos/core/utils/spain_data_freshness.dart';
 import 'package:loc_motos/core/utils/distance_format.dart';
 import 'package:loc_motos/core/utils/navigation_duration_format.dart';
 import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
@@ -16,7 +17,10 @@ import 'package:loc_motos/features/navigation/presentation/screens/navigation_hu
 import 'package:loc_motos/features/navigation/presentation/widgets/map_network_resume_binder.dart';
 import 'package:loc_motos/features/navigation/presentation/widgets/navigation_map_view.dart';
 import 'package:loc_motos/features/navigation/presentation/widgets/navigation_map_zoom_controls.dart';
+import 'package:loc_motos/features/navigation/presentation/widgets/navigation_map_my_location_button.dart';
 import 'package:loc_motos/features/navigation/presentation/widgets/offline_map_banner.dart';
+import 'package:loc_motos/features/tracking/presentation/providers/tracking_providers.dart';
+import 'package:loc_motos/features/tracking/presentation/widgets/own_position_watcher.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 
 class RoutePreviewScreen extends ConsumerStatefulWidget {
@@ -36,7 +40,6 @@ class RoutePreviewScreen extends ConsumerStatefulWidget {
 class _RoutePreviewScreenState extends ConsumerState<RoutePreviewScreen> {
   late RoutePlan _plan;
   var _enriching = false;
-  String? _enrichingRouteId;
   final _enrichedRouteIds = <String>{};
 
   @override
@@ -44,7 +47,7 @@ class _RoutePreviewScreenState extends ConsumerState<RoutePreviewScreen> {
     super.initState();
     _plan = widget.plan;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      unawaited(_enrichSelected());
+      unawaited(_enrichAllAlternatives());
     });
   }
 
@@ -55,50 +58,62 @@ class _RoutePreviewScreenState extends ConsumerState<RoutePreviewScreen> {
     }
     setState(() => _plan = next);
     ref.read(activeNavigationRouteProvider.notifier).state = next.selected;
-    unawaited(_enrichSelected());
   }
 
-  Future<void> _enrichSelected() async {
-    final selected = _plan.selected;
-    if (_enrichedRouteIds.contains(selected.id) ||
-        _enrichingRouteId == selected.id) {
+  Future<void> _enrichAllAlternatives() async {
+    final pending = [
+      for (final route in _plan.alternatives)
+        if (!_enrichedRouteIds.contains(route.id)) route,
+    ];
+    if (pending.isEmpty) {
       return;
     }
-    _enrichingRouteId = selected.id;
+
     setState(() => _enriching = true);
-    try {
-      final enriched =
-          await ref.read(routeAlertsServiceProvider).enrich(
-                selected,
-                preferredFuel: resolveNavigationPreferredFuel(
-                  user: widget.user,
-                  vehicleId: ref.read(navigationVehicleIdProvider),
-                ),
-                preferences: ref.read(alertPreferencesProvider),
-              );
-      if (!mounted || _plan.selected.id != selected.id) {
-        return;
-      }
-      final alts = [
-        for (final r in _plan.alternatives)
-          if (r.id == enriched.id) enriched else r,
-      ];
-      _enrichedRouteIds.add(selected.id);
-      setState(() {
-        _plan = RoutePlan(
-          alternatives: alts,
-          selectedIndex: _plan.selectedIndex,
-        );
-      });
-      ref.read(activeNavigationRouteProvider.notifier).state = enriched;
-    } catch (_) {
-      _enrichedRouteIds.add(selected.id);
-      // Overpass/Valhalla opcionales: la preview sigue usable.
-    } finally {
-      if (mounted && _enrichingRouteId == selected.id) {
-        setState(() => _enriching = false);
-      }
+    final preferredFuel = resolveNavigationPreferredFuel(
+      user: widget.user,
+      vehicleId: ref.read(navigationVehicleIdProvider),
+    );
+    final preferences = ref.read(alertPreferencesProvider);
+    final service = ref.read(routeAlertsServiceProvider);
+
+    final results = await Future.wait(
+      pending.map((route) async {
+        try {
+          return await service.enrich(
+            route,
+            preferredFuel: preferredFuel,
+            preferences: preferences,
+          );
+        } catch (_) {
+          // Overpass/Valhalla opcionales: la preview sigue usable.
+          return route;
+        }
+      }),
+    );
+
+    if (!mounted) {
+      return;
     }
+
+    final byId = <String, NavigationRoute>{
+      for (final route in results) route.id: route,
+    };
+    for (final route in pending) {
+      _enrichedRouteIds.add(route.id);
+    }
+
+    final alts = [
+      for (final route in _plan.alternatives) byId[route.id] ?? route,
+    ];
+    setState(() {
+      _plan = RoutePlan(
+        alternatives: alts,
+        selectedIndex: _plan.selectedIndex,
+      );
+      _enriching = false;
+    });
+    ref.read(activeNavigationRouteProvider.notifier).state = _plan.selected;
   }
 
   Future<void> _startNavigation() async {
@@ -128,6 +143,23 @@ class _RoutePreviewScreenState extends ConsumerState<RoutePreviewScreen> {
     );
   }
 
+  Future<void> _shareGpx() async {
+    final route = _plan.selected;
+    final name = route.destinationLabel?.trim().isNotEmpty == true
+        ? 'Ruta a ${route.destinationLabel!.trim()}'
+        : 'Ruta LocMotos';
+    try {
+      await ref.read(routeGpxServiceProvider).shareRoute(route, name: name);
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se pudo compartir el GPX.')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final mapStyleAsync = ref.watch(hybridMapStylesProvider);
@@ -136,41 +168,75 @@ class _RoutePreviewScreenState extends ConsumerState<RoutePreviewScreen> {
     final showOfflineBanner = networkAsync.asData?.value == false;
     final route = _plan.selected;
 
-    return MapNetworkResumeBinder(
-      child: Scaffold(
-        body: mapStyleAsync.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (_, _) =>
-              const Center(child: Text('No se pudo cargar el mapa.')),
-          data: (mapStyles) => Column(
-            children: [
-              Expanded(
-                child: _RoutePreviewMapLayer(
-                  route: route,
-                  alternativeRoutes: _plan.otherAlternatives,
-                  mapStyles: mapStyles,
-                  hasNetwork: hasNetwork,
-                  showOfflineBanner: showOfflineBanner,
-                  alertPreferences: ref.watch(alertPreferencesProvider),
+    return OwnPositionWatcher(
+      child: MapNetworkResumeBinder(
+        child: Scaffold(
+          body: mapStyleAsync.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (_, _) =>
+                const Center(child: Text('No se pudo cargar el mapa.')),
+            data: (mapStyles) => Column(
+              children: [
+                Expanded(
+                  child: _RoutePreviewMapLayer(
+                    route: route,
+                    alternativeRoutes: _plan.otherAlternatives,
+                    mapStyles: mapStyles,
+                    hasNetwork: hasNetwork,
+                    showOfflineBanner: showOfflineBanner,
+                    alertPreferences: ref.watch(alertPreferencesProvider),
+                  ),
                 ),
-              ),
-              _RoutePreviewSheet(
-                plan: _plan,
-                enriching: _enriching,
-                preferencesSummary:
-                    ref.watch(routePreferencesProvider).summaryLabel,
-                fuelCacheReady: ref
+                _RoutePreviewSheet(
+                  plan: _plan,
+                  enriching: _enriching,
+                  enrichedRouteIds: _enrichedRouteIds,
+                  preferencesSummary:
+                      ref.watch(routePreferencesProvider).summaryLabel,
+                  fuelCacheReady: ref
+                          .watch(spainFuelCacheStatusProvider)
+                          .asData
+                          ?.value
+                          .isReady ??
+                      false,
+                  fuelStaleMessage: () {
+                    final status = ref
                         .watch(spainFuelCacheStatusProvider)
                         .asData
-                        ?.value
-                        .isReady ??
-                    false,
-                fuelAlertsEnabled:
-                    ref.watch(alertPreferencesProvider).fuelEnabled,
-                onSelect: _selectAlternative,
-                onStart: _startNavigation,
-              ),
-            ],
+                        ?.value;
+                    if (status == null || !status.isReady) {
+                      return null;
+                    }
+                    final message = spainFuelStaleMessage(status.fetchedAt);
+                    return message.isEmpty ? null : message;
+                  }(),
+                  radarStaleMessage: () {
+                    final status = ref
+                        .watch(spainRadarCacheStatusProvider)
+                        .asData
+                        ?.value;
+                    if (status == null || !status.isReady) {
+                      return null;
+                    }
+                    final message = spainRadarCacheStaleMessage(
+                      hasOfficial: status.hasOfficial,
+                      officialFetchedAt: status.officialFetchedAt,
+                      hasOsm: status.hasOsm,
+                      osmFetchedAt: status.osmFetchedAt,
+                    );
+                    return message.isEmpty ? null : message;
+                  }(),
+                  fuelAlertsEnabled:
+                      ref.watch(alertPreferencesProvider).fuelEnabled,
+                  radarAlertsEnabled:
+                      ref.watch(alertPreferencesProvider).radarsEnabled,
+                  onSelect: _selectAlternative,
+                  onShare: () => unawaited(_shareGpx()),
+                  onStart: _startNavigation,
+                  maxHeight: MediaQuery.sizeOf(context).height * 0.48,
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -178,7 +244,7 @@ class _RoutePreviewScreenState extends ConsumerState<RoutePreviewScreen> {
   }
 }
 
-class _RoutePreviewMapLayer extends StatefulWidget {
+class _RoutePreviewMapLayer extends ConsumerStatefulWidget {
   const _RoutePreviewMapLayer({
     required this.route,
     required this.alternativeRoutes,
@@ -196,19 +262,40 @@ class _RoutePreviewMapLayer extends StatefulWidget {
   final AlertPreferences alertPreferences;
 
   @override
-  State<_RoutePreviewMapLayer> createState() => _RoutePreviewMapLayerState();
+  ConsumerState<_RoutePreviewMapLayer> createState() =>
+      _RoutePreviewMapLayerState();
 }
 
-class _RoutePreviewMapLayerState extends State<_RoutePreviewMapLayer> {
+class _RoutePreviewMapLayerState extends ConsumerState<_RoutePreviewMapLayer> {
   MapLibreMapController? _mapController;
+  double? _focusLat;
+  double? _focusLng;
+  var _focusEpoch = 0;
+
+  void _recenterOnMe() {
+    final own = ref.read(ownDevicePositionProvider);
+    if (own == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Esperando GPS…')),
+      );
+      return;
+    }
+    setState(() {
+      _focusLat = own.lat;
+      _focusLng = own.lng;
+      _focusEpoch++;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final top = MediaQuery.paddingOf(context).top + 8;
+    final own = ref.watch(ownDevicePositionProvider);
 
     return Stack(
       fit: StackFit.expand,
+      clipBehavior: Clip.hardEdge,
       children: [
         NavigationMapView(
           route: widget.route,
@@ -217,6 +304,9 @@ class _RoutePreviewMapLayerState extends State<_RoutePreviewMapLayer> {
           hasNetwork: widget.hasNetwork,
           alertPreferences: widget.alertPreferences,
           cameraMode: NavigationMapCameraMode.fitRoute,
+          previewFocusLatitude: _focusLat,
+          previewFocusLongitude: _focusLng,
+          previewFocusEpoch: _focusEpoch,
           onControllerReady: (controller) {
             if (_mapController == controller) {
               return;
@@ -241,7 +331,17 @@ class _RoutePreviewMapLayerState extends State<_RoutePreviewMapLayer> {
           Positioned(
             top: top,
             right: 12,
-            child: NavigationMapZoomControls(controller: _mapController!),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                NavigationMapZoomControls(controller: _mapController!),
+                const SizedBox(height: 8),
+                NavigationMapMyLocationButton(
+                  enabled: own != null,
+                  onPressed: own == null ? null : _recenterOnMe,
+                ),
+              ],
+            ),
           ),
         if (widget.showOfflineBanner)
           const Positioned(
@@ -259,20 +359,48 @@ class _RoutePreviewSheet extends StatelessWidget {
   const _RoutePreviewSheet({
     required this.plan,
     required this.enriching,
+    required this.enrichedRouteIds,
     required this.preferencesSummary,
     required this.fuelCacheReady,
     required this.fuelAlertsEnabled,
+    required this.radarAlertsEnabled,
+    this.fuelStaleMessage,
+    this.radarStaleMessage,
     required this.onSelect,
+    required this.onShare,
     required this.onStart,
+    required this.maxHeight,
   });
 
   final RoutePlan plan;
   final bool enriching;
+  final Set<String> enrichedRouteIds;
   final String preferencesSummary;
   final bool fuelCacheReady;
   final bool fuelAlertsEnabled;
+  final bool radarAlertsEnabled;
+  final String? fuelStaleMessage;
+  final String? radarStaleMessage;
   final ValueChanged<int> onSelect;
+  final VoidCallback onShare;
   final VoidCallback onStart;
+  final double maxHeight;
+
+  int? get _fastestIndex {
+    if (plan.alternatives.length < 2) {
+      return null;
+    }
+    var bestIndex = 0;
+    var bestSeconds = plan.alternatives.first.durationSeconds;
+    for (var i = 1; i < plan.alternatives.length; i++) {
+      final seconds = plan.alternatives[i].durationSeconds;
+      if (seconds < bestSeconds) {
+        bestSeconds = seconds;
+        bestIndex = i;
+      }
+    }
+    return bestIndex;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -285,6 +413,10 @@ class _RoutePreviewSheet extends StatelessWidget {
     for (final a in route.alerts) {
       alertCounts[a.type] = (alertCounts[a.type] ?? 0) + 1;
     }
+    final fastestIndex = _fastestIndex;
+    final comparingLabel = plan.hasAlternatives
+        ? 'Comparando rutas…'
+        : 'Buscando avisos en la ruta…';
 
     return Material(
       elevation: 12,
@@ -292,12 +424,14 @@ class _RoutePreviewSheet extends StatelessWidget {
       color: colors.surface,
       child: SafeArea(
         top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: maxHeight),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
               Center(
                 child: Container(
                   width: 36,
@@ -337,6 +471,11 @@ class _RoutePreviewSheet extends StatelessWidget {
                           index: index,
                           route: plan.alternatives[index],
                           selected: index == plan.selectedIndex,
+                          enriched:
+                              enrichedRouteIds.contains(
+                            plan.alternatives[index].id,
+                          ),
+                          isFastest: fastestIndex == index,
                           onTap: () => onSelect(index),
                         ),
                       ),
@@ -383,7 +522,7 @@ class _RoutePreviewSheet extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      'Buscando avisos en la ruta…',
+                      comparingLabel,
                       style: theme.textTheme.labelMedium?.copyWith(
                         color: colors.onSurfaceVariant,
                       ),
@@ -434,6 +573,16 @@ class _RoutePreviewSheet extends StatelessWidget {
                   ),
                 ),
               ],
+              if (!enriching && fuelAlertsEnabled && fuelStaleMessage != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 10),
+                  child: _SpainDataStaleHint(message: fuelStaleMessage!),
+                ),
+              if (!enriching && radarAlertsEnabled && radarStaleMessage != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 10),
+                  child: _SpainDataStaleHint(message: radarStaleMessage!),
+                ),
               const SizedBox(height: 16),
               _RouteEndpointRow(
                 icon: Icons.trip_origin,
@@ -442,17 +591,15 @@ class _RoutePreviewSheet extends StatelessWidget {
                 subtitle: route.originDisplay,
               ),
               if (route.hasWaypoints) ...[
-                for (var i = 0; i < route.waypoints.length; i++) ...[
-                  const SizedBox(height: 8),
-                  _RouteEndpointRow(
-                    icon: Icons.radio_button_checked,
-                    iconColor: const Color(0xFFF9A825),
-                    title: 'Parada ${i + 1}',
-                    subtitle:
-                        '${route.waypoints[i].lat.toStringAsFixed(5)}, '
-                        '${route.waypoints[i].lng.toStringAsFixed(5)}',
-                  ),
-                ],
+                const SizedBox(height: 8),
+                _RouteEndpointRow(
+                  icon: Icons.radio_button_checked,
+                  iconColor: const Color(0xFFF9A825),
+                  title: '${route.waypoints.length} parada'
+                      '${route.waypoints.length == 1 ? '' : 's'} intermedia'
+                      '${route.waypoints.length == 1 ? '' : 's'}',
+                  subtitle: 'Visibles en el mapa (no listadas una a una).',
+                ),
               ],
               const SizedBox(height: 8),
               _RouteEndpointRow(
@@ -462,13 +609,20 @@ class _RoutePreviewSheet extends StatelessWidget {
                 subtitle: route.destinationDisplay,
               ),
               const SizedBox(height: 16),
+              OutlinedButton.icon(
+                onPressed: enriching ? null : onShare,
+                icon: const Icon(Icons.ios_share_rounded),
+                label: const Text('Compartir GPX'),
+              ),
+              const SizedBox(height: 8),
               FilledButton.icon(
-                onPressed: onStart,
+                onPressed: enriching ? null : onStart,
                 icon: const Icon(Icons.navigation),
                 label: const Text('Empezar navegación'),
               ),
             ],
           ),
+        ),
         ),
       ),
     );
@@ -480,19 +634,39 @@ class _RouteAlternativeChip extends StatelessWidget {
     required this.index,
     required this.route,
     required this.selected,
+    required this.enriched,
+    required this.isFastest,
     required this.onTap,
   });
 
   final int index;
   final NavigationRoute route;
   final bool selected;
+  final bool enriched;
+  final bool isFastest;
   final VoidCallback onTap;
+
+  int get _tollCount =>
+      route.alerts.where((a) => a.type == RouteAlertType.toll).length;
+
+  String get _tollLabel {
+    if (!enriched) {
+      return '…';
+    }
+    final count = _tollCount;
+    if (count == 0) {
+      return 'Sin peajes';
+    }
+    return '$count peaje${count == 1 ? '' : 's'}';
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
-    final label = index == 0 ? 'Sugerida' : 'Opción ${index + 1}';
+    final label = isFastest
+        ? 'Más rápida'
+        : (index == 0 ? 'Sugerida' : 'Opción ${index + 1}');
 
     return Material(
       color: selected ? colors.primaryContainer : colors.surfaceContainerHighest,
@@ -542,6 +716,18 @@ class _RouteAlternativeChip extends StatelessWidget {
                 style: theme.textTheme.labelSmall?.copyWith(
                   height: 1.1,
                   color: colors.onSurfaceVariant,
+                ),
+              ),
+              Text(
+                _tollLabel,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  height: 1.2,
+                  fontWeight: FontWeight.w600,
+                  color: enriched && _tollCount > 0
+                      ? colors.tertiary
+                      : colors.onSurfaceVariant,
                 ),
               ),
             ],
@@ -621,6 +807,32 @@ class _RouteEndpointRow extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
             ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SpainDataStaleHint extends StatelessWidget {
+  const _SpainDataStaleHint({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(Icons.warning_amber_rounded, size: 18, color: colors.error),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            message,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: colors.error,
+                ),
           ),
         ),
       ],

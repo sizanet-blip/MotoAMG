@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:loc_motos/core/utils/spain_data_freshness.dart';
 import 'package:loc_motos/features/navigation/data/datasources/spain_radar_datasource.dart';
 import 'package:loc_motos/features/navigation/presentation/providers/navigation_providers.dart';
 
@@ -49,6 +50,18 @@ class RadarCacheSettingsScreen extends ConsumerWidget {
           ),
         ),
         data: (status) {
+          final stale = isSpainRadarCacheStale(
+            hasOfficial: status.hasOfficial,
+            officialFetchedAt: status.officialFetchedAt,
+            hasOsm: status.hasOsm,
+            osmFetchedAt: status.osmFetchedAt,
+          );
+          final staleMessage = spainRadarCacheStaleMessage(
+            hasOfficial: status.hasOfficial,
+            officialFetchedAt: status.officialFetchedAt,
+            hasOsm: status.hasOsm,
+            osmFetchedAt: status.osmFetchedAt,
+          );
           return ListView(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
             children: [
@@ -62,6 +75,10 @@ class RadarCacheSettingsScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 16),
               _StatusCard(status: status),
+              if (status.isReady && stale) ...[
+                const SizedBox(height: 12),
+                _StaleWarning(message: staleMessage),
+              ],
               const SizedBox(height: 16),
               if (busy) ...[
                 LinearProgressIndicator(
@@ -126,9 +143,11 @@ class _StatusCard extends StatelessWidget {
                   : Icons.cloud_off_outlined,
               title: 'Oficiales (DGT / SCT)',
               detail: status.hasOfficial
-                  ? '${status.officialCount} radares'
-                      '${_formatAt(status.officialFetchedAt)}'
+                  ? '${status.officialCount} radares · '
+                      '${formatSpainDataAge(status.officialFetchedAt)}'
                   : 'Sin descargar',
+              stale: status.hasOfficial &&
+                  isSpainRadarDataStale(status.officialFetchedAt),
               ok: status.hasOfficial,
             ),
             const Divider(height: 20),
@@ -138,27 +157,17 @@ class _StatusCard extends StatelessWidget {
                   : Icons.cloud_off_outlined,
               title: 'OpenStreetMap España',
               detail: status.hasOsm
-                  ? '${status.osmCount} radares'
-                      '${_formatAt(status.osmFetchedAt)}'
+                  ? '${status.osmCount} radares · '
+                      '${formatSpainDataAge(status.osmFetchedAt)}'
                   : 'Sin descargar',
+              stale:
+                  status.hasOsm && isSpainRadarDataStale(status.osmFetchedAt),
               ok: status.hasOsm,
             ),
           ],
         ),
       ),
     );
-  }
-
-  static String _formatAt(DateTime? at) {
-    if (at == null) {
-      return '';
-    }
-    final local = at.toLocal();
-    final d =
-        '${local.day.toString().padLeft(2, '0')}/${local.month.toString().padLeft(2, '0')}/${local.year}';
-    final t =
-        '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
-    return ' · $d $t';
   }
 }
 
@@ -168,12 +177,14 @@ class _StatusRow extends StatelessWidget {
     required this.title,
     required this.detail,
     required this.ok,
+    this.stale = false,
   });
 
   final IconData icon;
   final String title;
   final String detail;
   final bool ok;
+  final bool stale;
 
   @override
   Widget build(BuildContext context) {
@@ -191,13 +202,46 @@ class _StatusRow extends StatelessWidget {
               Text(
                 detail,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: colors.onSurfaceVariant,
+                      color: stale ? colors.error : colors.onSurfaceVariant,
                     ),
               ),
             ],
           ),
         ),
       ],
+    );
+  }
+}
+
+class _StaleWarning extends StatelessWidget {
+  const _StaleWarning({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Material(
+      color: colors.errorContainer.withValues(alpha: 0.45),
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.warning_amber_rounded, color: colors.error, size: 22),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                message,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: colors.onErrorContainer,
+                    ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

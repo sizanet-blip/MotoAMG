@@ -14,6 +14,8 @@ class AlertPreferences extends Equatable {
     this.fuelEnabled = true,
     this.fuelShowOnMap = true,
     this.fuelShowPrice = true,
+    this.fuelPriceFilterEnabled = false,
+    this.fuelMaxPriceEur,
     this.fuelVoiceEnabled = false,
     this.fuelAnnounceMeters = NavigationConstants.fuelAnnounceMeters,
     this.tollsEnabled = true,
@@ -40,6 +42,14 @@ class AlertPreferences extends Equatable {
   final bool fuelEnabled;
   final bool fuelShowOnMap;
   final bool fuelShowPrice;
+
+  /// Si está activo, solo se muestran gasolineras cuyo precio de referencia
+  /// (combustible del vehículo o el más barato disponible) sea ≤ [fuelMaxPriceEur].
+  final bool fuelPriceFilterEnabled;
+
+  /// Precio máximo manual en €/L (introducido por el usuario).
+  final double? fuelMaxPriceEur;
+
   final bool fuelVoiceEnabled;
   final double fuelAnnounceMeters;
 
@@ -56,6 +66,32 @@ class AlertPreferences extends Equatable {
   static const radarAnnounceOptions = <double>[800, 500, 350, 200, 150, 90, 50];
   static const fuelAnnounceOptions = <double>[500, 800, 1200, 2000];
   static const tollAnnounceOptions = <double>[400, 800, 1200];
+
+  /// Precio máximo aplicado al filtrar gasolineras en ruta.
+  double? get activeFuelMaxPriceEur {
+    if (!fuelPriceFilterEnabled) {
+      return null;
+    }
+    final price = fuelMaxPriceEur;
+    if (price == null || price <= 0) {
+      return null;
+    }
+    return price;
+  }
+
+  /// Parsea texto manual (admite coma o punto decimal).
+  static double? parseFuelMaxPriceInput(String raw) {
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) {
+      return null;
+    }
+    final normalized = trimmed.replaceAll(',', '.');
+    final value = double.tryParse(normalized);
+    if (value == null || value <= 0 || value > 9.99) {
+      return null;
+    }
+    return value;
+  }
 
   /// Distancia máxima: cuándo mostrar el banner HUD.
   double get radarHudMeters {
@@ -127,6 +163,8 @@ class AlertPreferences extends Equatable {
         tollsEnabled ? '1' : '0',
         curvesEnabled ? '1' : '0',
         fuelShowPrice ? '1' : '0',
+        fuelPriceFilterEnabled ? '1' : '0',
+        fuelMaxPriceEur?.toStringAsFixed(3) ?? 'none',
       ].join();
 
   static List<double> _normalizeDistances(Iterable<double> raw) {
@@ -151,6 +189,9 @@ class AlertPreferences extends Equatable {
     bool? fuelEnabled,
     bool? fuelShowOnMap,
     bool? fuelShowPrice,
+    bool? fuelPriceFilterEnabled,
+    double? fuelMaxPriceEur,
+    bool clearFuelMaxPriceEur = false,
     bool? fuelVoiceEnabled,
     double? fuelAnnounceMeters,
     bool? tollsEnabled,
@@ -171,6 +212,11 @@ class AlertPreferences extends Equatable {
       fuelEnabled: fuelEnabled ?? this.fuelEnabled,
       fuelShowOnMap: fuelShowOnMap ?? this.fuelShowOnMap,
       fuelShowPrice: fuelShowPrice ?? this.fuelShowPrice,
+      fuelPriceFilterEnabled:
+          fuelPriceFilterEnabled ?? this.fuelPriceFilterEnabled,
+      fuelMaxPriceEur: clearFuelMaxPriceEur
+          ? null
+          : (fuelMaxPriceEur ?? this.fuelMaxPriceEur),
       fuelVoiceEnabled: fuelVoiceEnabled ?? this.fuelVoiceEnabled,
       fuelAnnounceMeters: fuelAnnounceMeters ?? this.fuelAnnounceMeters,
       tollsEnabled: tollsEnabled ?? this.tollsEnabled,
@@ -191,6 +237,8 @@ class AlertPreferences extends Equatable {
         'fuelEnabled': fuelEnabled,
         'fuelShowOnMap': fuelShowOnMap,
         'fuelShowPrice': fuelShowPrice,
+        'fuelPriceFilterEnabled': fuelPriceFilterEnabled,
+        if (fuelMaxPriceEur != null) 'fuelMaxPriceEur': fuelMaxPriceEur,
         'fuelVoiceEnabled': fuelVoiceEnabled,
         'fuelAnnounceMeters': fuelAnnounceMeters,
         'tollsEnabled': tollsEnabled,
@@ -250,6 +298,17 @@ class AlertPreferences extends Equatable {
       fuelEnabled: flag('fuelEnabled', true),
       fuelShowOnMap: flag('fuelShowOnMap', true),
       fuelShowPrice: flag('fuelShowPrice', true),
+      fuelPriceFilterEnabled: flag(
+        'fuelPriceFilterEnabled',
+        json['fuelMaxPriceEur'] is num,
+      ),
+      fuelMaxPriceEur: () {
+        final v = json['fuelMaxPriceEur'];
+        if (v is num && v > 0) {
+          return v.toDouble();
+        }
+        return null;
+      }(),
       fuelVoiceEnabled: flag('fuelVoiceEnabled', false),
       fuelAnnounceMeters: meters(
         'fuelAnnounceMeters',
@@ -277,6 +336,8 @@ class AlertPreferences extends Equatable {
         fuelEnabled,
         fuelShowOnMap,
         fuelShowPrice,
+        fuelPriceFilterEnabled,
+        fuelMaxPriceEur,
         fuelVoiceEnabled,
         fuelAnnounceMeters,
         tollsEnabled,

@@ -16,6 +16,7 @@ import 'package:loc_motos/features/navigation/presentation/widgets/destination_s
 import 'package:loc_motos/features/navigation/presentation/widgets/itinerary_sheet.dart';
 import 'package:loc_motos/features/navigation/presentation/widgets/map_network_resume_binder.dart';
 import 'package:loc_motos/features/navigation/presentation/widgets/navigation_map_zoom_controls.dart';
+import 'package:loc_motos/features/navigation/presentation/widgets/navigation_map_my_location_button.dart';
 import 'package:loc_motos/features/navigation/presentation/widgets/navigation_planner_map.dart';
 import 'package:loc_motos/features/navigation/presentation/widgets/offline_map_banner.dart';
 import 'package:loc_motos/features/tracking/presentation/providers/tracking_providers.dart';
@@ -38,6 +39,7 @@ class _NavigationHubScreenState extends ConsumerState<NavigationHubScreen> {
   String? _gpsOriginKey;
   MapLibreMapController? _mapController;
   var _stopSeq = 0;
+  var _mapFollowEpoch = 0;
 
   String _nextStopId() => 'stop_${_stopSeq++}_${DateTime.now().microsecondsSinceEpoch}';
 
@@ -305,6 +307,63 @@ class _NavigationHubScreenState extends ConsumerState<NavigationHubScreen> {
     }
   }
 
+  Future<void> _importGpx() async {
+    try {
+      final stops = await ref.read(routeGpxServiceProvider).pickAndParse();
+      if (stops == null || !mounted) {
+        return;
+      }
+      // Limitar paradas para no saturar Valhalla / la preview.
+      const maxStops = 5;
+      final trimmed = stops.length <= maxStops
+          ? stops
+          : [
+              stops.first,
+              ...stops.sublist(1, stops.length - 1).take(maxStops - 2),
+              stops.last,
+            ];
+      setState(() {
+        _originFollowsGps = false;
+        _gpsOriginKey = null;
+        _itinerary = RouteItinerary(
+          stops: [
+            for (final stop in trimmed)
+              RouteItineraryStop(
+                id: _nextStopId(),
+                label: stop.label,
+                point: stop.point,
+              ),
+          ],
+        );
+      });
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'GPX importado: ${trimmed.length} punto'
+            '${trimmed.length == 1 ? '' : 's'}. Pulsa Ver ruta.',
+          ),
+        ),
+      );
+    } on FormatException catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se pudo importar el GPX.')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final own = ref.watch(ownDevicePositionProvider);
@@ -345,6 +404,7 @@ class _NavigationHubScreenState extends ConsumerState<NavigationHubScreen> {
                   stops: _itinerary.stops,
                   latitude: own?.lat,
                   longitude: own?.lng,
+                  followEpoch: _mapFollowEpoch,
                   onMapLongPress: _addStopFromMap,
                   onControllerReady: (controller) {
                     if (_mapController == controller) {
@@ -440,9 +500,18 @@ class _NavigationHubScreenState extends ConsumerState<NavigationHubScreen> {
                           onSelected: (value) {
                             if (value == 'resume') {
                               unawaited(_resumeOffline());
+                            } else if (value == 'import_gpx') {
+                              unawaited(_importGpx());
                             }
                           },
                           itemBuilder: (context) => [
+                            appPopupMenuItem(
+                              value: 'import_gpx',
+                              icon: Icons.upload_file_rounded,
+                              label: 'Importar GPX',
+                              tint: Theme.of(context).colorScheme.primary,
+                              padding: const EdgeInsets.fromLTRB(8, 4, 8, 6),
+                            ),
                             appPopupMenuItem(
                               value: 'resume',
                               icon: Icons.history_rounded,
@@ -467,8 +536,22 @@ class _NavigationHubScreenState extends ConsumerState<NavigationHubScreen> {
                   Positioned(
                     top: top + 72,
                     right: 12,
-                    child: NavigationMapZoomControls(
-                      controller: _mapController!,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        NavigationMapZoomControls(
+                          controller: _mapController!,
+                        ),
+                        const SizedBox(height: 8),
+                        NavigationMapMyLocationButton(
+                          enabled: own != null,
+                          onPressed: own == null
+                              ? null
+                              : () {
+                                  setState(() => _mapFollowEpoch++);
+                                },
+                        ),
+                      ],
                     ),
                   ),
                 if (_itinerary.stops.length >= 2)
@@ -533,22 +616,45 @@ class _PlacePickerSheetState extends ConsumerState<_PlacePickerSheet> {
   final _controller = TextEditingController();
   final _focus = FocusNode();
   List<GeocodingPlace> _recents = const [];
+  List<GeocodingPlace> _favorites = const [];
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _focus.requestFocus();
-      unawaited(_loadRecents());
+      unawaited(_loadLists());
     });
   }
 
-  Future<void> _loadRecents() async {
-    final items = await ref.read(recentPlacesRepositoryProvider).list();
+  Future<void> _loadLists() async {
+    final recentRepo = ref.read(recentPlacesRepositoryProvider);
+    final favoriteRepo = ref.read(favoritePlacesRepositoryProvider);
+    final recents = await recentRepo.list();
+    final favorites = await favoriteRepo.list();
     if (!mounted) {
       return;
     }
-    setState(() => _recents = items);
+    setState(() {
+      _recents = recents;
+      _favorites = favorites;
+    });
+  }
+
+  bool _isFavorite(GeocodingPlace place) => _favorites.any(
+        (item) =>
+            item.location.lat == place.location.lat &&
+            item.location.lng == place.location.lng,
+      );
+
+  Future<void> _toggleFavorite(GeocodingPlace place) async {
+    await ref.read(favoritePlacesRepositoryProvider).toggle(place);
+    final favorites =
+        await ref.read(favoritePlacesRepositoryProvider).list();
+    if (!mounted) {
+      return;
+    }
+    setState(() => _favorites = favorites);
   }
 
   @override
@@ -561,6 +667,7 @@ class _PlacePickerSheetState extends ConsumerState<_PlacePickerSheet> {
   @override
   Widget build(BuildContext context) {
     final bottom = MediaQuery.viewInsetsOf(context).bottom;
+    final colors = Theme.of(context).colorScheme;
     return Padding(
       padding: EdgeInsets.only(bottom: bottom),
       child: DraggableScrollableSheet(
@@ -570,7 +677,7 @@ class _PlacePickerSheetState extends ConsumerState<_PlacePickerSheet> {
         maxChildSize: 0.95,
         builder: (context, scrollController) {
           return Material(
-            color: Theme.of(context).colorScheme.surface,
+            color: colors.surface,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
             child: ListView(
               controller: scrollController,
@@ -581,7 +688,7 @@ class _PlacePickerSheetState extends ConsumerState<_PlacePickerSheet> {
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.outlineVariant,
+                      color: colors.outlineVariant,
                       borderRadius: BorderRadius.circular(999),
                     ),
                   ),
@@ -600,7 +707,35 @@ class _PlacePickerSheetState extends ConsumerState<_PlacePickerSheet> {
                   enabled: true,
                   labelText: widget.title,
                   onSelected: (place) => Navigator.pop(context, place),
+                  isFavorite: _isFavorite,
+                  onToggleFavorite: (place) => unawaited(_toggleFavorite(place)),
                 ),
+                if (_favorites.isNotEmpty) ...[
+                  const SizedBox(height: 20),
+                  Text(
+                    'Favoritos',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: 4),
+                  for (final place in _favorites)
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(Icons.star_rounded, color: colors.primary),
+                      title: Text(place.primaryLine),
+                      subtitle: place.contextLine == null
+                          ? null
+                          : Text(place.contextLine!),
+                      trailing: IconButton(
+                        tooltip: 'Quitar de favoritos',
+                        icon: Icon(
+                          Icons.close_rounded,
+                          color: colors.onSurfaceVariant,
+                        ),
+                        onPressed: () => unawaited(_toggleFavorite(place)),
+                      ),
+                      onTap: () => Navigator.pop(context, place),
+                    ),
+                ],
                 if (_recents.isNotEmpty) ...[
                   const SizedBox(height: 20),
                   Row(
@@ -615,8 +750,7 @@ class _PlacePickerSheetState extends ConsumerState<_PlacePickerSheet> {
                         onPressed: () => unawaited(_clearRecents()),
                         style: TextButton.styleFrom(
                           visualDensity: VisualDensity.compact,
-                          foregroundColor:
-                              Theme.of(context).colorScheme.error,
+                          foregroundColor: colors.error,
                         ),
                         child: const Text('Borrar todos'),
                       ),
@@ -631,15 +765,33 @@ class _PlacePickerSheetState extends ConsumerState<_PlacePickerSheet> {
                       subtitle: place.contextLine == null
                           ? null
                           : Text(place.contextLine!),
-                      trailing: IconButton(
-                        tooltip: 'Quitar de recientes',
-                        icon: Icon(
-                          Icons.close_rounded,
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onSurfaceVariant,
-                        ),
-                        onPressed: () => unawaited(_removeRecent(place)),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            tooltip: _isFavorite(place)
+                                ? 'Quitar de favoritos'
+                                : 'Guardar en favoritos',
+                            icon: Icon(
+                              _isFavorite(place)
+                                  ? Icons.star_rounded
+                                  : Icons.star_border_rounded,
+                              color: _isFavorite(place)
+                                  ? colors.primary
+                                  : colors.onSurfaceVariant,
+                            ),
+                            onPressed: () =>
+                                unawaited(_toggleFavorite(place)),
+                          ),
+                          IconButton(
+                            tooltip: 'Quitar de recientes',
+                            icon: Icon(
+                              Icons.close_rounded,
+                              color: colors.onSurfaceVariant,
+                            ),
+                            onPressed: () => unawaited(_removeRecent(place)),
+                          ),
+                        ],
                       ),
                       onTap: () => Navigator.pop(context, place),
                     ),

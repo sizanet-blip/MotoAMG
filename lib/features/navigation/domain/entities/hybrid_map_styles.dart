@@ -6,11 +6,15 @@ class HybridMapStyles extends Equatable {
   const HybridMapStyles({
     required this.onlineStyle,
     required this.unavailableStyle,
+    this.onlineStyleDark,
     this.offline = const [],
   });
 
-  /// Fuera de todas las CCAA (p. ej. Portugal), con red.
+  /// Fuera de todas las CCAA (p. ej. Portugal), con red — día.
   final String onlineStyle;
+
+  /// Estilo oscuro online (noche / HUD).
+  final String? onlineStyleDark;
 
   /// Sin red y sin pack local para ese punto.
   final String unavailableStyle;
@@ -31,11 +35,16 @@ class HybridMapStyles extends Equatable {
 
   /// Mismo estilo Protomaps en toda España: archivo local si está descargado,
   /// o PMTiles del servidor si hay red. Fuera de CCAA → [onlineStyle].
+  /// Con [preferDark] y red → estilo oscuro online (legible de noche).
   String resolve(
     double latitude,
     double longitude, {
     required bool hasNetwork,
+    bool preferDark = false,
   }) {
+    if (preferDark && hasNetwork) {
+      return onlineStyleDark ?? onlineStyle;
+    }
     for (final region in offline) {
       if (!region.bounds.contains(latitude, longitude)) {
         continue;
@@ -54,7 +63,8 @@ class HybridMapStyles extends Equatable {
   }
 
   @override
-  List<Object?> get props => [onlineStyle, unavailableStyle, offline];
+  List<Object?> get props =>
+      [onlineStyle, onlineStyleDark, unavailableStyle, offline];
 }
 
 class OfflineMapStyle extends Equatable {

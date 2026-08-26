@@ -40,6 +40,27 @@ class SpainFuelDownloadResult {
   final bool cancelled;
 }
 
+/// Gasolinera elegida como parada inteligente (más barata en ruta).
+class CheapestFuelStop {
+  const CheapestFuelStop({
+    required this.point,
+    required this.displayName,
+    required this.priceLabel,
+    required this.price,
+    required this.distanceAlongRouteMeters,
+    required this.fuelShort,
+  });
+
+  final GeoPoint point;
+  final String displayName;
+  final String priceLabel;
+  final double price;
+  final double distanceAlongRouteMeters;
+  final String fuelShort;
+
+  String get stopLabel => '$displayName · $fuelShort $priceLabel';
+}
+
 class _FuelStation {
   const _FuelStation({
     required this.id,
@@ -157,6 +178,7 @@ class SpainFuelDatasource {
   Future<List<RouteAlert>> fetchFuelNearRoute(
     List<GeoPoint> polyline, {
     VehicleFuelType? preferredFuel,
+    double? maxPriceEur,
   }) async {
     if (polyline.length < 2) {
       return const [];
@@ -181,6 +203,15 @@ class SpainFuelDatasource {
       if (projected == null || projected.distanceToRoute > buffer) {
         continue;
       }
+      if (maxPriceEur != null) {
+        final priced = _pickComparablePrice(
+          station.prices,
+          preferredFuel?.priceKey,
+        );
+        if (priced == null || priced.price > maxPriceEur) {
+          continue;
+        }
+      }
       final key =
           'fuel_${projected.alongMeters.round()}_${station.point.lat.toStringAsFixed(4)}';
       if (!seen.add(key)) {
@@ -202,6 +233,146 @@ class SpainFuelDatasource {
           a.distanceAlongRouteMeters.compareTo(b.distanceAlongRouteMeters),
     );
     return alerts;
+  }
+
+  /// Elige la gasolinera más barata del combustible preferido cerca de la ruta.
+  ///
+  /// Sin preferencia usa gasolina 95; si no hay 95, el mínimo entre precios
+  /// habituales (98 / gasóleo).
+  Future<CheapestFuelStop?> findCheapestNearRoute(
+    List<GeoPoint> polyline, {
+    VehicleFuelType? preferredFuel,
+    double? maxPriceEur,
+  }) async {
+    if (polyline.length < 2) {
+      return null;
+    }
+    final inventory = await _loadInventory();
+    if (inventory.isEmpty) {
+      return null;
+    }
+    final buffer = NavigationConstants.routePoiBufferMeters;
+    final routeBox = _routeBbox(polyline, buffer / 111320.0);
+    final preferredKey = preferredFuel?.priceKey;
+
+    CheapestFuelStop? best;
+    for (final station in inventory) {
+      if (station.point.lat < routeBox.south ||
+          station.point.lat > routeBox.north ||
+          station.point.lng < routeBox.west ||
+          station.point.lng > routeBox.east) {
+        continue;
+      }
+      final projected = _projectOntoRoute(station.point, polyline);
+      if (projected == null || projected.distanceToRoute > buffer) {
+        continue;
+      }
+      final priced = _pickComparablePrice(station.prices, preferredKey);
+      if (priced == null) {
+        continue;
+      }
+      if (maxPriceEur != null && priced.price > maxPriceEur) {
+        continue;
+      }
+      final title = (station.brand ?? station.name).trim();
+      final candidate = CheapestFuelStop(
+        point: station.point,
+        displayName: title.isEmpty ? 'Gasolinera' : title,
+        priceLabel: _formatPrice(priced.price),
+        price: priced.price,
+        distanceAlongRouteMeters: projected.alongMeters,
+        fuelShort: _fuelShort(priced.key),
+      );
+      if (best == null ||
+          candidate.price < best.price ||
+          (candidate.price == best.price &&
+              candidate.distanceAlongRouteMeters <
+                  best.distanceAlongRouteMeters)) {
+        best = candidate;
+      }
+    }
+    return best;
+  }
+
+  /// Inserta [newPoint] entre waypoints según posición a lo largo de la ruta.
+  List<GeoPoint> insertStopAlongRoute({
+    required List<GeoPoint> polyline,
+    required List<GeoPoint> waypoints,
+    required GeoPoint newPoint,
+    required double alongMeters,
+  }) {
+    if (waypoints.isEmpty) {
+      return [newPoint];
+    }
+    final ranked = <({GeoPoint point, double along})>[
+      for (final wp in waypoints)
+        (
+          point: wp,
+          along: _projectOntoRoute(wp, polyline)?.alongMeters ??
+              double.infinity,
+        ),
+    ]..sort((a, b) => a.along.compareTo(b.along));
+
+    final next = <GeoPoint>[];
+    var inserted = false;
+    for (final item in ranked) {
+      if (!inserted && alongMeters <= item.along) {
+        if (_haversineMeters(item.point, newPoint) > 80) {
+          next.add(newPoint);
+        }
+        inserted = true;
+      }
+      if (_haversineMeters(item.point, newPoint) <= 80) {
+        continue;
+      }
+      next.add(item.point);
+    }
+    if (!inserted) {
+      next.add(newPoint);
+    }
+    return next;
+  }
+
+  ({String key, double price})? _pickComparablePrice(
+    Map<String, double> prices,
+    String? preferredKey,
+  ) {
+    if (preferredKey != null) {
+      final direct = prices[preferredKey];
+      if (direct != null) {
+        return (key: preferredKey, price: direct);
+      }
+      if (preferredKey == 'gasolina95') {
+        final e10 = prices['gasolina95e10'];
+        if (e10 != null) {
+          return (key: 'gasolina95e10', price: e10);
+        }
+      }
+      if (preferredKey == 'gasolina98') {
+        final e10 = prices['gasolina98e10'];
+        if (e10 != null) {
+          return (key: 'gasolina98e10', price: e10);
+        }
+      }
+    }
+    const fallbacks = [
+      'gasolina95',
+      'gasolina95e10',
+      'gasolina98',
+      'gasoleoA',
+      'gasoleoPremium',
+    ];
+    ({String key, double price})? cheapest;
+    for (final key in fallbacks) {
+      final value = prices[key];
+      if (value == null) {
+        continue;
+      }
+      if (cheapest == null || value < cheapest.price) {
+        cheapest = (key: key, price: value);
+      }
+    }
+    return cheapest;
   }
 
   String _labelFor(_FuelStation station, VehicleFuelType? preferredFuel) {

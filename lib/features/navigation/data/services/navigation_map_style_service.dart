@@ -8,39 +8,47 @@ import 'package:loc_motos/features/navigation/data/services/map_basemap_assets_s
 /// Resuelve qué estilo MapLibre usar en navegación (online vs PMTiles local).
 abstract final class NavigationMapStyleService {
   /// Subir al cambiar el parche de etiquetas (invalida caché en memoria).
-  static const _onlineStylePatchVersion = 2;
+  static const _onlineStylePatchVersion = 3;
 
   static String? _cachedOnlineStyleJson;
   static int? _cachedOnlineStyleVersion;
 
-  /// OpenFreeMap Liberty parcheado: refs/nombres de carretera a zoom más bajo.
+  /// OpenFreeMap Liberty/Dark parcheado: refs/nombres de carretera a zoom más bajo.
   /// Si falla la descarga del estilo, cae a la URL remota original.
-  static Future<String> onlineStyle() async {
+  static Future<String> onlineStyle({bool dark = false}) async {
+    final versionKey = dark ? _onlineStylePatchVersion * 10 + 1 : _onlineStylePatchVersion;
     final cached = _cachedOnlineStyleJson;
     if (cached != null &&
-        _cachedOnlineStyleVersion == _onlineStylePatchVersion) {
+        _cachedOnlineStyleVersion == versionKey &&
+        _cachedOnlineStyleDark == dark) {
       return cached;
     }
+    final url = dark
+        ? NavigationConstants.onlineNavigationStyleDarkUrl
+        : NavigationConstants.onlineNavigationStyleUrl;
     try {
       final response = await http
-          .get(Uri.parse(NavigationConstants.onlineNavigationStyleUrl))
+          .get(Uri.parse(url))
           .timeout(const Duration(seconds: 15));
       if (response.statusCode != 200) {
-        return NavigationConstants.onlineNavigationStyleUrl;
+        return url;
       }
       final decoded = jsonDecode(response.body);
       if (decoded is! Map<String, dynamic>) {
-        return NavigationConstants.onlineNavigationStyleUrl;
+        return url;
       }
       _patchOpenFreeMapRoadLabels(decoded);
       final encoded = jsonEncode(decoded);
       _cachedOnlineStyleJson = encoded;
-      _cachedOnlineStyleVersion = _onlineStylePatchVersion;
+      _cachedOnlineStyleVersion = versionKey;
+      _cachedOnlineStyleDark = dark;
       return encoded;
     } catch (_) {
-      return NavigationConstants.onlineNavigationStyleUrl;
+      return url;
     }
   }
+
+  static bool? _cachedOnlineStyleDark;
 
   /// Sin teselas: fuera de packs offline y sin red (evita caché engañosa).
   static String unavailableStyle() => jsonEncode({

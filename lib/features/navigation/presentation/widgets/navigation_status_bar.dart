@@ -17,6 +17,11 @@ class NavigationStatusBar extends StatelessWidget {
   final Duration remaining;
   final String distanceLabel;
 
+  bool get _overspeed {
+    final limit = speedLimitKmh;
+    return limit != null && limit > 0 && speedKmh > limit + 1;
+  }
+
   @override
   Widget build(BuildContext context) {
     final etaText =
@@ -24,12 +29,21 @@ class NavigationStatusBar extends StatelessWidget {
     final remainingText =
         '${remaining.inHours > 0 ? '${remaining.inHours} h ' : ''}'
         '${remaining.inMinutes.remainder(60)} min';
+    final overspeed = _overspeed;
 
-    return DecoratedBox(
-      decoration: const BoxDecoration(
-        color: NavigationHudTheme.panel,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        boxShadow: [NavigationHudTheme.panelShadow],
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 220),
+      decoration: BoxDecoration(
+        color: overspeed
+            ? const Color(0xFF3B1010)
+            : NavigationHudTheme.panel,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        boxShadow: const [NavigationHudTheme.panelShadow],
+        border: overspeed
+            ? const Border(
+                top: BorderSide(color: Color(0xFFFF5252), width: 3),
+              )
+            : null,
       ),
       child: SafeArea(
         top: false,
@@ -37,25 +51,24 @@ class NavigationStatusBar extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(12, 16, 12, 12),
           child: Row(
             children: [
-              _StatBlock(
-                label: 'Velocidad',
-                value: '${speedKmh.round()}',
-                unit: 'km/h',
-                highlight: speedLimitKmh != null && speedKmh > speedLimitKmh!,
+              _SpeedBlock(
+                speedKmh: speedKmh,
+                speedLimitKmh: speedLimitKmh,
+                overspeed: overspeed,
               ),
-              _Divider(),
+              _Divider(overspeed: overspeed),
               _StatBlock(
                 label: 'Límite',
                 value: speedLimitKmh?.toString() ?? '—',
                 unit: 'km/h',
               ),
-              _Divider(),
+              _Divider(overspeed: overspeed),
               _StatBlock(
                 label: 'Llegada',
                 value: etaText,
                 unit: remainingText,
               ),
-              _Divider(),
+              _Divider(overspeed: overspeed),
               _StatBlock(
                 label: 'Restante',
                 value: distanceLabel,
@@ -69,14 +82,92 @@ class NavigationStatusBar extends StatelessWidget {
   }
 }
 
+class _SpeedBlock extends StatelessWidget {
+  const _SpeedBlock({
+    required this.speedKmh,
+    required this.speedLimitKmh,
+    required this.overspeed,
+  });
+
+  final double speedKmh;
+  final int? speedLimitKmh;
+  final bool overspeed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+        decoration: BoxDecoration(
+          color: overspeed
+              ? const Color(0xFFFF5252).withValues(alpha: 0.22)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          border: overspeed
+              ? Border.all(color: const Color(0xFFFF5252), width: 1.5)
+              : null,
+        ),
+        child: Column(
+          children: [
+            Text(
+              overspeed ? 'Exceso' : 'Velocidad',
+              style: TextStyle(
+                color: overspeed
+                    ? const Color(0xFFFF8A80)
+                    : NavigationHudTheme.textSecondary,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.2,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '${speedKmh.round()}',
+              style: TextStyle(
+                color: overspeed
+                    ? const Color(0xFFFF5252)
+                    : NavigationHudTheme.textPrimary,
+                fontSize: overspeed ? 26 : 20,
+                fontWeight: FontWeight.w800,
+                height: 1.05,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              speedLimitKmh != null && speedLimitKmh! > 0
+                  ? 'km/h · máx $speedLimitKmh'
+                  : 'km/h',
+              style: TextStyle(
+                color: overspeed
+                    ? const Color(0xFFFF8A80)
+                    : NavigationHudTheme.textSecondary,
+                fontSize: 11,
+                fontWeight: overspeed ? FontWeight.w600 : FontWeight.w400,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _Divider extends StatelessWidget {
+  const _Divider({this.overspeed = false});
+
+  final bool overspeed;
+
   @override
   Widget build(BuildContext context) {
     return Container(
       width: 1,
       height: 44,
       margin: const EdgeInsets.symmetric(horizontal: 4),
-      color: NavigationHudTheme.panelElevated,
+      color: overspeed
+          ? const Color(0xFFFF5252).withValues(alpha: 0.35)
+          : NavigationHudTheme.panelElevated,
     );
   }
 }
@@ -86,13 +177,11 @@ class _StatBlock extends StatelessWidget {
     required this.label,
     required this.value,
     required this.unit,
-    this.highlight = false,
   });
 
   final String label;
   final String value;
   final String unit;
-  final bool highlight;
 
   @override
   Widget build(BuildContext context) {
@@ -111,8 +200,8 @@ class _StatBlock extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             value,
-            style: TextStyle(
-              color: highlight ? const Color(0xFFFF5252) : NavigationHudTheme.textPrimary,
+            style: const TextStyle(
+              color: NavigationHudTheme.textPrimary,
               fontSize: 20,
               fontWeight: FontWeight.w700,
               height: 1.1,

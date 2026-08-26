@@ -14,6 +14,7 @@ class NavigationPlannerMap extends StatefulWidget {
     required this.stops,
     this.latitude,
     this.longitude,
+    this.followEpoch = 0,
     this.onMapLongPress,
     this.onControllerReady,
   });
@@ -23,6 +24,9 @@ class NavigationPlannerMap extends StatefulWidget {
   final List<RouteItineraryStop> stops;
   final double? latitude;
   final double? longitude;
+
+  /// Se incrementa al pulsar “mi ubicación” para recentrar y reactivar seguimiento.
+  final int followEpoch;
   final void Function(LatLng point)? onMapLongPress;
   final ValueChanged<MapLibreMapController>? onControllerReady;
 
@@ -74,7 +78,11 @@ class _NavigationPlannerMapState extends State<NavigationPlannerMap> {
     }
     final moved = oldWidget.latitude != widget.latitude ||
         oldWidget.longitude != widget.longitude;
-    if (moved && !_userMovedCamera) {
+    if (oldWidget.followEpoch != widget.followEpoch) {
+      _userMovedCamera = false;
+      unawaited(_followGps());
+      unawaited(_syncPuck());
+    } else if (moved && !_userMovedCamera) {
       unawaited(_followGps());
       unawaited(_syncPuck());
     } else if (moved) {

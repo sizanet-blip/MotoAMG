@@ -12,6 +12,9 @@ import 'package:loc_motos/features/navigation/data/repositories/geocoding_reposi
 import 'package:loc_motos/features/navigation/data/repositories/map_region_repository_impl.dart';
 import 'package:loc_motos/features/navigation/data/repositories/navigation_repository_impl.dart';
 import 'package:loc_motos/features/navigation/data/repositories/alert_preferences_repository.dart';
+import 'package:loc_motos/features/navigation/data/repositories/hud_safety_repository.dart';
+import 'package:loc_motos/features/navigation/data/repositories/map_appearance_repository.dart';
+import 'package:loc_motos/features/navigation/data/repositories/favorite_places_repository.dart';
 import 'package:loc_motos/features/navigation/data/repositories/recent_places_repository.dart';
 import 'package:loc_motos/features/navigation/data/repositories/route_preferences_repository.dart';
 import 'package:loc_motos/features/navigation/data/services/navigation_map_style_service.dart';
@@ -21,6 +24,7 @@ import 'package:loc_motos/features/navigation/data/datasources/spain_radar_datas
 import 'package:loc_motos/features/navigation/data/services/route_alerts_service.dart';
 import 'package:loc_motos/features/navigation/data/services/route_deviation_service.dart';
 import 'package:loc_motos/features/navigation/data/services/route_guidance_service.dart';
+import 'package:loc_motos/features/navigation/data/services/route_gpx_service.dart';
 import 'package:loc_motos/features/navigation/domain/entities/alert_preferences.dart';
 import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
 import 'package:loc_motos/features/navigation/domain/entities/hybrid_map_styles.dart';
@@ -47,6 +51,11 @@ final recentPlacesRepositoryProvider = Provider<RecentPlacesRepository>((ref) {
   return RecentPlacesRepository();
 });
 
+final favoritePlacesRepositoryProvider =
+    Provider<FavoritePlacesRepository>((ref) {
+  return FavoritePlacesRepository();
+});
+
 final routePreferencesRepositoryProvider =
     Provider<RoutePreferencesRepository>((ref) {
   return RoutePreferencesRepository();
@@ -66,6 +75,37 @@ final alertPreferencesProvider =
     NotifierProvider<AlertPreferencesController, AlertPreferences>(
   AlertPreferencesController.new,
 );
+
+final mapAppearanceRepositoryProvider = Provider<MapAppearanceRepository>((ref) {
+  return MapAppearanceRepository();
+});
+
+final mapAppearanceProvider =
+    NotifierProvider<MapAppearanceController, MapAppearancePreferences>(
+  MapAppearanceController.new,
+);
+
+final hudSafetyRepositoryProvider = Provider<HudSafetyRepository>((ref) {
+  return HudSafetyRepository();
+});
+
+final hudSafetyProvider =
+    NotifierProvider<HudSafetyController, HudSafetyPreferences>(
+  HudSafetyController.new,
+);
+
+/// Preferencia de mapa oscuro efectiva (modo + amanecer/atardecer + GPS).
+final effectiveMapDarkProvider = Provider<bool>((ref) {
+  final mode = ref.watch(mapAppearanceProvider).mode;
+  final own = ref.watch(ownDevicePositionProvider);
+  return mode.prefersDarkNow(
+    latitude: own?.lat,
+    longitude: own?.lng,
+  );
+});
+
+/// Silencio de voz solo durante la sesión de navegación (HUD).
+final navigationVoiceMutedProvider = StateProvider<bool>((ref) => false);
 
 /// Id del vehículo elegido para planificar (`null` = sin vehículo / moto por defecto).
 final navigationVehicleIdProvider = StateProvider<String?>((ref) => null);
@@ -134,6 +174,63 @@ class AlertPreferencesController extends Notifier<AlertPreferences> {
   Future<void> reset() => _persist(AlertPreferences.defaults);
 }
 
+class MapAppearanceController extends Notifier<MapAppearancePreferences> {
+  @override
+  MapAppearancePreferences build() {
+    Future.microtask(_hydrate);
+    return MapAppearancePreferences.defaults;
+  }
+
+  Future<void> _hydrate() async {
+    final loaded = await ref.read(mapAppearanceRepositoryProvider).load();
+    state = loaded;
+  }
+
+  Future<void> setMode(MapAppearanceMode mode) async {
+    state = state.copyWith(mode: mode);
+    await ref.read(mapAppearanceRepositoryProvider).save(state);
+  }
+
+  Future<void> cycleMode() {
+    final next = switch (state.mode) {
+      MapAppearanceMode.auto => MapAppearanceMode.day,
+      MapAppearanceMode.day => MapAppearanceMode.night,
+      MapAppearanceMode.night => MapAppearanceMode.auto,
+    };
+    return setMode(next);
+  }
+}
+
+class HudSafetyController extends Notifier<HudSafetyPreferences> {
+  @override
+  HudSafetyPreferences build() {
+    Future.microtask(_hydrate);
+    return HudSafetyPreferences.defaults;
+  }
+
+  Future<void> _hydrate() async {
+    final loaded = await ref.read(hudSafetyRepositoryProvider).load();
+    state = loaded;
+  }
+
+  Future<void> _persist(HudSafetyPreferences next) async {
+    state = next;
+    await ref.read(hudSafetyRepositoryProvider).save(next);
+  }
+
+  Future<void> setKeepScreenOn(bool value) {
+    return _persist(state.copyWith(keepScreenOn: value));
+  }
+
+  Future<void> setHighBrightness(bool value) {
+    return _persist(state.copyWith(highBrightness: value));
+  }
+
+  Future<void> setHelmetMode(bool value) {
+    return _persist(state.copyWith(helmetMode: value));
+  }
+}
+
 final mapRegionRepositoryProvider = Provider<MapRegionRepository>((ref) {
   return MapRegionRepositoryImpl();
 });
@@ -163,6 +260,10 @@ final routeAlertsServiceProvider = Provider<RouteAlertsService>((ref) {
     spainFuel: ref.watch(spainFuelDatasourceProvider),
     spainRadars: ref.watch(spainRadarDatasourceProvider),
   );
+});
+
+final routeGpxServiceProvider = Provider<RouteGpxService>((ref) {
+  return RouteGpxService();
 });
 
 final spainRadarCacheStatusProvider =
@@ -454,6 +555,7 @@ final hybridMapStylesProvider = FutureProvider<HybridMapStyles>((ref) async {
   }
   return HybridMapStyles(
     onlineStyle: await NavigationMapStyleService.onlineStyle(),
+    onlineStyleDark: await NavigationMapStyleService.onlineStyle(dark: true),
     unavailableStyle: NavigationMapStyleService.unavailableStyle(),
     offline: coverage,
   );
@@ -595,7 +697,9 @@ class NavigationSessionController extends Notifier<AsyncValue<void>> {
     state = const AsyncData(null);
   }
 
-  Future<void> announceManeuver(String instruction) {
+  Future<void> announceManeuver(String instruction) async {
+    final muted = ref.read(navigationVoiceMutedProvider);
+    await _voice.setMuted(muted);
     return _voice.speak(instruction);
   }
 

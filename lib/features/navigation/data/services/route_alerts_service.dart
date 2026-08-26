@@ -52,6 +52,7 @@ class RouteAlertsService {
         _spainFuel.fetchFuelNearRoute(
           route.polyline,
           preferredFuel: preferredFuel,
+          maxPriceEur: preferences.activeFuelMaxPriceEur,
         )
       else
         Future.value(const <RouteAlert>[]),

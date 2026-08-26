@@ -25,6 +25,8 @@ class DestinationSearchField extends ConsumerStatefulWidget {
         'Escribe calle, número y ciudad. Ej.: Calle Previsión Social 9, Zaragoza',
     this.selectedPlace,
     this.onUseGps,
+    this.isFavorite,
+    this.onToggleFavorite,
   });
 
   final TextEditingController controller;
@@ -38,6 +40,10 @@ class DestinationSearchField extends ConsumerStatefulWidget {
   final String exampleHint;
   final GeocodingPlace? selectedPlace;
   final VoidCallback? onUseGps;
+
+  /// Si se define junto a [onToggleFavorite], muestra estrella en sugerencias.
+  final bool Function(GeocodingPlace place)? isFavorite;
+  final ValueChanged<GeocodingPlace>? onToggleFavorite;
 
   @override
   ConsumerState<DestinationSearchField> createState() =>
@@ -399,6 +405,10 @@ class _DestinationSearchFieldState extends ConsumerState<DestinationSearchField>
                     place: _suggestions[i],
                     enabled: widget.enabled,
                     showDivider: i < _suggestions.length - 1,
+                    isFavorite: widget.isFavorite?.call(_suggestions[i]),
+                    onToggleFavorite: widget.onToggleFavorite == null
+                        ? null
+                        : () => widget.onToggleFavorite!(_suggestions[i]),
                     onTap: () => _select(_suggestions[i]),
                   ),
               ],
@@ -428,26 +438,32 @@ class _SuggestionTile extends StatelessWidget {
     required this.enabled,
     required this.showDivider,
     required this.onTap,
+    this.isFavorite,
+    this.onToggleFavorite,
   });
 
   final GeocodingPlace place;
   final bool enabled;
   final bool showDivider;
   final VoidCallback onTap;
+  final bool? isFavorite;
+  final VoidCallback? onToggleFavorite;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
+    final favorite = isFavorite == true;
 
     return Column(
       children: [
         InkWell(
           onTap: enabled ? onTap : null,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             child: Row(
               children: [
+                const SizedBox(width: 8),
                 Icon(
                   Icons.north_west,
                   size: 16,
@@ -455,13 +471,27 @@ class _SuggestionTile extends StatelessWidget {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Text(
-                    place.displayLine,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodyMedium,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 7),
+                    child: Text(
+                      place.displayLine,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodyMedium,
+                    ),
                   ),
                 ),
+                if (onToggleFavorite != null)
+                  IconButton(
+                    tooltip: favorite
+                        ? 'Quitar de favoritos'
+                        : 'Guardar en favoritos',
+                    onPressed: enabled ? onToggleFavorite : null,
+                    icon: Icon(
+                      favorite ? Icons.star_rounded : Icons.star_border_rounded,
+                      color: favorite ? colors.primary : colors.onSurfaceVariant,
+                    ),
+                  ),
               ],
             ),
           ),

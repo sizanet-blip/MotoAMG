@@ -214,11 +214,26 @@ abstract final class NavigationConstants {
   static const String recentPlacesKey = 'items';
   static const int recentPlacesMaxEntries = 8;
 
+  static const String favoritePlacesBox = 'navigation_favorite_places';
+  static const String favoritePlacesKey = 'items';
+  static const int favoritePlacesMaxEntries = 30;
+
   static const String routePreferencesBox = 'navigation_route_preferences';
   static const String routePreferencesKey = 'prefs';
 
   static const String alertPreferencesBox = 'navigation_alert_preferences';
   static const String alertPreferencesKey = 'prefs_v1';
+
+  static const String mapAppearanceBox = 'navigation_map_appearance';
+  static const String mapAppearanceKey = 'mode_v1';
+
+  static const String hudSafetyBox = 'navigation_hud_safety';
+  static const String hudSafetyKey = 'prefs_v1';
+
+  /// Estilo online nocturno (OpenFreeMap Fiord: oscuro suave, legible en ruta).
+  /// Evitamos "Dark" puro: queda casi negro y poco útil para navegar.
+  static const String onlineNavigationStyleDarkUrl =
+      'https://tiles.openfreemap.org/styles/fiord';
 
   /// Distancia HUD por defecto para peajes (metros).
   static const double tollAnnounceMeters = 800;

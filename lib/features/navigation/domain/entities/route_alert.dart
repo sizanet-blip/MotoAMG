@@ -44,6 +44,14 @@ extension RadarKindX on RadarKind {
         RadarKind.trailer => 'Radar remolque',
         RadarKind.unknown => 'Radar',
       };
+
+  /// Color del marcador en mapa / chip HUD.
+  int get mapColorArgb => switch (this) {
+        RadarKind.fixed => 0xFFC62828,
+        RadarKind.section => 0xFFE65100,
+        RadarKind.trailer => 0xFF6A1B9A,
+        RadarKind.unknown => 0xFFB71C1C,
+      };
 }
 
 extension RouteAlertTypeX on RouteAlertType {

@@ -6,6 +6,7 @@ import 'package:loc_motos/core/constants/navigation_constants.dart';
 import 'package:loc_motos/core/utils/distance_format.dart';
 import 'package:loc_motos/core/utils/navigation_bearing.dart';
 import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
+import 'package:loc_motos/features/navigation/data/repositories/map_appearance_repository.dart';
 import 'package:loc_motos/features/navigation/data/services/route_alerts_service.dart';
 import 'package:loc_motos/features/navigation/data/services/route_guidance_service.dart';
 import 'package:loc_motos/features/navigation/data/services/route_progress_simulator.dart';
@@ -26,6 +27,8 @@ import 'package:loc_motos/features/navigation/presentation/widgets/navigation_st
 import 'package:loc_motos/features/tracking/domain/entities/device_position.dart';
 import 'package:loc_motos/features/tracking/presentation/providers/tracking_providers.dart';
 import 'package:loc_motos/features/tracking/presentation/widgets/own_position_watcher.dart';
+import 'package:screen_brightness/screen_brightness.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 class NavigationHudScreen extends ConsumerStatefulWidget {
   const NavigationHudScreen({
@@ -75,6 +78,11 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
   final _announcedAlertIds = <String>{};
   final _announcedManeuverIndices = <int>{};
   var _arrivalAnnounced = false;
+  /// Si el usuario arrastra el mapa, deja de seguir el GPS hasta recentrar.
+  var _cameraFollowUser = true;
+  var _cameraFollowEpoch = 0;
+  double? _savedBrightness;
+  var _hudDisplayArmed = false;
 
   bool get _showSimulatorControls =>
       !_arrived && (_simulating || _simulator != null || !_hideSimulatorForRealNav);
@@ -94,6 +102,7 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
       });
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_armHudDisplay());
       unawaited(_restoreRealGpsPosition(updateGuidance: true));
       final maneuver = _route.maneuvers.elementAtOrNull(_maneuverIndex);
       if (maneuver != null) {
@@ -104,6 +113,40 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
         );
       }
     });
+  }
+
+  Future<void> _armHudDisplay() async {
+    if (_hudDisplayArmed) {
+      return;
+    }
+    _hudDisplayArmed = true;
+    final safety = ref.read(hudSafetyProvider);
+    try {
+      if (safety.keepScreenOn) {
+        await WakelockPlus.enable();
+      }
+      if (safety.highBrightness) {
+        _savedBrightness = await ScreenBrightness.instance.application;
+        await ScreenBrightness.instance.setApplicationScreenBrightness(1.0);
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _disarmHudDisplay() async {
+    if (!_hudDisplayArmed) {
+      return;
+    }
+    _hudDisplayArmed = false;
+    try {
+      await WakelockPlus.disable();
+      final saved = _savedBrightness;
+      if (saved != null) {
+        await ScreenBrightness.instance.setApplicationScreenBrightness(saved);
+      } else {
+        await ScreenBrightness.instance.resetApplicationScreenBrightness();
+      }
+    } catch (_) {}
+    _savedBrightness = null;
   }
 
   void _bootstrapGuidance(NavigationRoute route) {
@@ -223,6 +266,7 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
     _simulationTimer = null;
     _rerouteDebounceTimer?.cancel();
     _rerouteDebounceTimer = null;
+    unawaited(_disarmHudDisplay());
     try {
       ref.read(routeSimulationActiveProvider.notifier).state = false;
     } catch (_) {
@@ -700,6 +744,7 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
         _announcedAlertIds.clear();
         _announcedManeuverIndices.clear();
         _arrivalAnnounced = false;
+        _cameraFollowUser = true;
       });
 
       unawaited(_enrichActiveRouteAlerts());
@@ -874,8 +919,11 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
   }
 
   Future<void> _cleanupLeavingHud() async {
+    await _disarmHudDisplay();
     _stopSimulation(keepLastPosition: false);
     _rerouteDebounceTimer?.cancel();
+    ref.read(navigationVoiceMutedProvider.notifier).state = false;
+    unawaited(ref.read(navigationVoiceServiceProvider).setMuted(false));
     await ref.read(navigationSessionProvider.notifier).stopNavigation();
     await _restoreRealGpsPosition();
   }
@@ -967,7 +1015,16 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
                 longitude: own?.lng,
                 bearing: bearing,
                 pitch: NavigationConstants.defaultMapPitch,
+                cameraFollowUser: _cameraFollowUser,
+                cameraFollowEpoch: _cameraFollowEpoch,
+                onCameraFollowChanged: (following) {
+                  if (_cameraFollowUser == following) {
+                    return;
+                  }
+                  setState(() => _cameraFollowUser = following);
+                },
                 alertPreferences: ref.watch(alertPreferencesProvider),
+                preferDarkMap: ref.watch(effectiveMapDarkProvider),
                 puckStyle: resolveNavigationPuckStyle(
                   user: widget.user,
                   vehicleId: ref.watch(navigationVehicleIdProvider),
@@ -1063,29 +1120,68 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
                     ],
                   ),
                 ),
+              ],
+              if (!_arrived)
                 Positioned(
                   top: topInset + (showOffRouteBanner ? 64 : 8),
                   right: 12,
-                  child: Material(
-                    color: NavigationHudTheme.panel.withValues(alpha: 0.92),
-                    shape: const CircleBorder(),
-                    elevation: 3,
-                    child: InkWell(
-                      customBorder: const CircleBorder(),
-                      onTap: _stop,
-                      child: const SizedBox(
-                        width: 40,
-                        height: 40,
-                        child: Icon(
-                          Icons.close_rounded,
-                          color: NavigationHudTheme.textPrimary,
-                          size: 22,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      _HudRoundButton(
+                        tooltip: 'Cerrar navegación',
+                        icon: Icons.close_rounded,
+                        onTap: _stop,
+                      ),
+                      const SizedBox(height: 8),
+                      _HudRoundButton(
+                        tooltip: ref.watch(navigationVoiceMutedProvider)
+                            ? 'Activar voz'
+                            : 'Silenciar voz',
+                        icon: ref.watch(navigationVoiceMutedProvider)
+                            ? Icons.volume_off_rounded
+                            : Icons.volume_up_rounded,
+                        onTap: () {
+                          final muted =
+                              !ref.read(navigationVoiceMutedProvider);
+                          ref
+                              .read(navigationVoiceMutedProvider.notifier)
+                              .state = muted;
+                          unawaited(
+                            ref
+                                .read(navigationVoiceServiceProvider)
+                                .setMuted(muted),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                      _HudRoundButton(
+                        tooltip: ref.watch(mapAppearanceProvider).mode.label,
+                        icon: switch (ref.watch(mapAppearanceProvider).mode) {
+                          MapAppearanceMode.auto =>
+                            Icons.brightness_auto_rounded,
+                          MapAppearanceMode.day => Icons.light_mode_rounded,
+                          MapAppearanceMode.night => Icons.dark_mode_rounded,
+                        },
+                        onTap: () => unawaited(
+                          ref.read(mapAppearanceProvider.notifier).cycleMode(),
                         ),
                       ),
-                    ),
+                      const SizedBox(height: 8),
+                      _HudRoundButton(
+                        tooltip: 'Volver a mi posición',
+                        icon: Icons.my_location_rounded,
+                        emphasized: !_cameraFollowUser,
+                        onTap: () {
+                          setState(() {
+                            _cameraFollowUser = true;
+                            _cameraFollowEpoch++;
+                          });
+                        },
+                      ),
+                    ],
                   ),
                 ),
-              ],
               if (_showSimulatorControls) ...[
                 Positioned(
                   left: 12,
@@ -1122,12 +1218,34 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
                 left: 0,
                 right: 0,
                 bottom: 0,
-                child: NavigationStatusBar(
-                  speedKmh: speedKmh,
-                  speedLimitKmh: _speedLimitKmh,
-                  eta: eta,
-                  remaining: remaining,
-                  distanceLabel: formatRideDistance(_routeRemainingMeters),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (ref.watch(hudSafetyProvider).helmetMode && !_arrived)
+                      _HelmetModeBar(
+                        muted: ref.watch(navigationVoiceMutedProvider),
+                        onToggleMute: () {
+                          final muted =
+                              !ref.read(navigationVoiceMutedProvider);
+                          ref
+                              .read(navigationVoiceMutedProvider.notifier)
+                              .state = muted;
+                          unawaited(
+                            ref
+                                .read(navigationVoiceServiceProvider)
+                                .setMuted(muted),
+                          );
+                        },
+                        onCancel: _stop,
+                      ),
+                    NavigationStatusBar(
+                      speedKmh: speedKmh,
+                      speedLimitKmh: _speedLimitKmh,
+                      eta: eta,
+                      remaining: remaining,
+                      distanceLabel: formatRideDistance(_routeRemainingMeters),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -1135,6 +1253,81 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
         ),
       ),
       ),
+      ),
+    );
+  }
+}
+
+class _HelmetModeBar extends StatelessWidget {
+  const _HelmetModeBar({
+    required this.muted,
+    required this.onToggleMute,
+    required this.onCancel,
+  });
+
+  final bool muted;
+  final VoidCallback onToggleMute;
+  final VoidCallback onCancel;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+      child: Row(
+        children: [
+          Expanded(
+            child: SizedBox(
+              height: 64,
+              child: FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: muted
+                      ? NavigationHudTheme.warning
+                      : NavigationHudTheme.panelElevated,
+                  foregroundColor: NavigationHudTheme.textPrimary,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                onPressed: onToggleMute,
+                icon: Icon(
+                  muted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
+                  size: 28,
+                ),
+                label: Text(
+                  muted ? 'Activar voz' : 'Silenciar',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: SizedBox(
+              height: 64,
+              child: FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFFC62828),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                onPressed: onCancel,
+                icon: const Icon(Icons.close_rounded, size: 28),
+                label: const Text(
+                  'Cancelar',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1157,12 +1350,16 @@ class _UpcomingRadarBanner extends StatelessWidget {
     final imminent = remainingMeters <= imminentMeters;
     final kind = alert.effectiveRadarKind;
     final title = imminent ? '${kind.shortLabel} · ahora' : kind.shortLabel;
+    final kindColor = Color(kind.mapColorArgb);
+    final panel = imminent
+        ? Color.lerp(const Color(0xFF3A1212), kindColor, 0.35)!
+        : Color.lerp(const Color(0xFF252A31), kindColor, 0.22)!;
 
     return DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(22),
-        color: (imminent ? const Color(0xFF3A1212) : const Color(0xFF252A31))
-            .withValues(alpha: 0.94),
+        color: panel.withValues(alpha: 0.94),
+        border: Border.all(color: kindColor.withValues(alpha: 0.55)),
         boxShadow: const [
           BoxShadow(
             color: Color(0x55000000),
@@ -1185,7 +1382,7 @@ class _UpcomingRadarBanner extends StatelessWidget {
                 style: TextStyle(
                   color: imminent
                       ? const Color(0xFFFFCDD2)
-                      : const Color(0xFFFFEBEE),
+                      : Color.lerp(Colors.white, kindColor, 0.15)!,
                   fontWeight: FontWeight.w800,
                   fontSize: 13,
                   height: 1.1,
@@ -1606,6 +1803,50 @@ class _ArrivalCard extends StatelessWidget {
   }
 }
 
+class _HudRoundButton extends StatelessWidget {
+  const _HudRoundButton({
+    required this.icon,
+    required this.onTap,
+    this.tooltip,
+    this.emphasized = false,
+  });
+
+  final IconData icon;
+  final VoidCallback onTap;
+  final String? tooltip;
+  final bool emphasized;
+
+  @override
+  Widget build(BuildContext context) {
+    final button = Material(
+      color: emphasized
+          ? NavigationHudTheme.accent.withValues(alpha: 0.95)
+          : NavigationHudTheme.panel.withValues(alpha: 0.92),
+      shape: const CircleBorder(),
+      elevation: 3,
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: SizedBox(
+          width: 44,
+          height: 44,
+          child: Icon(
+            icon,
+            color: emphasized
+                ? Colors.white
+                : NavigationHudTheme.textPrimary,
+            size: 22,
+          ),
+        ),
+      ),
+    );
+    if (tooltip == null) {
+      return button;
+    }
+    return Tooltip(message: tooltip!, child: button);
+  }
+}
+
 class _OffRouteBanner extends StatelessWidget {
   const _OffRouteBanner({
     required this.rerouting,
@@ -1623,7 +1864,7 @@ class _OffRouteBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final message = rerouting
         ? 'Recalculando ruta…'
-        : (error ?? 'Te has salido de la ruta. Recalculando…');
+        : (error ?? 'Fuera de ruta · recalculando automáticamente');
 
     return Material(
       color: NavigationHudTheme.warning.withValues(alpha: 0.95),
@@ -1639,7 +1880,7 @@ class _OffRouteBanner extends StatelessWidget {
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
             else
-              const Icon(Icons.warning_amber_rounded, size: 20),
+              const Icon(Icons.alt_route_rounded, size: 20),
             const SizedBox(width: 8),
             Expanded(
               child: Text(

@@ -31,10 +31,17 @@ class NavigationMapView extends StatefulWidget {
     this.bearing = 0,
     this.pitch = NavigationConstants.defaultMapPitch,
     this.cameraMode = NavigationMapCameraMode.followDevice,
+    this.cameraFollowUser = true,
+    this.cameraFollowEpoch = 0,
+    this.previewFocusLatitude,
+    this.previewFocusLongitude,
+    this.previewFocusEpoch = 0,
     this.fitBoundsBottomExtra = 0,
     this.alertPreferences = AlertPreferences.defaults,
     this.puckStyle,
+    this.preferDarkMap = false,
     this.onControllerReady,
+    this.onCameraFollowChanged,
   });
 
   final NavigationRoute route;
@@ -48,12 +55,29 @@ class NavigationMapView extends StatefulWidget {
   final double bearing;
   final double pitch;
   final NavigationMapCameraMode cameraMode;
+
+  /// Si es `false` (p. ej. el usuario ha arrastrado el mapa), no se fuerza el seguimiento.
+  final bool cameraFollowUser;
+
+  /// Se incrementa al pulsar “mi ubicación” para forzar un recentrado.
+  final int cameraFollowEpoch;
+
+  /// En preview: si no es null, centra aquí en lugar de encuadrar toda la ruta.
+  final double? previewFocusLatitude;
+  final double? previewFocusLongitude;
+  final int previewFocusEpoch;
   final double fitBoundsBottomExtra;
   final AlertPreferences alertPreferences;
 
   /// Si es `null`, se usa el puck azul circular por defecto.
   final NavigationPuckStyle? puckStyle;
+
+  /// Preferir estilo oscuro online (noche).
+  final bool preferDarkMap;
   final ValueChanged<MapLibreMapController>? onControllerReady;
+
+  /// Aviso cuando el usuario deja de seguir la posición (arrastre) o se recentra.
+  final ValueChanged<bool>? onCameraFollowChanged;
 
   bool get _isPreview => cameraMode == NavigationMapCameraMode.fitRoute;
 
@@ -77,6 +101,9 @@ class _NavigationMapViewState extends State<NavigationMapView> {
   static const _alertsSourceId = 'locmotos-alerts';
   static const _alertsSymbolLayerId = 'locmotos-alerts-symbol';
   static const _alertIconCameraId = 'locmotos-alert-camera';
+  static const _alertIconRadarFixedId = 'locmotos-alert-radar-fixed';
+  static const _alertIconRadarSectionId = 'locmotos-alert-radar-section';
+  static const _alertIconRadarTrailerId = 'locmotos-alert-radar-trailer';
   static const _alertIconFuelId = 'locmotos-alert-fuel';
   static const _alertIconTollId = 'locmotos-alert-toll';
   static const _alertIconCurveId = 'locmotos-alert-curve';
@@ -102,8 +129,12 @@ class _NavigationMapViewState extends State<NavigationMapView> {
   var _cameraReady = false;
   /// En preview: solo un encuadre inicial; no reajustar al soltar el dedo.
   var _hasFittedPreview = false;
+  /// El usuario pidió “mi ubicación”: no volver a encuadrar toda la ruta.
+  var _previewFocusOnUser = false;
   var _mapConfigured = false;
   var _styleSwitching = false;
+  /// Evita confundir un animateCamera nuestro con un pan del usuario.
+  var _programmaticCameraMove = false;
   late String _activeStyle;
 
   LatLng get _fallbackTarget {
@@ -127,6 +158,7 @@ class _NavigationMapViewState extends State<NavigationMapView> {
       _cameraTarget.latitude,
       _cameraTarget.longitude,
       hasNetwork: widget.hasNetwork,
+      preferDark: widget.preferDarkMap,
     );
   }
 
@@ -134,7 +166,8 @@ class _NavigationMapViewState extends State<NavigationMapView> {
   void didUpdateWidget(covariant NavigationMapView oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.mapStyles != widget.mapStyles ||
-        oldWidget.hasNetwork != widget.hasNetwork) {
+        oldWidget.hasNetwork != widget.hasNetwork ||
+        oldWidget.preferDarkMap != widget.preferDarkMap) {
       // Usar el centro de cámara real (en preview no es el origen de la ruta).
       unawaited(_syncStyleForVisiblePoint());
     }
@@ -163,6 +196,7 @@ class _NavigationMapViewState extends State<NavigationMapView> {
           oldIds.length == newIds.length && oldIds.containsAll(newIds);
       if (!samePlan) {
         _hasFittedPreview = false;
+        _previewFocusOnUser = false;
         _cameraReady = false;
       }
       unawaited(_drawRoute());
@@ -174,7 +208,26 @@ class _NavigationMapViewState extends State<NavigationMapView> {
     if (oldWidget.puckStyle != widget.puckStyle) {
       unawaited(_resetPuckAnnotations());
     }
+    if (widget._isPreview &&
+        oldWidget.previewFocusEpoch != widget.previewFocusEpoch &&
+        widget.previewFocusLatitude != null &&
+        widget.previewFocusLongitude != null) {
+      _previewFocusOnUser = true;
+      _hasFittedPreview = true;
+      unawaited(_moveCamera(animate: true));
+      return;
+    }
     if (!_routeDrawn || widget._isPreview) {
+      return;
+    }
+    final followResumed =
+        !oldWidget.cameraFollowUser && widget.cameraFollowUser;
+    final followForced =
+        widget.cameraFollowUser &&
+        oldWidget.cameraFollowEpoch != widget.cameraFollowEpoch;
+    if (followResumed || followForced) {
+      unawaited(_moveCamera(animate: true));
+      unawaited(_syncPuck());
       return;
     }
     _syncCamera(oldWidget);
@@ -215,6 +268,26 @@ class _NavigationMapViewState extends State<NavigationMapView> {
       return;
     }
     await _syncStyleForVisiblePoint();
+    if (widget._isPreview || !widget.cameraFollowUser) {
+      return;
+    }
+    if (_programmaticCameraMove) {
+      _programmaticCameraMove = false;
+      return;
+    }
+    final cam = _controller?.cameraPosition?.target;
+    if (cam == null) {
+      return;
+    }
+    final target = _cameraTarget;
+    final awayMeters = _haversineMetersLocal(
+      GeoPoint(lat: cam.latitude, lng: cam.longitude),
+      GeoPoint(lat: target.latitude, lng: target.longitude),
+    );
+    // El usuario ha arrastrado el mapa lejos de su posición.
+    if (awayMeters > 55) {
+      widget.onCameraFollowChanged?.call(false);
+    }
   }
 
   LatLng _visiblePoint() {
@@ -234,6 +307,7 @@ class _NavigationMapViewState extends State<NavigationMapView> {
       point.latitude,
       point.longitude,
       hasNetwork: widget.hasNetwork,
+      preferDark: widget.preferDarkMap,
     );
     if (next == _activeStyle) {
       return;
@@ -329,7 +403,7 @@ class _NavigationMapViewState extends State<NavigationMapView> {
 
     _routeDrawn = true;
     if (widget._isPreview) {
-      if (!_hasFittedPreview) {
+      if (_previewFocusOnUser || !_hasFittedPreview) {
         await _moveCamera(animate: true);
         _hasFittedPreview = true;
       }
@@ -385,7 +459,12 @@ class _NavigationMapViewState extends State<NavigationMapView> {
             'properties': {
               'kind': alert.type.name,
               'icon': switch (alert.type) {
-                RouteAlertType.speedCamera => _alertIconCameraId,
+                RouteAlertType.speedCamera => switch (alert.effectiveRadarKind) {
+                    RadarKind.fixed => _alertIconRadarFixedId,
+                    RadarKind.section => _alertIconRadarSectionId,
+                    RadarKind.trailer => _alertIconRadarTrailerId,
+                    RadarKind.unknown => _alertIconCameraId,
+                  },
                 RouteAlertType.fuel => _alertIconFuelId,
                 RouteAlertType.toll => _alertIconTollId,
                 RouteAlertType.sharpCurve => _alertIconCurveId,
@@ -900,7 +979,28 @@ class _NavigationMapViewState extends State<NavigationMapView> {
         _alertIconCameraId,
         await _buildAlertMarkerPng(
           icon: Icons.photo_camera_rounded,
-          background: const Color(0xFFC62828),
+          background: Color(RadarKind.unknown.mapColorArgb),
+        ),
+      );
+      await controller.addImage(
+        _alertIconRadarFixedId,
+        await _buildAlertMarkerPng(
+          icon: Icons.photo_camera_rounded,
+          background: Color(RadarKind.fixed.mapColorArgb),
+        ),
+      );
+      await controller.addImage(
+        _alertIconRadarSectionId,
+        await _buildAlertMarkerPng(
+          icon: Icons.speed_rounded,
+          background: Color(RadarKind.section.mapColorArgb),
+        ),
+      );
+      await controller.addImage(
+        _alertIconRadarTrailerId,
+        await _buildAlertMarkerPng(
+          icon: Icons.rv_hookup_rounded,
+          background: Color(RadarKind.trailer.mapColorArgb),
         ),
       );
       await controller.addImage(
@@ -1306,6 +1406,9 @@ class _NavigationMapViewState extends State<NavigationMapView> {
   }
 
   Future<void> _syncCamera(NavigationMapView oldWidget) async {
+    if (!widget.cameraFollowUser) {
+      return;
+    }
     final moved = oldWidget.latitude != widget.latitude ||
         oldWidget.longitude != widget.longitude;
     final rotated = (oldWidget.bearing - widget.bearing).abs() > 2;
@@ -1320,25 +1423,43 @@ class _NavigationMapViewState extends State<NavigationMapView> {
     if (controller == null) {
       return;
     }
+    if (!widget._isPreview && !widget.cameraFollowUser) {
+      return;
+    }
 
     final CameraUpdate update;
     if (widget._isPreview) {
-      final bounds = boundsForPoints([
-        widget.route.origin,
-        widget.route.destination,
-        ...widget.route.waypoints,
-        ...widget.route.polyline,
-        for (final alt in widget.alternativeRoutes) ...alt.polyline,
-      ]);
-      final horizontal = NavigationConstants.routePreviewPaddingHorizontal;
-      update = CameraUpdate.newLatLngBounds(
-        bounds,
-        left: horizontal,
-        top: NavigationConstants.routePreviewPaddingTop,
-        right: horizontal,
-        bottom: NavigationConstants.routePreviewPaddingBottom +
-            widget.fitBoundsBottomExtra,
-      );
+      final focusLat = widget.previewFocusLatitude;
+      final focusLng = widget.previewFocusLongitude;
+      if (_previewFocusOnUser && focusLat != null && focusLng != null) {
+        final currentZoom = controller.cameraPosition?.zoom;
+        update = CameraUpdate.newCameraPosition(
+          CameraPosition(
+            target: LatLng(focusLat, focusLng),
+            // Conserva el zoom del encuadre de la ruta o el que el usuario haya dejado.
+            zoom: currentZoom ?? 12,
+            bearing: controller.cameraPosition?.bearing ?? 0,
+            tilt: 0,
+          ),
+        );
+      } else {
+        final bounds = boundsForPoints([
+          widget.route.origin,
+          widget.route.destination,
+          ...widget.route.waypoints,
+          ...widget.route.polyline,
+          for (final alt in widget.alternativeRoutes) ...alt.polyline,
+        ]);
+        final horizontal = NavigationConstants.routePreviewPaddingHorizontal;
+        update = CameraUpdate.newLatLngBounds(
+          bounds,
+          left: horizontal,
+          top: NavigationConstants.routePreviewPaddingTop,
+          right: horizontal,
+          bottom: NavigationConstants.routePreviewPaddingBottom +
+              widget.fitBoundsBottomExtra,
+        );
+      }
     } else {
       update = CameraUpdate.newCameraPosition(
         CameraPosition(
@@ -1350,29 +1471,37 @@ class _NavigationMapViewState extends State<NavigationMapView> {
       );
     }
 
-    if (!animate) {
-      await controller.moveCamera(update);
-    } else if (widget._isPreview) {
-      await controller.animateCamera(
-        update,
-        duration: const Duration(milliseconds: 700),
-      );
-    } else {
-      final target = _cameraTarget;
-      final deltaLat = (target.latitude - _lastCameraTarget.latitude).abs();
-      final deltaLng = (target.longitude - _lastCameraTarget.longitude).abs();
-      await controller.animateCamera(
-        update,
-        duration: Duration(
-          milliseconds: deltaLat < 0.00001 && deltaLng < 0.00001 ? 280 : 650,
-        ),
-      );
-      _lastCameraTarget = target;
-      return;
-    }
+    _programmaticCameraMove = true;
+    try {
+      if (!animate) {
+        await controller.moveCamera(update);
+      } else if (widget._isPreview) {
+        await controller.animateCamera(
+          update,
+          duration: const Duration(milliseconds: 700),
+        );
+      } else {
+        final target = _cameraTarget;
+        final deltaLat = (target.latitude - _lastCameraTarget.latitude).abs();
+        final deltaLng = (target.longitude - _lastCameraTarget.longitude).abs();
+        await controller.animateCamera(
+          update,
+          duration: Duration(
+            milliseconds: deltaLat < 0.00001 && deltaLng < 0.00001 ? 280 : 650,
+          ),
+        );
+        _lastCameraTarget = target;
+        return;
+      }
 
-    if (!widget._isPreview) {
-      _lastCameraTarget = _cameraTarget;
+      if (!widget._isPreview) {
+        _lastCameraTarget = _cameraTarget;
+      }
+    } finally {
+      // Se limpia en onCameraIdle; si no llega, no bloquear el siguiente pan.
+      Future<void>.delayed(const Duration(milliseconds: 800), () {
+        _programmaticCameraMove = false;
+      });
     }
   }
 
@@ -1396,16 +1525,13 @@ class _NavigationMapViewState extends State<NavigationMapView> {
         AnnotationType.circle,
         AnnotationType.symbol,
       ],
-      // En HUD usamos nuestro puck (simulación / posición de navegación).
-      // El punto azul nativo sería el GPS real y confundiría.
-      myLocationEnabled: isPreview,
+      // En HUD usamos nuestro puck; en preview también (evita el botón/GPS nativo).
+      myLocationEnabled: false,
       myLocationTrackingMode: MyLocationTrackingMode.none,
-      myLocationRenderMode: isPreview
-          ? MyLocationRenderMode.compass
-          : MyLocationRenderMode.normal,
+      myLocationRenderMode: MyLocationRenderMode.normal,
       compassEnabled: isPreview,
       rotateGesturesEnabled: isPreview,
-      tiltGesturesEnabled: isPreview,
+      tiltGesturesEnabled: false,
       zoomGesturesEnabled: true,
       scrollGesturesEnabled: true,
       trackCameraPosition: true,

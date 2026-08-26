@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:loc_motos/core/utils/spain_data_freshness.dart';
 import 'package:loc_motos/features/navigation/data/datasources/spain_fuel_datasource.dart';
 import 'package:loc_motos/features/navigation/presentation/providers/navigation_providers.dart';
 
@@ -62,6 +63,12 @@ class FuelCacheSettingsScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 16),
               _StatusCard(status: status),
+              if (status.isReady && isSpainFuelDataStale(status.fetchedAt)) ...[
+                const SizedBox(height: 12),
+                _StaleWarning(
+                  message: spainFuelStaleMessage(status.fetchedAt),
+                ),
+              ],
               const SizedBox(height: 16),
               if (busy) ...[
                 LinearProgressIndicator(
@@ -138,10 +145,14 @@ class _StatusCard extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     status.isReady
-                        ? '${status.count} estaciones${_formatAt(status.fetchedAt)}'
+                        ? '${status.count} estaciones · '
+                            '${formatSpainDataAge(status.fetchedAt)}'
                         : 'Sin descargar',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: colors.onSurfaceVariant,
+                          color: status.isReady &&
+                                  isSpainFuelDataStale(status.fetchedAt)
+                              ? colors.error
+                              : colors.onSurfaceVariant,
                         ),
                   ),
                 ],
@@ -152,16 +163,37 @@ class _StatusCard extends StatelessWidget {
       ),
     );
   }
+}
 
-  static String _formatAt(DateTime? at) {
-    if (at == null) {
-      return '';
-    }
-    final local = at.toLocal();
-    final d =
-        '${local.day.toString().padLeft(2, '0')}/${local.month.toString().padLeft(2, '0')}/${local.year}';
-    final t =
-        '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
-    return ' · $d $t';
+class _StaleWarning extends StatelessWidget {
+  const _StaleWarning({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Material(
+      color: colors.errorContainer.withValues(alpha: 0.45),
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.warning_amber_rounded, color: colors.error, size: 22),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                message,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: colors.onErrorContainer,
+                    ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
