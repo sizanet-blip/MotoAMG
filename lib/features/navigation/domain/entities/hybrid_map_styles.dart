@@ -35,26 +35,27 @@ class HybridMapStyles extends Equatable {
 
   /// Mismo estilo Protomaps en toda España: archivo local si está descargado,
   /// o PMTiles del servidor si hay red. Fuera de CCAA → [onlineStyle].
-  /// Con [preferDark] y red → estilo oscuro online (legible de noche).
+  /// Con [preferDark] prioriza variante oscura de la misma familia (no saltar
+  /// a Fiord si hay cobertura Protomaps).
   String resolve(
     double latitude,
     double longitude, {
     required bool hasNetwork,
     bool preferDark = false,
   }) {
-    if (preferDark && hasNetwork) {
-      return onlineStyleDark ?? onlineStyle;
-    }
     for (final region in offline) {
       if (!region.bounds.contains(latitude, longitude)) {
         continue;
       }
-      if (!region.requiresNetwork) {
+      if (!region.requiresNetwork || hasNetwork) {
+        if (preferDark) {
+          return region.darkStyleString ?? region.styleString;
+        }
         return region.styleString;
       }
-      if (hasNetwork) {
-        return region.styleString;
-      }
+    }
+    if (preferDark && hasNetwork) {
+      return onlineStyleDark ?? onlineStyle;
     }
     if (hasNetwork) {
       return onlineStyle;
@@ -72,6 +73,7 @@ class OfflineMapStyle extends Equatable {
     required this.regionId,
     required this.bounds,
     required this.styleString,
+    this.darkStyleString,
     this.requiresNetwork = false,
   });
 
@@ -79,9 +81,13 @@ class OfflineMapStyle extends Equatable {
   final GeoBounds bounds;
   final String styleString;
 
+  /// Variante nocturna (mismo PMTiles, pintura oscura).
+  final String? darkStyleString;
+
   /// `true` = PMTiles por HTTPS (mismo estilo que offline, hace falta red).
   final bool requiresNetwork;
 
   @override
-  List<Object?> get props => [regionId, bounds, styleString, requiresNetwork];
+  List<Object?> get props =>
+      [regionId, bounds, styleString, darkStyleString, requiresNetwork];
 }

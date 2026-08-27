@@ -1,12 +1,13 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:loc_motos/core/constants/navigation_constants.dart';
 import 'package:loc_motos/core/utils/distance_format.dart';
 import 'package:loc_motos/features/navigation/data/services/route_guidance_service.dart';
 import 'package:loc_motos/features/navigation/domain/entities/navigation_maneuver.dart';
 import 'package:loc_motos/features/navigation/presentation/theme/navigation_hud_theme.dart';
 
-/// Etiqueta corta para HUD (sin calle; la voz lleva el detalle).
+/// Etiqueta corta de acción (la calle va aparte).
 String maneuverHudAction(NavigationManeuver m) {
   return switch (m.type) {
     ManeuverType.depart => 'Salida',
@@ -24,7 +25,23 @@ String maneuverHudAction(NavigationManeuver m) {
   };
 }
 
-/// Tarjeta de maniobra compacta (ancho al contenido, no a pantalla completa).
+enum ManeuverBannerUrgency { normal, approaching, imminent }
+
+ManeuverBannerUrgency maneuverBannerUrgency(double? remainingMeters) {
+  final m = remainingMeters;
+  if (m == null) {
+    return ManeuverBannerUrgency.normal;
+  }
+  if (m <= NavigationConstants.maneuverImminentMeters) {
+    return ManeuverBannerUrgency.imminent;
+  }
+  if (m <= NavigationConstants.maneuverApproachingMeters) {
+    return ManeuverBannerUrgency.approaching;
+  }
+  return ManeuverBannerUrgency.normal;
+}
+
+/// Banner de maniobra dominante (calle + urgencia visual).
 class NavigationManeuverCard extends StatelessWidget {
   const NavigationManeuverCard({
     super.key,
@@ -42,64 +59,116 @@ class NavigationManeuverCard extends StatelessWidget {
     final distance = remainingMeters ?? maneuver.distanceMeters;
     final showNext = shouldShowNextManeuverHint(maneuver, nextManeuver);
     final action = maneuverHudAction(maneuver);
+    final street = maneuver.streetName?.trim();
+    final hasStreet = street != null && street.isNotEmpty;
+    final urgency = maneuverBannerUrgency(remainingMeters);
 
-    return DecoratedBox(
+    final panelColor = switch (urgency) {
+      ManeuverBannerUrgency.imminent => const Color(0xFF1B3A5C),
+      ManeuverBannerUrgency.approaching =>
+        NavigationHudTheme.panel.withValues(alpha: 0.96),
+      ManeuverBannerUrgency.normal =>
+        NavigationHudTheme.panel.withValues(alpha: 0.94),
+    };
+    final accent = switch (urgency) {
+      ManeuverBannerUrgency.imminent => NavigationHudTheme.warning,
+      ManeuverBannerUrgency.approaching => NavigationHudTheme.accentStrong,
+      ManeuverBannerUrgency.normal => NavigationHudTheme.accentStrong,
+    };
+    final iconSize = switch (urgency) {
+      ManeuverBannerUrgency.imminent => 56.0,
+      ManeuverBannerUrgency.approaching => 50.0,
+      ManeuverBannerUrgency.normal => 48.0,
+    };
+    final distanceSize = switch (urgency) {
+      ManeuverBannerUrgency.imminent => 28.0,
+      ManeuverBannerUrgency.approaching => 26.0,
+      ManeuverBannerUrgency.normal => 24.0,
+    };
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOut,
       decoration: BoxDecoration(
-        color: NavigationHudTheme.panel.withValues(alpha: 0.94),
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: const [
+        color: panelColor,
+        borderRadius: BorderRadius.circular(16),
+        border: urgency == ManeuverBannerUrgency.imminent
+            ? Border.all(color: NavigationHudTheme.warning, width: 1.6)
+            : null,
+        boxShadow: [
           BoxShadow(
-            color: Color(0x55000000),
-            blurRadius: 12,
-            offset: Offset(0, 4),
+            color: urgency == ManeuverBannerUrgency.imminent
+                ? const Color(0x66F9A825)
+                : const Color(0x55000000),
+            blurRadius: urgency == ManeuverBannerUrgency.imminent ? 16 : 12,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(10, 8, 12, 8),
+        padding: EdgeInsets.fromLTRB(
+          12,
+          urgency == ManeuverBannerUrgency.normal ? 10 : 12,
+          14,
+          urgency == ManeuverBannerUrgency.normal ? 10 : 12,
+        ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             _ManeuverIcon(
               type: maneuver.type,
               roundaboutExit: maneuver.roundaboutExit,
+              size: iconSize,
+              accent: accent,
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 12),
             ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 132),
+              constraints: const BoxConstraints(maxWidth: 200),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
                     formatRideDistance(distance),
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: NavigationHudTheme.textPrimary,
-                      fontSize: 22,
+                      fontSize: distanceSize,
                       fontWeight: FontWeight.w800,
                       height: 1.05,
-                      letterSpacing: -0.4,
+                      letterSpacing: -0.5,
                     ),
                   ),
                   Text(
                     action,
                     style: const TextStyle(
                       color: NavigationHudTheme.textPrimary,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
                       height: 1.15,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
+                  if (hasStreet)
+                    Text(
+                      street,
+                      style: const TextStyle(
+                        color: NavigationHudTheme.textSecondary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        height: 1.2,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   if (showNext && nextManeuver != null)
                     Text(
                       '→ ${maneuverHudAction(nextManeuver!)}',
                       style: const TextStyle(
                         color: NavigationHudTheme.textSecondary,
-                        fontSize: 11,
+                        fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        height: 1.2,
+                        height: 1.25,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -132,26 +201,31 @@ IconData _iconFor(ManeuverType type) {
 class _ManeuverIcon extends StatelessWidget {
   const _ManeuverIcon({
     required this.type,
+    required this.size,
+    required this.accent,
     this.roundaboutExit,
   });
 
   final ManeuverType type;
+  final double size;
+  final Color accent;
   final int? roundaboutExit;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 42,
-      height: 42,
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 220),
+      width: size,
+      height: size,
       decoration: BoxDecoration(
-        color: NavigationHudTheme.accentStrong,
-        borderRadius: BorderRadius.circular(11),
+        color: accent,
+        borderRadius: BorderRadius.circular(13),
       ),
       child: type == ManeuverType.roundabout
-          ? _RoundaboutIcon(exitNumber: roundaboutExit)
+          ? _RoundaboutIcon(exitNumber: roundaboutExit, size: size)
           : Icon(
               _iconFor(type),
-              size: 24,
+              size: size * 0.52,
               color: Colors.white,
             ),
     );
@@ -159,29 +233,30 @@ class _ManeuverIcon extends StatelessWidget {
 }
 
 class _RoundaboutIcon extends StatelessWidget {
-  const _RoundaboutIcon({this.exitNumber});
+  const _RoundaboutIcon({this.exitNumber, required this.size});
 
   final int? exitNumber;
+  final double size;
 
   @override
   Widget build(BuildContext context) {
     final exit = exitNumber;
     if (exit == null || exit <= 0) {
-      return const Icon(
+      return Icon(
         Icons.roundabout_right_rounded,
-        size: 24,
+        size: size * 0.52,
         color: Colors.white,
       );
     }
 
     return Padding(
-      padding: const EdgeInsets.all(3),
+      padding: const EdgeInsets.all(4),
       child: CustomPaint(
         painter: const _RoundaboutRingPainter(),
         child: Center(
           child: Container(
-            width: 20,
-            height: 20,
+            width: size * 0.42,
+            height: size * 0.42,
             alignment: Alignment.center,
             decoration: const BoxDecoration(
               color: Colors.white,
@@ -189,9 +264,9 @@ class _RoundaboutIcon extends StatelessWidget {
             ),
             child: Text(
               '$exit',
-              style: const TextStyle(
+              style: TextStyle(
                 color: NavigationHudTheme.accentStrong,
-                fontSize: 11,
+                fontSize: size * 0.24,
                 fontWeight: FontWeight.w900,
                 height: 1,
               ),

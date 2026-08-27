@@ -8,7 +8,7 @@ import 'package:loc_motos/features/navigation/data/services/map_basemap_assets_s
 /// Resuelve qué estilo MapLibre usar en navegación (online vs PMTiles local).
 abstract final class NavigationMapStyleService {
   /// Subir al cambiar el parche de etiquetas (invalida caché en memoria).
-  static const _onlineStylePatchVersion = 4;
+  static const _onlineStylePatchVersion = 5;
 
   /// Capa de edificios 3D en estilos Protomaps (visibilidad la controla el HUD).
   static const buildings3dLayerId = 'locmotos-buildings-3d';
@@ -41,6 +41,9 @@ abstract final class NavigationMapStyleService {
         return url;
       }
       _patchOpenFreeMapRoadLabels(decoded);
+      if (dark) {
+        _softenOpenFreeMapNight(decoded);
+      }
       final encoded = jsonEncode(decoded);
       _cachedOnlineStyleJson = encoded;
       _cachedOnlineStyleVersion = versionKey;
@@ -70,7 +73,10 @@ abstract final class NavigationMapStyleService {
 
   /// Estilo inline para `.pmtiles` en disco.
   /// MapLibre Native exige: `pmtiles://file:///ruta/absoluta`.
-  static Future<String> localPmtilesStyle(String absolutePath) async {
+  static Future<String> localPmtilesStyle(
+    String absolutePath, {
+    bool dark = false,
+  }) async {
     var path = absolutePath.trim().replaceAll('\\', '/');
     if (path.startsWith('pmtiles://')) {
       path = path.substring('pmtiles://'.length);
@@ -84,11 +90,15 @@ abstract final class NavigationMapStyleService {
       'pmtiles://$path',
       glyphsUrl: assets.glyphsUrlTemplate,
       spriteUrl: assets.spriteUrl,
+      dark: dark,
     );
   }
 
   /// Estilo Protomaps sobre un `.pmtiles` servido por HTTPS (mismo look que offline).
-  static Future<String> remotePmtilesStyle(String httpsUrl) async {
+  static Future<String> remotePmtilesStyle(
+    String httpsUrl, {
+    bool dark = false,
+  }) async {
     final trimmed = httpsUrl.trim();
     final pmtilesUrl = trimmed.startsWith('pmtiles://')
         ? trimmed
@@ -98,6 +108,7 @@ abstract final class NavigationMapStyleService {
       pmtilesUrl,
       glyphsUrl: assets.glyphsUrlTemplate,
       spriteUrl: assets.spriteUrl,
+      dark: dark,
     );
   }
 
@@ -105,6 +116,7 @@ abstract final class NavigationMapStyleService {
     String pmtilesUrl, {
     String? glyphsUrl,
     String? spriteUrl,
+    bool dark = false,
   }) async {
     final layersJson = await rootBundle.loadString(
       NavigationConstants.protomapsNavigationLayersAsset,
@@ -125,9 +137,16 @@ abstract final class NavigationMapStyleService {
         map['minzoom'] = 10;
         _boostRoadLabelContrast(map);
       }
+      if (dark) {
+        _applyProtomapsNightPaint(map);
+      }
       layers.add(map);
     }
-    layers.add(_earlyHighwayRefLayerPmtiles());
+    layers.add(
+      dark
+          ? _earlyHighwayRefLayerPmtiles(night: true)
+          : _earlyHighwayRefLayerPmtiles(),
+    );
 
     return jsonEncode({
       'version': 8,
@@ -142,6 +161,55 @@ abstract final class NavigationMapStyleService {
       },
       'layers': layers,
     });
+  }
+
+  /// Tinte nocturno Protomaps (suave a la vista; vías no blancas).
+  static void _applyProtomapsNightPaint(Map<String, dynamic> layer) {
+    final id = layer['id'] as String? ?? '';
+    final type = layer['type'] as String? ?? '';
+    final paint = Map<String, dynamic>.from(
+      (layer['paint'] as Map?) ?? const {},
+    );
+    if (type == 'background') {
+      paint['background-color'] = '#10141a';
+    } else if (id == 'earth' || id.startsWith('landuse_')) {
+      if (paint.containsKey('fill-color')) {
+        paint['fill-color'] = '#161b22';
+      }
+    } else if (id == 'water' || id.startsWith('water_')) {
+      if (paint.containsKey('fill-color')) {
+        paint['fill-color'] = '#0a1e2a';
+      }
+      if (paint.containsKey('line-color')) {
+        paint['line-color'] = '#143040';
+      }
+    } else if (id.startsWith('roads_')) {
+      if (paint.containsKey('line-color')) {
+        final isCasing = id.contains('casing');
+        final isHighway = id.contains('highway') || id.contains('major');
+        if (isCasing) {
+          paint['line-color'] = '#0a0d10';
+        } else if (isHighway) {
+          paint['line-color'] = '#8a939c';
+        } else {
+          paint['line-color'] = '#5c6570';
+        }
+      }
+      if (paint.containsKey('line-opacity')) {
+        paint['line-opacity'] = 0.85;
+      }
+    } else if (type == 'symbol') {
+      if (paint.containsKey('text-color')) {
+        paint['text-color'] = '#9aa3ad';
+      }
+      if (paint.containsKey('text-halo-color')) {
+        paint['text-halo-color'] = '#0e1216';
+      }
+      if (paint.containsKey('text-halo-width')) {
+        paint['text-halo-width'] = 1.0;
+      }
+    }
+    layer['paint'] = paint;
   }
 
   /// OpenFreeMap: en zoom de itinerario no salían A-23/N-… (nombres desde 12.2
@@ -273,6 +341,65 @@ abstract final class NavigationMapStyleService {
     });
   }
 
+  /// Fiord/oscuro: baja el brillo de vías y labels (menos deslumbramiento).
+  static void _softenOpenFreeMapNight(Map<String, dynamic> style) {
+    final layers = style['layers'];
+    if (layers is! List) {
+      return;
+    }
+    for (final raw in layers) {
+      if (raw is! Map) {
+        continue;
+      }
+      final layer = Map<String, dynamic>.from(raw);
+      final id = (layer['id'] as String? ?? '').toLowerCase();
+      final type = layer['type'] as String? ?? '';
+      final paint = Map<String, dynamic>.from(
+        (layer['paint'] as Map?) ?? const {},
+      );
+      var changed = false;
+      if (type == 'background' && paint.containsKey('background-color')) {
+        paint['background-color'] = '#0e1218';
+        changed = true;
+      }
+      if (type == 'line' &&
+          (id.contains('road') ||
+              id.contains('highway') ||
+              id.contains('bridge') ||
+              id.contains('tunnel'))) {
+        if (paint.containsKey('line-color')) {
+          final isCasing = id.contains('casing') || id.contains('case');
+          paint['line-color'] = isCasing ? '#14181e' : '#6a7380';
+          changed = true;
+        }
+        if (paint.containsKey('line-opacity')) {
+          final opacity = paint['line-opacity'];
+          if (opacity is num) {
+            paint['line-opacity'] = (opacity.toDouble() * 0.85).clamp(0.35, 0.9);
+            changed = true;
+          }
+        }
+      }
+      if (type == 'symbol') {
+        if (paint.containsKey('text-color')) {
+          paint['text-color'] = '#8e97a1';
+          changed = true;
+        }
+        if (paint.containsKey('text-halo-color')) {
+          paint['text-halo-color'] = '#0c1014';
+          changed = true;
+        }
+      }
+      if (changed) {
+        layer['paint'] = paint;
+        final index = layers.indexOf(raw);
+        if (index >= 0) {
+          layers[index] = layer;
+        }
+      }
+    }
+  }
+
   /// Nombres de calle legibles sobre la línea azul de ruta.
   static void _boostRoadLabelContrast(Map<String, dynamic> layer) {
     final paint = Map<String, dynamic>.from(
@@ -285,7 +412,9 @@ abstract final class NavigationMapStyleService {
     layer['paint'] = paint;
   }
 
-  static Map<String, dynamic> _earlyHighwayRefLayerPmtiles() {
+  static Map<String, dynamic> _earlyHighwayRefLayerPmtiles({
+    bool night = false,
+  }) {
     return {
       'id': 'roads_ref_early',
       'type': 'symbol',
@@ -329,12 +458,19 @@ abstract final class NavigationMapStyleService {
         'text-pitch-alignment': 'viewport',
         'text-optional': false,
       },
-      'paint': {
-        'text-color': '#111111',
-        'text-halo-color': '#ffffff',
-        'text-halo-width': 2.4,
-        'text-halo-blur': 0.4,
-      },
+      'paint': night
+          ? {
+              'text-color': '#9aa3ad',
+              'text-halo-color': '#0e1216',
+              'text-halo-width': 1.2,
+              'text-halo-blur': 0.2,
+            }
+          : {
+              'text-color': '#111111',
+              'text-halo-color': '#ffffff',
+              'text-halo-width': 2.4,
+              'text-halo-blur': 0.4,
+            },
     };
   }
 }

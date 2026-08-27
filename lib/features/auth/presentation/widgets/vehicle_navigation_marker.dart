@@ -12,6 +12,7 @@ abstract final class VehicleNavigationMarker {
     required VehicleMapIcon icon,
     required Color color,
     double logicalSize = 128,
+    bool nightMode = false,
   }) async {
     final size = logicalSize;
     final recorder = ui.PictureRecorder();
@@ -21,6 +22,7 @@ abstract final class VehicleNavigationMarker {
       Size(size, size),
       icon: icon,
       color: color,
+      nightMode: nightMode,
     );
     final image = await recorder.endRecording().toImage(
       size.toInt(),
@@ -35,6 +37,7 @@ abstract final class VehicleNavigationMarker {
     Size size, {
     required VehicleMapIcon icon,
     required Color color,
+    bool nightMode = false,
   }) {
     canvas.drawRect(
       Offset.zero & size,
@@ -49,7 +52,7 @@ abstract final class VehicleNavigationMarker {
     final s = size.shortestSide / 128;
     canvas.scale(s);
 
-    _paintWazeHalo(canvas);
+    _paintWazeHalo(canvas, nightMode: nightMode);
     switch (icon) {
       case VehicleMapIcon.motorcycle:
         _paintMotorcycle(canvas, color, sport: false);
@@ -117,28 +120,54 @@ class _VehicleMarkerPainter extends CustomPainter {
       oldDelegate.color.toARGB32() != color.toARGB32();
 }
 
-void _paintWazeHalo(Canvas canvas) {
-  // Halo tipo Waze: disco suave + sombra (legible sobre cualquier mapa).
+void _paintWazeHalo(Canvas canvas, {bool nightMode = false}) {
+  // Halo suave: de día legible; de noche sin “foco” blanco que deslumbre.
+  if (nightMode) {
+    canvas.drawCircle(
+      const Offset(1, 2),
+      38,
+      Paint()
+        ..color = Colors.black.withValues(alpha: 0.45)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
+    );
+    canvas.drawCircle(
+      Offset.zero,
+      34,
+      Paint()
+        ..shader = ui.Gradient.radial(
+          Offset.zero,
+          34,
+          [
+            const Color(0xFF3A4A58).withValues(alpha: 0.42),
+            const Color(0xFF1C2530).withValues(alpha: 0.28),
+            const Color(0xFF121820).withValues(alpha: 0.0),
+          ],
+          const [0.0, 0.55, 1.0],
+        ),
+    );
+    return;
+  }
+
   canvas.drawCircle(
     const Offset(1.5, 2.5),
-    44,
+    42,
     Paint()
-      ..color = Colors.black.withValues(alpha: 0.22)
+      ..color = Colors.black.withValues(alpha: 0.2)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5),
   );
   canvas.drawCircle(
     Offset.zero,
-    40,
+    38,
     Paint()
       ..shader = ui.Gradient.radial(
         Offset.zero,
-        40,
+        38,
         [
-          const Color(0xFFE8EEF2).withValues(alpha: 0.92),
-          const Color(0xFF9AAEB8).withValues(alpha: 0.55),
-          const Color(0xFF7A8E98).withValues(alpha: 0.28),
+          const Color(0xFFE8EEF2).withValues(alpha: 0.72),
+          const Color(0xFF9AAEB8).withValues(alpha: 0.42),
+          const Color(0xFF7A8E98).withValues(alpha: 0.12),
         ],
-        const [0.0, 0.72, 1.0],
+        const [0.0, 0.7, 1.0],
       ),
   );
 }

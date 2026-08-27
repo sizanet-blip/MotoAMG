@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:loc_motos/core/constants/navigation_constants.dart';
@@ -85,9 +86,12 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
   var _cameraFollowEpoch = 0;
   double? _savedBrightness;
   var _hudDisplayArmed = false;
+  final _bearingFilter = NavigationBearingFilter();
 
   bool get _showSimulatorControls =>
-      !_arrived && (_simulating || _simulator != null || !_hideSimulatorForRealNav);
+      kDebugMode &&
+      !_arrived &&
+      (_simulating || _simulator != null || !_hideSimulatorForRealNav);
 
   @override
   void initState() {
@@ -291,6 +295,7 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
         lng: position.longitude,
         heading: position.heading >= 0 ? position.heading : null,
         speedMps: position.speed >= 0 ? position.speed : 0,
+        accuracyMeters: position.accuracy > 0 ? position.accuracy : null,
       );
       if (mounted && updateGuidance && !_simulating) {
         _updateGuidance();
@@ -821,6 +826,7 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
         lng: own.lng,
         heading: own.heading,
         speedMps: 0,
+        accuracyMeters: own.accuracyMeters,
       );
     }
     setState(() => _simulating = false);
@@ -920,6 +926,7 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
       lng: sample.position.lng,
       heading: sample.bearingDegrees,
       speedMps: sample.speedMps,
+      accuracyMeters: 5,
     );
     _updateGuidance();
   }
@@ -994,13 +1001,26 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
         ref.watch(mapNetworkAvailableProvider).asData?.value ?? true;
     final bearing = own == null
         ? 0.0
-        : resolveNavigationBearing(
-            lat: own.lat,
-            lng: own.lng,
-            headingDegrees: own.heading,
-            polyline: _route.polyline,
+        : _bearingFilter.next(
+            resolveNavigationBearing(
+              lat: own.lat,
+              lng: own.lng,
+              headingDegrees: own.heading,
+              polyline: _route.polyline,
+            ),
+            speedMps: own.speedMps,
           );
     final speedKmh = own == null ? 0.0 : own.speedMps * 3.6;
+    final weakGps = !_simulating &&
+        own?.accuracyMeters != null &&
+        own!.accuracyMeters! >= NavigationConstants.weakGpsAccuracyMeters;
+    final secondaryAlert = _upcomingAlert != null
+        ? _HudSecondarySlot.radar
+        : _upcomingToll != null
+            ? _HudSecondarySlot.toll
+            : _upcomingFuel != null
+                ? _HudSecondarySlot.fuel
+                : null;
     final maneuver = _currentManeuver;
     final remaining = _remainingDuration;
     final eta = TimeOfDay.fromDateTime(
@@ -1041,6 +1061,7 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
                 latitude: own?.lat,
                 longitude: own?.lng,
                 bearing: bearing,
+                speedMps: own?.speedMps ?? 0,
                 pitch: ref.watch(hudSafetyProvider).map3dEnabled
                     ? NavigationConstants.defaultMapPitch
                     : 0,
@@ -1110,6 +1131,12 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
                     onDone: _stop,
                   ),
                 )
+              else if (maneuver == null && weakGps)
+                Positioned(
+                  top: topInset + (showOffRouteBanner ? 64 : 8),
+                  left: 12,
+                  child: const _WeakGpsBanner(),
+                )
               else if (maneuver != null) ...[
                 Positioned(
                   top: topInset + (showOffRouteBanner ? 64 : 8),
@@ -1123,7 +1150,12 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
                         nextManeuver: _nextManeuver,
                         remainingMeters: _remainingMeters,
                       ),
-                      if (_upcomingAlert != null) ...[
+                      if (weakGps) ...[
+                        const SizedBox(height: 6),
+                        const _WeakGpsBanner(),
+                      ],
+                      if (secondaryAlert == _HudSecondarySlot.radar &&
+                          _upcomingAlert != null) ...[
                         const SizedBox(height: 6),
                         _UpcomingRadarBanner(
                           alert: _upcomingAlert!,
@@ -1132,15 +1164,15 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
                               .watch(alertPreferencesProvider)
                               .radarImminentMeters,
                         ),
-                      ],
-                      if (_upcomingToll != null) ...[
+                      ] else if (secondaryAlert == _HudSecondarySlot.toll &&
+                          _upcomingToll != null) ...[
                         const SizedBox(height: 6),
                         _UpcomingTollBanner(
                           alert: _upcomingToll!,
                           remainingMeters: _upcomingTollMeters,
                         ),
-                      ],
-                      if (_upcomingFuel != null) ...[
+                      ] else if (secondaryAlert == _HudSecondarySlot.fuel &&
+                          _upcomingFuel != null) ...[
                         const SizedBox(height: 6),
                         _UpcomingFuelBanner(
                           alert: _upcomingFuel!,
@@ -1373,6 +1405,47 @@ class _HelmetModeBar extends StatelessWidget {
   }
 }
 
+enum _HudSecondarySlot { radar, toll, fuel }
+
+class _WeakGpsBanner extends StatelessWidget {
+  const _WeakGpsBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        color: NavigationHudTheme.panel.withValues(alpha: 0.9),
+        border: Border.all(
+          color: NavigationHudTheme.warning.withValues(alpha: 0.65),
+        ),
+      ),
+      child: const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.gps_off_rounded,
+              size: 18,
+              color: NavigationHudTheme.warning,
+            ),
+            SizedBox(width: 8),
+            Text(
+              'Señal GPS baja',
+              style: TextStyle(
+                color: NavigationHudTheme.textPrimary,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _UpcomingRadarBanner extends StatelessWidget {
   const _UpcomingRadarBanner({
     required this.alert,
@@ -1470,7 +1543,7 @@ class _UpcomingFuelBanner extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         color: const Color(0xFF1A1F24).withValues(alpha: 0.95),
         border: Border.all(
-          color: brand.primary.withValues(alpha: 0.45),
+          color: brand.primary.withValues(alpha: 0.28),
           width: 1,
         ),
         boxShadow: const [
@@ -1868,14 +1941,14 @@ class _HudRoundButton extends StatelessWidget {
         customBorder: const CircleBorder(),
         onTap: onTap,
         child: SizedBox(
-          width: 44,
-          height: 44,
+          width: 56,
+          height: 56,
           child: Icon(
             icon,
             color: emphasized
                 ? Colors.white
                 : NavigationHudTheme.textPrimary,
-            size: 22,
+            size: 26,
           ),
         ),
       ),
@@ -1912,7 +1985,7 @@ class _OffRouteBanner extends StatelessWidget {
                 : 'Fuera de ruta · recalculando automáticamente'));
 
     return Material(
-      color: NavigationHudTheme.warning.withValues(alpha: 0.95),
+      color: NavigationHudTheme.panelElevated.withValues(alpha: 0.96),
       borderRadius: BorderRadius.circular(12),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -1922,12 +1995,16 @@ class _OffRouteBanner extends StatelessWidget {
               const SizedBox(
                 width: 18,
                 height: 18,
-                child: CircularProgressIndicator(strokeWidth: 2),
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: NavigationHudTheme.warning,
+                ),
               )
             else
               Icon(
                 offline ? Icons.wifi_off_rounded : Icons.alt_route_rounded,
                 size: 20,
+                color: NavigationHudTheme.warning,
               ),
             const SizedBox(width: 8),
             Expanded(
@@ -1936,6 +2013,7 @@ class _OffRouteBanner extends StatelessWidget {
                 style: const TextStyle(
                   fontWeight: FontWeight.w600,
                   fontSize: 13,
+                  color: NavigationHudTheme.textPrimary,
                 ),
               ),
             ),

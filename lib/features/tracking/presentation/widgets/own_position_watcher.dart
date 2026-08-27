@@ -180,6 +180,7 @@ class _OwnPositionWatcherState extends ConsumerState<OwnPositionWatcher>
       lng: position.longitude,
       heading: position.heading >= 0 ? position.heading : null,
       speedMps: position.speed >= 0 ? position.speed : 0,
+      accuracyMeters: position.accuracy > 0 ? position.accuracy : null,
     );
   }
 

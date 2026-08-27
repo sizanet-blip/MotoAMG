@@ -1,9 +1,10 @@
-/// Posición GPS del propio dispositivo con rumbo y velocidad.
+/// Posición GPS del propio dispositivo con rumbo, velocidad y precisión.
 typedef OwnDevicePosition = ({
   double lat,
   double lng,
   double? heading,
   double speedMps,
+  double? accuracyMeters,
 });
 
 OwnDevicePosition ownDevicePosition({
@@ -11,5 +12,12 @@ OwnDevicePosition ownDevicePosition({
   required double lng,
   double? heading,
   double speedMps = 0,
+  double? accuracyMeters,
 }) =>
-    (lat: lat, lng: lng, heading: heading, speedMps: speedMps);
+    (
+      lat: lat,
+      lng: lng,
+      heading: heading,
+      speedMps: speedMps,
+      accuracyMeters: accuracyMeters,
+    );

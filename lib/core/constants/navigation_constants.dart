@@ -154,8 +154,36 @@ abstract final class NavigationConstants {
   /// Cámara 3D: inclinación suave (legible en movimiento).
   static const double defaultMapPitch = 35;
 
-  /// Zoom inicial en modo navegación.
+  /// Zoom base en ciudad / baja velocidad.
   static const double defaultNavigationZoom = 17.5;
+
+  /// Zoom según velocidad (más lejos en carretera).
+  static double navigationZoomForSpeedMps(double speedMps) {
+    final kmh = speedMps * 3.6;
+    if (kmh < 25) {
+      return 17.8;
+    }
+    if (kmh < 45) {
+      return 17.2;
+    }
+    if (kmh < 70) {
+      return 16.5;
+    }
+    if (kmh < 100) {
+      return 15.7;
+    }
+    return 15.1;
+  }
+
+  /// Metros por delante para sesgar un poco la cámara en curvas.
+  static const double cameraLookAheadMeters = 95;
+
+  /// Banner maniobra: urgencia visual.
+  static const double maneuverApproachingMeters = 420;
+  static const double maneuverImminentMeters = 75;
+
+  /// Accuracy GPS por encima → aviso “señal baja”.
+  static const double weakGpsAccuracyMeters = 45;
 
   /// Desplaza el centro del mapa para dejar sitio al HUD.
   static const double mapPaddingTop = 148;

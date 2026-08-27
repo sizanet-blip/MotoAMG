@@ -539,6 +539,10 @@ final hybridMapStylesProvider = FutureProvider<HybridMapStyles>((ref) async {
             bounds: region.bounds,
             styleString:
                 await NavigationMapStyleService.localPmtilesStyle(path),
+            darkStyleString: await NavigationMapStyleService.localPmtilesStyle(
+              path,
+              dark: true,
+            ),
           ),
         );
       } else if (region.downloadUrl.endsWith('.pmtiles')) {
@@ -549,6 +553,11 @@ final hybridMapStylesProvider = FutureProvider<HybridMapStyles>((ref) async {
             requiresNetwork: true,
             styleString: await NavigationMapStyleService.remotePmtilesStyle(
               region.downloadUrl,
+            ),
+            darkStyleString:
+                await NavigationMapStyleService.remotePmtilesStyle(
+              region.downloadUrl,
+              dark: true,
             ),
           ),
         );

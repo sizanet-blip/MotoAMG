@@ -15,7 +15,9 @@ import 'package:loc_motos/features/navigation/domain/entities/hybrid_map_styles.
 import 'package:loc_motos/features/navigation/domain/entities/navigation_route.dart';
 import 'package:loc_motos/features/navigation/domain/entities/route_alert.dart';
 import 'package:loc_motos/features/navigation/presentation/helpers/route_map_bounds.dart';
+import 'package:loc_motos/features/navigation/presentation/helpers/route_progress_split.dart';
 import 'package:loc_motos/features/navigation/presentation/models/navigation_map_camera_mode.dart';
+import 'package:loc_motos/core/utils/navigation_bearing.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 
 /// Mapa MapLibre: seguimiento en HUD o encuadre de ruta en vista previa.
@@ -31,6 +33,7 @@ class NavigationMapView extends StatefulWidget {
     this.latitude,
     this.longitude,
     this.bearing = 0,
+    this.speedMps = 0,
     this.pitch = 0,
     this.show3dBuildings = false,
     this.cameraMode = NavigationMapCameraMode.followDevice,
@@ -56,6 +59,9 @@ class NavigationMapView extends StatefulWidget {
   final double? latitude;
   final double? longitude;
   final double bearing;
+
+  /// Velocidad para zoom dinámico (HUD).
+  final double speedMps;
   final double pitch;
 
   /// Edificios extruidos (fill-extrusion). Solo navegación HUD con “Mapa en 3D”.
@@ -95,6 +101,9 @@ class _NavigationMapViewState extends State<NavigationMapView> {
   static const _routeSourceId = 'locmotos-route';
   static const _routeCasingLayerId = 'locmotos-route-casing';
   static const _routeLineLayerId = 'locmotos-route-line';
+  static const _traveledSourceId = 'locmotos-traveled';
+  static const _traveledCasingLayerId = 'locmotos-traveled-casing';
+  static const _traveledLineLayerId = 'locmotos-traveled-line';
   static const _altsSourceId = 'locmotos-alts';
   static const _altsCasingLayerId = 'locmotos-alts-casing';
   static const _altsLineLayerId = 'locmotos-alts-line';
@@ -142,6 +151,7 @@ class _NavigationMapViewState extends State<NavigationMapView> {
   var _previewFocusOnUser = false;
   var _mapConfigured = false;
   var _styleSwitching = false;
+  Timer? _styleDebounce;
   /// Evita confundir un animateCamera nuestro con un pan del usuario.
   var _programmaticCameraMove = false;
   late String _activeStyle;
@@ -190,6 +200,10 @@ class _NavigationMapViewState extends State<NavigationMapView> {
         oldWidget.hasNetwork != widget.hasNetwork ||
         oldWidget.preferDarkMap != widget.preferDarkMap) {
       // Usar el centro de cámara real (en preview no es el origen de la ruta).
+      if (oldWidget.preferDarkMap != widget.preferDarkMap) {
+        _loadedPuckStyle = null;
+        unawaited(_resetPuckAnnotations());
+      }
       unawaited(_syncStyleForVisiblePoint());
     }
     if (_controller == null) {
@@ -267,9 +281,20 @@ class _NavigationMapViewState extends State<NavigationMapView> {
     // En HUD: al avanzar, actualizar qué avisos (próximos 1–2) se muestran.
     if (oldWidget.latitude != widget.latitude ||
         oldWidget.longitude != widget.longitude) {
+      unawaited(_syncRouteProgress());
       unawaited(_syncAlertsSource());
       unawaited(_syncStyleForVisiblePoint());
+    } else if ((oldWidget.speedMps - widget.speedMps).abs() > 1.5 &&
+        widget.cameraFollowUser) {
+      // Zoom dinámico al cambiar de ritmo (ciudad ↔ carretera).
+      unawaited(_moveCamera(animate: true));
     }
+  }
+
+  @override
+  void dispose() {
+    _styleDebounce?.cancel();
+    super.dispose();
   }
 
   Future<void> _onMapCreated(MapLibreMapController controller) async {
@@ -334,21 +359,28 @@ class _NavigationMapViewState extends State<NavigationMapView> {
       _syncStyleForPoint(_visiblePoint());
 
   Future<void> _syncStyleForPoint(LatLng point) async {
-    final controller = _controller;
     final next = _resolveActiveStyle(point);
     if (next == _activeStyle) {
       return;
     }
-    _activeStyle = next;
-    if (controller == null) {
-      return;
-    }
-    _styleSwitching = true;
-    try {
-      await controller.setStyle(next);
-    } catch (_) {
-      _styleSwitching = false;
-    }
+    _styleDebounce?.cancel();
+    // Evita flash brusco día↔noche al cambiar de estilo.
+    _styleDebounce = Timer(const Duration(milliseconds: 380), () async {
+      if (!mounted || _controller == null) {
+        return;
+      }
+      final latest = _resolveActiveStyle(_visiblePoint());
+      if (latest == _activeStyle) {
+        return;
+      }
+      _activeStyle = latest;
+      _styleSwitching = true;
+      try {
+        await _controller!.setStyle(latest);
+      } catch (_) {
+        _styleSwitching = false;
+      }
+    });
   }
 
   Future<void> _configureMap() async {
@@ -376,7 +408,43 @@ class _NavigationMapViewState extends State<NavigationMapView> {
     } catch (_) {}
 
     _mapConfigured = true;
+    await _hideBasemapPois(controller);
     await _sync3dBuildings();
+  }
+
+  /// En navegación, menos clutter: ocultar POIs del basemap.
+  Future<void> _hideBasemapPois(MapLibreMapController controller) async {
+    if (widget._isPreview) {
+      return;
+    }
+    try {
+      final ids = await controller.getLayerIds();
+      for (final raw in ids) {
+        final id = raw?.toString() ?? '';
+        final lower = id.toLowerCase();
+        if (id.startsWith('locmotos-')) {
+          continue;
+        }
+        if (lower.contains('poi') ||
+            lower.contains('place_') ||
+            lower == 'places_subplace' ||
+            lower == 'pois') {
+          try {
+            await controller.setLayerProperties(
+              id,
+              const SymbolLayerProperties(visibility: 'none'),
+            );
+          } catch (_) {
+            try {
+              await controller.setLayerProperties(
+                id,
+                const FillLayerProperties(visibility: 'none'),
+              );
+            } catch (_) {}
+          }
+        }
+      }
+    } catch (_) {}
   }
 
   Future<void> _drawRoute() async {
@@ -405,7 +473,9 @@ class _NavigationMapViewState extends State<NavigationMapView> {
       await _configureMap();
     }
 
-    final selectedGeoJson = _routeGeoJson(widget.route.polyline);
+    final routePolylines = _routeProgressPolylines();
+    final selectedGeoJson = _routeGeoJson(routePolylines.remaining);
+    final traveledGeoJson = _routeGeoJson(routePolylines.traveled);
     final altsGeoJson = _alternativesGeoJson(widget.alternativeRoutes);
     final labelsGeoJson = _routeStreetLabelsGeoJson(widget.route);
     final etaGeoJson = _etaLabelsGeoJson(
@@ -417,6 +487,7 @@ class _NavigationMapViewState extends State<NavigationMapView> {
     if (_routeLayersReady) {
       try {
         await controller.setGeoJsonSource(_altsSourceId, altsGeoJson);
+        await controller.setGeoJsonSource(_traveledSourceId, traveledGeoJson);
         await controller.setGeoJsonSource(_routeSourceId, selectedGeoJson);
         await controller.setGeoJsonSource(_routeLabelsSourceId, labelsGeoJson);
         await controller.setGeoJsonSource(_etaSourceId, etaGeoJson);
@@ -432,6 +503,7 @@ class _NavigationMapViewState extends State<NavigationMapView> {
       await _addRouteLayersBelowLabels(
         controller,
         altsGeoJson: altsGeoJson,
+        traveledGeoJson: traveledGeoJson,
         selectedGeoJson: selectedGeoJson,
         labelsGeoJson: labelsGeoJson,
         etaGeoJson: etaGeoJson,
@@ -562,6 +634,8 @@ class _NavigationMapViewState extends State<NavigationMapView> {
       _routeLabelsLayerId,
       _routeLineLayerId,
       _routeCasingLayerId,
+      _traveledLineLayerId,
+      _traveledCasingLayerId,
       _altsLineLayerId,
       _altsCasingLayerId,
     ];
@@ -570,6 +644,7 @@ class _NavigationMapViewState extends State<NavigationMapView> {
       _etaSourceId,
       _routeLabelsSourceId,
       _routeSourceId,
+      _traveledSourceId,
       _altsSourceId,
     ];
     for (final id in layerIds) {
@@ -979,10 +1054,61 @@ class _NavigationMapViewState extends State<NavigationMapView> {
     return match?.group(1)?.toUpperCase();
   }
 
+  Future<void> _syncRouteProgress() async {
+    final controller = _controller;
+    if (controller == null ||
+        !_routeLayersReady ||
+        widget._isPreview ||
+        widget.route.polyline.length < 2) {
+      return;
+    }
+    final parts = _routeProgressPolylines();
+    try {
+      await controller.setGeoJsonSource(
+        _traveledSourceId,
+        _routeGeoJson(parts.traveled),
+      );
+      await controller.setGeoJsonSource(
+        _routeSourceId,
+        _routeGeoJson(parts.remaining),
+      );
+    } catch (_) {}
+  }
+
+  ({List<GeoPoint> traveled, List<GeoPoint> remaining})
+      _routeProgressPolylines() {
+    final poly = widget.route.polyline;
+    final lat = widget.latitude;
+    final lng = widget.longitude;
+    if (widget._isPreview || lat == null || lng == null || poly.length < 2) {
+      return (traveled: const <GeoPoint>[], remaining: poly);
+    }
+    return splitRoutePolyline(poly, lat, lng);
+  }
+
+  double get _navigationCameraZoom =>
+      NavigationConstants.navigationZoomForSpeedMps(widget.speedMps);
+
+  double get _navigationCameraBearing {
+    final lat = widget.latitude;
+    final lng = widget.longitude;
+    if (lat == null || lng == null || widget._isPreview) {
+      return widget.bearing;
+    }
+    return resolveLookAheadBearing(
+      lat: lat,
+      lng: lng,
+      headingDegrees: widget.bearing,
+      polyline: widget.route.polyline,
+      lookAheadMeters: NavigationConstants.cameraLookAheadMeters,
+    );
+  }
+
   /// Línea bajo textos del mapa; refs de ruta encima de la línea azul.
   Future<void> _addRouteLayersBelowLabels(
     MapLibreMapController controller, {
     required Map<String, dynamic> altsGeoJson,
+    required Map<String, dynamic> traveledGeoJson,
     required Map<String, dynamic> selectedGeoJson,
     required Map<String, dynamic> labelsGeoJson,
     required Map<String, dynamic> etaGeoJson,
@@ -1016,14 +1142,42 @@ class _NavigationMapViewState extends State<NavigationMapView> {
       enableInteraction: false,
     );
 
+    // Tramo ya recorrido (atenuado), debajo de la ruta activa.
+    final dark = widget.preferDarkMap;
+    await controller.addGeoJsonSource(_traveledSourceId, traveledGeoJson);
+    await controller.addLineLayer(
+      _traveledSourceId,
+      _traveledCasingLayerId,
+      LineLayerProperties(
+        lineColor: dark ? '#15202b' : '#FFFFFF',
+        lineWidth: 10,
+        lineOpacity: dark ? 0.22 : 0.28,
+        lineJoin: 'round',
+      ),
+      belowLayerId: belowLayerId,
+      enableInteraction: false,
+    );
+    await controller.addLineLayer(
+      _traveledSourceId,
+      _traveledLineLayerId,
+      LineLayerProperties(
+        lineColor: dark ? '#3a5068' : '#90CAF9',
+        lineWidth: 6,
+        lineOpacity: dark ? 0.28 : 0.35,
+        lineJoin: 'round',
+      ),
+      belowLayerId: belowLayerId,
+      enableInteraction: false,
+    );
+
     await controller.addGeoJsonSource(_routeSourceId, selectedGeoJson);
     await controller.addLineLayer(
       _routeSourceId,
       _routeCasingLayerId,
-      const LineLayerProperties(
-        lineColor: '#FFFFFF',
+      LineLayerProperties(
+        lineColor: dark ? '#0f1822' : '#FFFFFF',
         lineWidth: 13,
-        lineOpacity: 0.92,
+        lineOpacity: dark ? 0.55 : 0.92,
         lineJoin: 'round',
         lineBlur: 0.4,
       ),
@@ -1033,10 +1187,10 @@ class _NavigationMapViewState extends State<NavigationMapView> {
     await controller.addLineLayer(
       _routeSourceId,
       _routeLineLayerId,
-      const LineLayerProperties(
-        lineColor: '#1A73E8',
+      LineLayerProperties(
+        lineColor: dark ? '#3B8DD9' : '#1A73E8',
         lineWidth: 8,
-        lineOpacity: 0.88,
+        lineOpacity: dark ? 0.82 : 0.88,
         lineJoin: 'round',
       ),
       belowLayerId: belowLayerId,
@@ -1506,6 +1660,7 @@ class _NavigationMapViewState extends State<NavigationMapView> {
       icon: style.icon,
       color: style.color,
       logicalSize: 160,
+      nightMode: widget.preferDarkMap,
     );
   }
 
@@ -1606,8 +1761,8 @@ class _NavigationMapViewState extends State<NavigationMapView> {
       update = CameraUpdate.newCameraPosition(
         CameraPosition(
           target: _cameraTarget,
-          zoom: NavigationConstants.defaultNavigationZoom,
-          bearing: widget.bearing,
+          zoom: _navigationCameraZoom,
+          bearing: _navigationCameraBearing,
           tilt: widget.pitch,
         ),
       );
@@ -1654,8 +1809,8 @@ class _NavigationMapViewState extends State<NavigationMapView> {
       styleString: _activeStyle,
       initialCameraPosition: CameraPosition(
         target: _cameraTarget,
-        zoom: isPreview ? 12 : NavigationConstants.defaultNavigationZoom,
-        bearing: isPreview ? 0 : widget.bearing,
+        zoom: isPreview ? 12 : _navigationCameraZoom,
+        bearing: isPreview ? 0 : _navigationCameraBearing,
         tilt: isPreview ? 0 : widget.pitch,
       ),
       onMapCreated: _onMapCreated,

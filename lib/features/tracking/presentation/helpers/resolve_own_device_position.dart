@@ -25,6 +25,7 @@ Future<OwnDevicePosition> resolveOwnDevicePosition(Ref ref) async {
       lng: position.longitude,
       heading: position.heading >= 0 ? position.heading : null,
       speedMps: position.speed >= 0 ? position.speed : 0,
+      accuracyMeters: position.accuracy > 0 ? position.accuracy : null,
     );
     ref.read(ownDevicePositionProvider.notifier).state = own;
     return own;
