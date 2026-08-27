@@ -81,6 +81,17 @@ class HudSafetySettingsScreen extends ConsumerWidget {
                   ),
             ),
           ),
+          const Divider(height: 24),
+          SwitchListTile(
+            secondary: const Icon(Icons.play_circle_outline_rounded),
+            title: const Text('Simular ruta'),
+            subtitle: const Text(
+              'Al navegar aparecen los botones Volver y Simular para recorrer '
+              'la ruta sin moverte. Apágalo cuando vayas a circular de verdad',
+            ),
+            value: prefs.showRouteSimulator,
+            onChanged: controller.setShowRouteSimulator,
+          ),
           if (defaultTargetPlatform == TargetPlatform.android) ...[
             const Divider(height: 32),
             Padding(

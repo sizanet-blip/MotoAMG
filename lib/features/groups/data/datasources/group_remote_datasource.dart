@@ -7,7 +7,9 @@ import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
 import 'package:loc_motos/features/groups/data/models/group_member_model.dart';
 import 'package:loc_motos/features/groups/data/models/group_membership_model.dart';
 import 'package:loc_motos/features/groups/data/models/group_model.dart';
+import 'package:loc_motos/features/groups/domain/entities/ride_role.dart';
 import 'package:loc_motos/features/groups/domain/exceptions/group_exceptions.dart';
+import 'package:loc_motos/features/navigation/data/models/navigation_route_model.dart';
 import 'package:loc_motos/firebase_options.dart';
 
 class GroupRemoteDataSource {
@@ -93,6 +95,7 @@ class GroupRemoteDataSource {
         ownerId: user.uid,
         createdAt: now,
         isActive: true,
+        adminUids: const [],
       );
       final member = GroupMemberModel.fromUser(user, now);
       final batch = _firestore.batch();
@@ -278,14 +281,26 @@ class GroupRemoteDataSource {
     }
     try {
       final groupSnap = await _groups.doc(groupId).get();
-      if (!groupSnap.exists || groupSnap.data()?['ownerId'] != owner.uid) {
+      if (!groupSnap.exists) {
+        throw const GroupException('Ese grupo no existe.');
+      }
+      final group = GroupModel.fromFirestore(groupSnap);
+      if (!group.isAdmin(owner.uid)) {
         throw const GroupException(
-          'Solo el creador del grupo puede quitar a alguien.',
+          'Solo un administrador puede quitar a alguien.',
         );
+      }
+      if (group.isOwner(memberUid)) {
+        throw const GroupException('No se puede quitar al creador del grupo.');
       }
       final batch = _firestore.batch();
       batch.delete(_members(groupId).doc(memberUid));
       batch.delete(_memberships(memberUid).doc(groupId));
+      if (group.adminUids.contains(memberUid)) {
+        batch.update(_groups.doc(groupId), {
+          'adminUids': FieldValue.arrayRemove([memberUid]),
+        });
+      }
       final memberUser = await _users.doc(memberUid).get();
       if (memberUser.data()?['currentGroupId'] == groupId) {
         batch.set(_users.doc(memberUid), {
@@ -300,6 +315,163 @@ class GroupRemoteDataSource {
         'No se pudo quitar a esa persona. ${error.message ?? error.code}',
       );
     }
+  }
+
+  Future<void> setMemberAdmin({
+    required AppUser actor,
+    required String groupId,
+    required String memberUid,
+    required bool isAdmin,
+  }) async {
+    try {
+      final groupSnap = await _groups.doc(groupId).get();
+      if (!groupSnap.exists) {
+        throw const GroupException('Ese grupo no existe.');
+      }
+      final group = GroupModel.fromFirestore(groupSnap);
+      if (!group.isOwner(actor.uid)) {
+        throw const GroupException(
+          'Solo el creador puede nombrar administradores.',
+        );
+      }
+      if (group.isOwner(memberUid)) {
+        return;
+      }
+      await _groups.doc(groupId).update({
+        'adminUids': isAdmin
+            ? FieldValue.arrayUnion([memberUid])
+            : FieldValue.arrayRemove([memberUid]),
+      });
+    } on GroupException {
+      rethrow;
+    } on FirebaseException catch (error) {
+      throw GroupException(
+        'No se pudo actualizar el administrador. ${error.message ?? error.code}',
+      );
+    }
+  }
+
+  Future<void> setMemberRideRole({
+    required AppUser actor,
+    required String groupId,
+    required String memberUid,
+    required RideRole? role,
+  }) async {
+    try {
+      final groupSnap = await _groups.doc(groupId).get();
+      if (!groupSnap.exists) {
+        throw const GroupException('Ese grupo no existe.');
+      }
+      final group = GroupModel.fromFirestore(groupSnap);
+      if (!group.isAdmin(actor.uid)) {
+        throw const GroupException(
+          'Solo un administrador puede asignar cabecera o cola.',
+        );
+      }
+      final batch = _firestore.batch();
+      if (role != null) {
+        final members = await _members(groupId).get();
+        for (final doc in members.docs) {
+          if (doc.id == memberUid) {
+            continue;
+          }
+          final current = RideRoleX.tryParse(doc.data()['rideRole'] as String?);
+          if (current == role) {
+            batch.update(doc.reference, {'rideRole': null});
+          }
+        }
+      }
+      batch.set(
+        _members(groupId).doc(memberUid),
+        {'rideRole': role?.firestoreValue},
+        SetOptions(merge: true),
+      );
+      await batch.commit();
+    } on GroupException {
+      rethrow;
+    } on FirebaseException catch (error) {
+      throw GroupException(
+        'No se pudo asignar el rol. ${error.message ?? error.code}',
+      );
+    }
+  }
+
+  DocumentReference<Map<String, dynamic>> _sharedRouteRef(String groupId) {
+    return _groups
+        .doc(groupId)
+        .collection(AppConstants.sharedRouteSubcollection)
+        .doc(AppConstants.sharedRouteDocId);
+  }
+
+  Future<void> publishSharedRoute({
+    required AppUser actor,
+    required String groupId,
+    required NavigationRouteModel route,
+  }) async {
+    try {
+      final groupSnap = await _groups.doc(groupId).get();
+      if (!groupSnap.exists) {
+        throw const GroupException('Ese grupo no existe.');
+      }
+      final group = GroupModel.fromFirestore(groupSnap);
+      if (!group.isAdmin(actor.uid)) {
+        throw const GroupException(
+          'Solo un administrador puede publicar la ruta del grupo.',
+        );
+      }
+      await _sharedRouteRef(groupId).set({
+        'route': route.toJson(),
+        'publishedBy': actor.uid,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } on GroupException {
+      rethrow;
+    } on FirebaseException catch (error) {
+      throw GroupException(
+        'No se pudo publicar la ruta. ${error.message ?? error.code}',
+      );
+    }
+  }
+
+  Stream<NavigationRouteModel?> watchSharedRoute(String groupId) {
+    return _sharedRouteRef(groupId).snapshots().map((snap) {
+      final data = snap.data();
+      if (data == null) {
+        return null;
+      }
+      final raw = data['route'];
+      if (raw is! Map) {
+        return null;
+      }
+      try {
+        return NavigationRouteModel.fromJson(_deepStringKeyedMap(raw));
+      } catch (_) {
+        return null;
+      }
+    });
+  }
+
+  /// Solo presencia del doc (para UI «Actualizar» aunque falle el parseo).
+  Stream<bool> watchHasSharedRoute(String groupId) {
+    return _sharedRouteRef(groupId).snapshots().map((snap) => snap.exists);
+  }
+
+  Map<String, dynamic> _deepStringKeyedMap(Map<dynamic, dynamic> raw) {
+    final out = <String, dynamic>{};
+    raw.forEach((key, value) {
+      out[key.toString()] = _deepConvert(value);
+    });
+    return out;
+  }
+
+  dynamic _deepConvert(dynamic value) {
+    if (value is Map) {
+      return _deepStringKeyedMap(Map<dynamic, dynamic>.from(value));
+    }
+    if (value is List) {
+      return value.map(_deepConvert).toList(growable: false);
+    }
+    return value;
   }
 
   Stream<GroupModel?> watchGroup(String groupId) {

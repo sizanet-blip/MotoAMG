@@ -7,6 +7,14 @@
           ".write": "auth != null && (auth.uid === $uid || !newData.exists())"
         }
       }
+    },
+    "group_alerts": {
+      "$groupId": {
+        ".read": "auth != null",
+        "$uid": {
+          ".write": "auth != null && (auth.uid === $uid || !newData.exists())"
+        }
+      }
     }
   }
 }

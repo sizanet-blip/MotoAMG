@@ -8,6 +8,7 @@ class RideGroup extends Equatable {
     required this.ownerId,
     required this.createdAt,
     required this.isActive,
+    this.adminUids = const [],
   });
 
   final String id;
@@ -17,8 +18,14 @@ class RideGroup extends Equatable {
   final DateTime createdAt;
   final bool isActive;
 
+  /// Admins explícitos (el [ownerId] siempre cuenta como admin).
+  final List<String> adminUids;
+
   bool isOwner(String uid) => ownerId == uid;
 
+  bool isAdmin(String uid) => isOwner(uid) || adminUids.contains(uid);
+
   @override
-  List<Object?> get props => [id, name, code, ownerId, createdAt, isActive];
+  List<Object?> get props =>
+      [id, name, code, ownerId, createdAt, isActive, adminUids];
 }

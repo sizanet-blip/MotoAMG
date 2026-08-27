@@ -20,6 +20,40 @@ import 'package:loc_motos/features/navigation/presentation/models/navigation_map
 import 'package:loc_motos/core/utils/navigation_bearing.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 
+/// Compañero de grupo en el mapa de navegación (HUD).
+@immutable
+class HudGroupMate {
+  const HudGroupMate({
+    required this.uid,
+    required this.lat,
+    required this.lng,
+    required this.heading,
+    required this.label,
+    this.isStale = false,
+  });
+
+  final String uid;
+  final double lat;
+  final double lng;
+  final double heading;
+  final String label;
+  final bool isStale;
+
+  @override
+  bool operator ==(Object other) {
+    return other is HudGroupMate &&
+        other.uid == uid &&
+        other.lat == lat &&
+        other.lng == lng &&
+        other.heading == heading &&
+        other.label == label &&
+        other.isStale == isStale;
+  }
+
+  @override
+  int get hashCode => Object.hash(uid, lat, lng, heading, label, isStale);
+}
+
 /// Mapa MapLibre: seguimiento en HUD o encuadre de ruta en vista previa.
 ///
 /// Usa PMTiles Protomaps (local o remoto) en España; OpenFreeMap fuera.
@@ -46,6 +80,8 @@ class NavigationMapView extends StatefulWidget {
     this.alertPreferences = AlertPreferences.defaults,
     this.puckStyle,
     this.preferDarkMap = false,
+    this.lowGlCompat = false,
+    this.groupMates = const [],
     this.onControllerReady,
     this.onCameraFollowChanged,
   });
@@ -86,6 +122,12 @@ class NavigationMapView extends StatefulWidget {
 
   /// Preferir estilo oscuro online (noche).
   final bool preferDarkMap;
+
+  /// Emulador API antigua: estilo mínimo + TextureView + menos capas.
+  final bool lowGlCompat;
+
+  /// Motos del grupo (excepto la tuya) visibles mientras navegas.
+  final List<HudGroupMate> groupMates;
   final ValueChanged<MapLibreMapController>? onControllerReady;
 
   /// Aviso cuando el usuario deja de seguir la posición (arrastre) o se recentra.
@@ -123,6 +165,10 @@ class _NavigationMapViewState extends State<NavigationMapView> {
   static const _alertIconTollId = 'locmotos-alert-toll';
   static const _alertIconCurveId = 'locmotos-alert-curve';
   static const _puckIconImageId = 'locmotos-nav-puck-icon-v2';
+  static const _groupMateIconId = 'locmotos-hud-group-mate';
+  static const _groupMateStaleIconId = 'locmotos-hud-group-mate-stale';
+  static const _groupMateColor = Color(0xFFE65100);
+  static const _groupMateStaleColor = Color(0xFF78909C);
 
   /// Refs tipo A-23 / N-234 / CV-624 / AP-7 (no calles largas).
   static final _roadRefPattern = RegExp(
@@ -135,6 +181,8 @@ class _NavigationMapViewState extends State<NavigationMapView> {
   Circle? _puckHalo;
   Symbol? _puckSymbol;
   NavigationPuckStyle? _loadedPuckStyle;
+  final _groupMateSymbols = <String, Symbol>{};
+  var _groupMateIconsReady = false;
   final List<Circle> _endpointMarkers = [];
   var _routeDrawn = false;
   var _routeLayersReady = false;
@@ -157,6 +205,7 @@ class _NavigationMapViewState extends State<NavigationMapView> {
   /// Evita confundir un animateCamera nuestro con un pan del usuario.
   var _programmaticCameraMove = false;
   late String _activeStyle;
+  var _allowMapMount = true;
 
   LatLng get _fallbackTarget {
     final origin = widget.route.origin;
@@ -172,9 +221,19 @@ class _NavigationMapViewState extends State<NavigationMapView> {
     return _fallbackTarget;
   }
 
+  bool get _effectiveShow3dBuildings =>
+      widget.show3dBuildings && !widget.lowGlCompat;
+
+  double get _effectivePitch => widget.lowGlCompat ? 0 : widget.pitch;
+
   /// En preview con red usamos siempre el mapa online: el encuadre puede
   /// abarcar varias CCAA y un PMTiles regional deja zonas sin teselas (gris).
   String _resolveActiveStyle(LatLng point) {
+    if (widget.lowGlCompat) {
+      return NavigationMapStyleService.lowGlCompatStyle(
+        dark: widget.preferDarkMap,
+      );
+    }
     if (widget._isPreview && widget.hasNetwork) {
       if (widget.preferDarkMap) {
         return widget.mapStyles.onlineStyleDark ?? widget.mapStyles.onlineStyle;
@@ -193,6 +252,14 @@ class _NavigationMapViewState extends State<NavigationMapView> {
   void initState() {
     super.initState();
     _activeStyle = _resolveActiveStyle(_cameraTarget);
+    if (widget.lowGlCompat) {
+      _allowMapMount = false;
+      Future<void>.delayed(const Duration(milliseconds: 350), () {
+        if (mounted) {
+          setState(() => _allowMapMount = true);
+        }
+      });
+    }
   }
 
   @override
@@ -200,7 +267,8 @@ class _NavigationMapViewState extends State<NavigationMapView> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.mapStyles != widget.mapStyles ||
         oldWidget.hasNetwork != widget.hasNetwork ||
-        oldWidget.preferDarkMap != widget.preferDarkMap) {
+        oldWidget.preferDarkMap != widget.preferDarkMap ||
+        oldWidget.lowGlCompat != widget.lowGlCompat) {
       // Usar el centro de cámara real (en preview no es el origen de la ruta).
       if (oldWidget.preferDarkMap != widget.preferDarkMap) {
         _loadedPuckStyle = null;
@@ -210,6 +278,9 @@ class _NavigationMapViewState extends State<NavigationMapView> {
     }
     if (_controller == null) {
       return;
+    }
+    if (!_sameGroupMates(oldWidget.groupMates, widget.groupMates)) {
+      unawaited(_syncGroupMates());
     }
     final routeChanged = oldWidget.route.id != widget.route.id;
     final alertsChanged = !_sameAlertIds(
@@ -260,12 +331,14 @@ class _NavigationMapViewState extends State<NavigationMapView> {
     if (oldWidget.pitch != widget.pitch && widget.cameraFollowUser) {
       unawaited(_moveCamera(animate: true));
       unawaited(_syncPuck());
-      if (oldWidget.show3dBuildings != widget.show3dBuildings) {
+      if (oldWidget.show3dBuildings != widget.show3dBuildings ||
+          oldWidget.lowGlCompat != widget.lowGlCompat) {
         unawaited(_sync3dBuildings());
       }
       return;
     }
-    if (oldWidget.show3dBuildings != widget.show3dBuildings) {
+    if (oldWidget.show3dBuildings != widget.show3dBuildings ||
+        oldWidget.lowGlCompat != widget.lowGlCompat) {
       unawaited(_sync3dBuildings());
     }
     final followResumed =
@@ -315,6 +388,8 @@ class _NavigationMapViewState extends State<NavigationMapView> {
     _puckHalo = null;
     _puckSymbol = null;
     _loadedPuckStyle = null;
+    _groupMateSymbols.clear();
+    _groupMateIconsReady = false;
     _endpointMarkers.clear();
     _mapConfigured = false;
     _styleSwitching = false;
@@ -574,6 +649,7 @@ class _NavigationMapViewState extends State<NavigationMapView> {
       await _drawEndpointMarkers(controller);
     } else {
       await _syncPuck();
+      await _syncGroupMates();
     }
 
     _routeDrawn = true;
@@ -605,7 +681,7 @@ class _NavigationMapViewState extends State<NavigationMapView> {
       } catch (_) {}
     }
 
-    if (!widget.show3dBuildings || widget._isPreview) {
+    if (!_effectiveShow3dBuildings || widget._isPreview) {
       return;
     }
 
@@ -889,6 +965,7 @@ class _NavigationMapViewState extends State<NavigationMapView> {
   }
 
   Map<String, dynamic> _routeGeoJson(List<GeoPoint> polyline) {
+    final points = _displayPolyline(polyline);
     return {
       'type': 'FeatureCollection',
       'features': [
@@ -898,12 +975,27 @@ class _NavigationMapViewState extends State<NavigationMapView> {
           'geometry': {
             'type': 'LineString',
             'coordinates': [
-              for (final point in polyline) [point.lng, point.lat],
+              for (final point in points) [point.lng, point.lat],
             ],
           },
         },
       ],
     };
+  }
+
+  /// En GLES débil, demasiados vértices en glBufferData provocan SIGSEGV.
+  List<GeoPoint> _displayPolyline(List<GeoPoint> polyline) {
+    if (!widget.lowGlCompat || polyline.length <= 400) {
+      return polyline;
+    }
+    final step = (polyline.length / 400).ceil();
+    final out = <GeoPoint>[
+      for (var i = 0; i < polyline.length; i += step) polyline[i],
+    ];
+    if (out.isEmpty || out.last != polyline.last) {
+      out.add(polyline.last);
+    }
+    return out;
   }
 
   Map<String, dynamic> _alternativesGeoJson(List<NavigationRoute> routes) {
@@ -1194,7 +1286,7 @@ class _NavigationMapViewState extends State<NavigationMapView> {
 
   /// Inclinación base (3D) + boost suave si hay curva por delante.
   double get _navigationCameraPitch {
-    final base = widget.pitch;
+    final base = _effectivePitch;
     if (base <= 0.5 || widget._isPreview) {
       return 0;
     }
@@ -1739,9 +1831,11 @@ class _NavigationMapViewState extends State<NavigationMapView> {
       // iconRotate = bearing haría doble rotación (moto “de lado”).
       iconRotate: _puckIconRotateDegrees(controller),
       iconAnchor: 'center',
+      zIndex: 20,
     );
 
     if (_puckSymbol == null) {
+      await _enableOverlappingSymbols(controller);
       _puckSymbol = await controller.addSymbol(symbolOptions);
     } else {
       await controller.updateSymbol(_puckSymbol!, symbolOptions);
@@ -1764,6 +1858,145 @@ class _NavigationMapViewState extends State<NavigationMapView> {
       delta += 360;
     }
     return delta;
+  }
+
+  bool _sameGroupMates(List<HudGroupMate> a, List<HudGroupMate> b) {
+    if (identical(a, b)) {
+      return true;
+    }
+    if (a.length != b.length) {
+      return false;
+    }
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  Future<void> _ensureGroupMateIcons(MapLibreMapController controller) async {
+    if (_groupMateIconsReady) {
+      return;
+    }
+    try {
+      await _enableOverlappingSymbols(controller);
+      await controller.addImage(
+        _groupMateIconId,
+        await VehicleNavigationMarker.toPng(
+          icon: VehicleMapIcon.motorcycle,
+          color: _groupMateColor,
+          logicalSize: 110,
+        ),
+      );
+      await controller.addImage(
+        _groupMateStaleIconId,
+        await VehicleNavigationMarker.toPng(
+          icon: VehicleMapIcon.motorcycle,
+          color: _groupMateStaleColor,
+          logicalSize: 110,
+        ),
+      );
+      _groupMateIconsReady = true;
+    } catch (_) {
+      _groupMateIconsReady = false;
+    }
+  }
+
+  Future<void> _enableOverlappingSymbols(MapLibreMapController controller) async {
+    try {
+      await controller.setSymbolIconAllowOverlap(true);
+      await controller.setSymbolTextAllowOverlap(true);
+      await controller.setSymbolIconIgnorePlacement(true);
+      await controller.setSymbolTextIgnorePlacement(true);
+    } catch (_) {}
+  }
+
+  /// Compañeros de grupo sobre el mapa de navegación (más pequeños que el puck).
+  Future<void> _syncGroupMates() async {
+    final controller = _controller;
+    if (controller == null || widget._isPreview) {
+      return;
+    }
+    await _ensureGroupMateIcons(controller);
+    if (!_groupMateIconsReady) {
+      return;
+    }
+
+    final mates = widget.groupMates;
+    final keep = mates.map((mate) => mate.uid).toSet();
+    final removeUids =
+        _groupMateSymbols.keys.where((uid) => !keep.contains(uid)).toList();
+    for (final uid in removeUids) {
+      final symbol = _groupMateSymbols.remove(uid);
+      if (symbol == null) {
+        continue;
+      }
+      try {
+        await controller.removeSymbol(symbol);
+      } catch (_) {}
+    }
+
+    final cameraBearing = controller.cameraPosition?.bearing ?? widget.bearing;
+    final ownLat = widget.latitude;
+    final ownLng = widget.longitude;
+    final placed = <({double lat, double lng})>[
+      if (ownLat != null && ownLng != null) (lat: ownLat, lng: ownLng),
+    ];
+
+    for (final mate in mates) {
+      var stackIndex = 0;
+      for (final previous in placed) {
+        final meters = _haversineMetersLocal(
+          GeoPoint(lat: mate.lat, lng: mate.lng),
+          GeoPoint(lat: previous.lat, lng: previous.lng),
+        );
+        if (meters < 35) {
+          stackIndex++;
+        }
+      }
+      placed.add((lat: mate.lat, lng: mate.lng));
+
+      var iconRotate = 0.0;
+      if (mate.heading.isFinite && mate.heading.abs() > 8) {
+        var delta = mate.heading - cameraBearing;
+        while (delta > 180) {
+          delta -= 360;
+        }
+        while (delta < -180) {
+          delta += 360;
+        }
+        iconRotate = delta;
+      }
+      // GPS real: apilar solo el dibujo hacia arriba si coinciden.
+      final options = SymbolOptions(
+        geometry: LatLng(mate.lat, mate.lng),
+        iconImage: mate.isStale ? _groupMateStaleIconId : _groupMateIconId,
+        iconSize: mate.isStale ? 0.75 : 0.9,
+        iconRotate: iconRotate,
+        iconAnchor: 'center',
+        iconOffset: Offset(0, -1.15 * stackIndex),
+        textField: mate.label,
+        textSize: 11,
+        textColor: mate.isStale ? '#C62828' : '#E65100',
+        textHaloColor: '#FFFFFF',
+        textHaloWidth: 1.2,
+        textOffset:
+            stackIndex > 0 ? const Offset(1.35, 0.15) : const Offset(0, 1.55),
+        textAnchor: stackIndex > 0 ? 'left' : 'top',
+        zIndex: 1 + stackIndex,
+      );
+      final existing = _groupMateSymbols[mate.uid];
+      if (existing == null) {
+        try {
+          _groupMateSymbols[mate.uid] = await controller.addSymbol(options);
+        } catch (_) {}
+      } else {
+        try {
+          await controller.updateSymbol(existing, options);
+        } catch (_) {}
+      }
+    }
   }
 
   /// Silueta del vehículo (cenital) tintada con el color del marcador.
@@ -1922,6 +2155,9 @@ class _NavigationMapViewState extends State<NavigationMapView> {
     final veilColor = widget.preferDarkMap
         ? const Color(0xFF0A0E14)
         : const Color(0xFF1A1F24);
+    if (!_allowMapMount) {
+      return ColoredBox(color: veilColor);
+    }
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -1946,12 +2182,13 @@ class _NavigationMapViewState extends State<NavigationMapView> {
           myLocationEnabled: false,
           myLocationTrackingMode: MyLocationTrackingMode.none,
           myLocationRenderMode: MyLocationRenderMode.normal,
-          compassEnabled: isPreview,
-          rotateGesturesEnabled: isPreview,
+          compassEnabled: isPreview && !widget.lowGlCompat,
+          rotateGesturesEnabled: isPreview && !widget.lowGlCompat,
           tiltGesturesEnabled: false,
           zoomGesturesEnabled: true,
           scrollGesturesEnabled: true,
           trackCameraPosition: true,
+          translucentTextureSurface: widget.lowGlCompat,
         ),
         IgnorePointer(
           child: AnimatedOpacity(

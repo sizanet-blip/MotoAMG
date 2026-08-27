@@ -1,6 +1,7 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:loc_motos/core/constants/navigation_constants.dart';
+import 'package:loc_motos/core/platform/android_graphics_compat.dart';
 import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
 import 'package:loc_motos/features/auth/domain/entities/user_vehicle.dart';
 import 'package:loc_motos/features/auth/domain/entities/vehicle_map_marker.dart';
@@ -45,6 +46,17 @@ final navigationRepositoryProvider = Provider<NavigationRepository>((ref) {
     ValhallaRemoteDataSource(),
     HiveRouteCacheDataSource(),
   );
+});
+
+/// Emulador API ≤30 u OpenGL débil: mapa simplificado para no SIGSEGV.
+final androidGraphicsCompatProvider =
+    FutureProvider<AndroidGraphicsCompat>((ref) {
+  return AndroidGraphicsCompat.detect();
+});
+
+final lowGlMapModeProvider = Provider<bool>((ref) {
+  return ref.watch(androidGraphicsCompatProvider).asData?.value.useLowGlMapMode ??
+      false;
 });
 
 final recentPlacesRepositoryProvider = Provider<RecentPlacesRepository>((ref) {
@@ -232,6 +244,10 @@ class HudSafetyController extends Notifier<HudSafetyPreferences> {
 
   Future<void> setMap3dEnabled(bool value) {
     return _persist(state.copyWith(map3dEnabled: value));
+  }
+
+  Future<void> setShowRouteSimulator(bool value) {
+    return _persist(state.copyWith(showRouteSimulator: value));
   }
 }
 

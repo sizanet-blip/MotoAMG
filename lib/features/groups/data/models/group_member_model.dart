@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:loc_motos/core/utils/timestamp_converter.dart';
 import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
 import 'package:loc_motos/features/groups/domain/entities/group_member.dart';
+import 'package:loc_motos/features/groups/domain/entities/ride_role.dart';
 
 class GroupMemberModel extends GroupMember {
   const GroupMemberModel({
@@ -12,6 +13,7 @@ class GroupMemberModel extends GroupMember {
     super.bikeBrand,
     super.bikeModel,
     super.bikePlate,
+    super.rideRole,
   });
 
   factory GroupMemberModel.fromUser(AppUser user, DateTime joinedAt) {
@@ -40,6 +42,7 @@ class GroupMemberModel extends GroupMember {
       bikeBrand: data['bikeBrand'] as String?,
       bikeModel: data['bikeModel'] as String?,
       bikePlate: data['bikePlate'] as String?,
+      rideRole: RideRoleX.tryParse(data['rideRole'] as String?),
     );
   }
 
@@ -51,6 +54,7 @@ class GroupMemberModel extends GroupMember {
       'bikeBrand': bikeBrand,
       'bikeModel': bikeModel,
       'bikePlate': bikePlate,
+      'rideRole': rideRole?.firestoreValue,
     };
   }
 }

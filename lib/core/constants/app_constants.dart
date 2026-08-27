@@ -54,7 +54,10 @@ abstract final class AppConstants {
   static const String groupsCollection = 'groups';
   static const String membersSubcollection = 'members';
   static const String membershipsSubcollection = 'memberships';
+  static const String sharedRouteSubcollection = 'sharedRoute';
+  static const String sharedRouteDocId = 'current';
 
   // --- Realtime Database ---
   static const String liveLocationsPath = 'live_locations';
+  static const String groupAlertsPath = 'group_alerts';
 }

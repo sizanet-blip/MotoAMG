@@ -11,6 +11,7 @@ class HudSafetyPreferences extends Equatable {
     this.highBrightness = false,
     this.helmetMode = false,
     this.map3dEnabled = false,
+    this.showRouteSimulator = false,
   });
 
   static const defaults = HudSafetyPreferences();
@@ -27,17 +28,22 @@ class HudSafetyPreferences extends Equatable {
   /// Inclinación 3D del mapa al navegar (por defecto off = vista plana).
   final bool map3dEnabled;
 
+  /// Botones compactos Volver / Simular en el HUD para probar la ruta sin moverte.
+  final bool showRouteSimulator;
+
   HudSafetyPreferences copyWith({
     bool? keepScreenOn,
     bool? highBrightness,
     bool? helmetMode,
     bool? map3dEnabled,
+    bool? showRouteSimulator,
   }) {
     return HudSafetyPreferences(
       keepScreenOn: keepScreenOn ?? this.keepScreenOn,
       highBrightness: highBrightness ?? this.highBrightness,
       helmetMode: helmetMode ?? this.helmetMode,
       map3dEnabled: map3dEnabled ?? this.map3dEnabled,
+      showRouteSimulator: showRouteSimulator ?? this.showRouteSimulator,
     );
   }
 
@@ -46,6 +52,7 @@ class HudSafetyPreferences extends Equatable {
         'highBrightness': highBrightness,
         'helmetMode': helmetMode,
         'map3dEnabled': map3dEnabled,
+        'showRouteSimulator': showRouteSimulator,
       };
 
   factory HudSafetyPreferences.fromJson(Map<String, dynamic> json) {
@@ -54,12 +61,18 @@ class HudSafetyPreferences extends Equatable {
       highBrightness: json['highBrightness'] as bool? ?? false,
       helmetMode: json['helmetMode'] as bool? ?? false,
       map3dEnabled: json['map3dEnabled'] as bool? ?? false,
+      showRouteSimulator: json['showRouteSimulator'] as bool? ?? false,
     );
   }
 
   @override
-  List<Object?> get props =>
-      [keepScreenOn, highBrightness, helmetMode, map3dEnabled];
+  List<Object?> get props => [
+        keepScreenOn,
+        highBrightness,
+        helmetMode,
+        map3dEnabled,
+        showRouteSimulator,
+      ];
 }
 
 class HudSafetyRepository {

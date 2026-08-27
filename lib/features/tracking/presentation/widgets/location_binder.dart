@@ -134,11 +134,18 @@ class _LocationBinderState extends ConsumerState<LocationBinder>
         accuracyMeters: position.accuracy > 0 ? position.accuracy : null,
       );
     }
+    if (ref.read(routeSimulationActiveProvider)) {
+      return;
+    }
     unawaited(_publish(position));
   }
 
   Future<void> _checkGpsSignal() async {
     if (_checkingGps) {
+      return;
+    }
+    // En simulación no tocamos GPS real ni marcamos "sin señal".
+    if (ref.read(routeSimulationActiveProvider)) {
       return;
     }
     _checkingGps = true;
@@ -162,6 +169,13 @@ class _LocationBinderState extends ConsumerState<LocationBinder>
   }
 
   Future<void> _publishLatest() async {
+    if (ref.read(routeSimulationActiveProvider)) {
+      final own = ref.read(ownDevicePositionProvider);
+      if (own != null) {
+        await _publishDevicePosition(own);
+      }
+      return;
+    }
     if (_lastPosition != null) {
       await _publish(_lastPosition!);
     }
@@ -176,6 +190,13 @@ class _LocationBinderState extends ConsumerState<LocationBinder>
       return;
     }
     ref.read(ownGpsLostProvider.notifier).state = lost;
+    if (ref.read(routeSimulationActiveProvider)) {
+      final own = ref.read(ownDevicePositionProvider);
+      if (own != null) {
+        unawaited(_publishDevicePosition(own));
+      }
+      return;
+    }
     if (_lastPosition != null) {
       unawaited(_publish(_lastPosition!));
     }
@@ -183,7 +204,12 @@ class _LocationBinderState extends ConsumerState<LocationBinder>
 
   Future<void> _publish(Position position) async {
     final hasSignal = !ref.read(ownGpsLostProvider);
-    if (!_shouldPublishToGroup(position, hasSignal)) {
+    if (!_shouldPublishToGroup(
+      speedMps: position.speed.isFinite && position.speed >= 0
+          ? position.speed
+          : 0.0,
+      hasSignal: hasSignal,
+    )) {
       return;
     }
     try {
@@ -213,15 +239,51 @@ class _LocationBinderState extends ConsumerState<LocationBinder>
     }
   }
 
-  bool _shouldPublishToGroup(Position position, bool hasSignal) {
+  /// Publica la posición del HUD (p. ej. simulación de ruta) al grupo.
+  Future<void> _publishDevicePosition(OwnDevicePosition own) async {
+    final simulating = ref.read(routeSimulationActiveProvider);
+    final hasSignal = true;
+    // En simulación no apliques el throttle de «parado»: hay que verse mover.
+    if (!simulating &&
+        !_shouldPublishToGroup(speedMps: own.speedMps, hasSignal: hasSignal)) {
+      return;
+    }
+    try {
+      await ref.read(locationRepositoryProvider).publishLocation(
+        LiveLocation(
+          uid: widget.user.uid,
+          groupId: widget.groupId,
+          lat: own.lat,
+          lng: own.lng,
+          heading: own.heading ?? 0,
+          speed: own.speedMps,
+          updatedAt: DateTime.now(),
+          displayName: widget.user.displayName,
+          hasSignal: hasSignal,
+        ),
+      );
+      _lastPublishedAt = DateTime.now();
+      _lastPublishedHasSignal = hasSignal;
+    } catch (error) {
+      if (!mounted || _notifiedPublishError) {
+        return;
+      }
+      _notifiedPublishError = true;
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        SnackBar(content: Text(error.toString())),
+      );
+    }
+  }
+
+  bool _shouldPublishToGroup({
+    required double speedMps,
+    required bool hasSignal,
+  }) {
     if (_lastPublishedHasSignal != null &&
         _lastPublishedHasSignal != hasSignal) {
       return true;
     }
-    final speed = position.speed.isFinite && position.speed >= 0
-        ? position.speed
-        : 0.0;
-    final stopped = speed < AppConstants.locationStoppedSpeedMps;
+    final stopped = speedMps < AppConstants.locationStoppedSpeedMps;
     if (!stopped) {
       return true;
     }
@@ -273,5 +335,14 @@ class _LocationBinderState extends ConsumerState<LocationBinder>
   }
 
   @override
-  Widget build(BuildContext context) => widget.child;
+  Widget build(BuildContext context) {
+    // Durante simulación del HUD, reenviar la posición ficticia al grupo.
+    ref.listen(ownDevicePositionProvider, (previous, next) {
+      if (!ref.read(routeSimulationActiveProvider) || next == null) {
+        return;
+      }
+      unawaited(_publishDevicePosition(next));
+    });
+    return widget.child;
+  }
 }

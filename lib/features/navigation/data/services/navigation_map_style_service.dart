@@ -44,6 +44,14 @@ abstract final class NavigationMapStyleService {
       if (dark) {
         _softenOpenFreeMapNight(decoded);
       }
+      final existingMeta = decoded['metadata'];
+      if (existingMeta is Map) {
+        existingMeta['maputnik:renderer'] = 'mbgljs';
+      } else {
+        decoded['metadata'] = <String, dynamic>{
+          'maputnik:renderer': 'mbgljs',
+        };
+      }
       final encoded = jsonEncode(decoded);
       _cachedOnlineStyleJson = encoded;
       _cachedOnlineStyleVersion = versionKey;
@@ -56,9 +64,27 @@ abstract final class NavigationMapStyleService {
 
   static bool? _cachedOnlineStyleDark;
 
+  /// Estilo mínimo para emuladores con GLES débil (API 30 AOSP, etc.).
+  static String lowGlCompatStyle({bool dark = false}) => jsonEncode({
+        'version': 8,
+        'metadata': {'maputnik:renderer': 'mbgljs'},
+        'sources': <String, dynamic>{},
+        'glyphs': 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
+        'layers': [
+          {
+            'id': 'background',
+            'type': 'background',
+            'paint': {
+              'background-color': dark ? '#0A0E14' : '#D7D3CB',
+            },
+          },
+        ],
+      });
+
   /// Sin teselas: fuera de packs offline y sin red (evita caché engañosa).
   static String unavailableStyle() => jsonEncode({
         'version': 8,
+        'metadata': {'maputnik:renderer': 'mbgljs'},
         'sources': <String, dynamic>{},
         'layers': [
           {

@@ -351,10 +351,11 @@ class _NavigationHubScreenState extends ConsumerState<NavigationHubScreen> {
       if (route == null || !mounted) {
         return;
       }
-      await Navigator.of(context).push(
+      await Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute<void>(
           builder: (_) => NavigationHudScreen(route: route, user: widget.user),
         ),
+        (route) => route.isFirst,
       );
     } catch (error) {
       if (!mounted) {

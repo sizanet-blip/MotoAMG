@@ -6,6 +6,7 @@ import 'package:loc_motos/core/utils/spain_data_freshness.dart';
 import 'package:loc_motos/core/utils/distance_format.dart';
 import 'package:loc_motos/core/utils/navigation_duration_format.dart';
 import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
+import 'package:loc_motos/features/groups/presentation/providers/group_providers.dart';
 import 'package:loc_motos/features/navigation/domain/entities/alert_preferences.dart';
 import 'package:loc_motos/features/navigation/domain/entities/hybrid_map_styles.dart';
 import 'package:loc_motos/features/navigation/domain/entities/navigation_route.dart';
@@ -198,10 +199,12 @@ class _RoutePreviewScreenState extends ConsumerState<RoutePreviewScreen> {
     if (!mounted) {
       return;
     }
-    await Navigator.of(context).push(
+    // Sustituye la preview: dos MapLibre a la vez tumba el proceso Android 11.
+    await Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute<void>(
         builder: (_) => NavigationHudScreen(route: route, user: widget.user),
       ),
+      (route) => route.isFirst,
     );
   }
 
@@ -222,6 +225,33 @@ class _RoutePreviewScreenState extends ConsumerState<RoutePreviewScreen> {
     }
   }
 
+  Future<void> _publishToGroup({required bool updating}) async {
+    final groupId = widget.user.currentGroupId;
+    if (groupId == null || groupId.isEmpty) {
+      return;
+    }
+    await ref.read(groupActionControllerProvider.notifier).publishSharedRoute(
+          actor: widget.user,
+          groupId: groupId,
+          route: _plan.selected,
+        );
+    if (!mounted) {
+      return;
+    }
+    final error = ref.read(groupActionControllerProvider).asError?.error;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          error == null
+              ? (updating
+                  ? 'Ruta del grupo actualizada'
+                  : 'Ruta publicada en el grupo')
+              : 'No se pudo publicar: $error',
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final mapStyleAsync = ref.watch(hybridMapStylesProvider);
@@ -239,6 +269,17 @@ class _RoutePreviewScreenState extends ConsumerState<RoutePreviewScreen> {
     final radarOnMap = _radarVisibleOnMap(alertPrefs);
     final tollOnMap = _tollVisibleOnMap(alertPrefs);
     final curveOnMap = _curveVisibleOnMap(alertPrefs);
+    final groupId = widget.user.currentGroupId;
+    final group = groupId == null || groupId.isEmpty
+        ? null
+        : ref.watch(rideGroupProvider(groupId)).asData?.value;
+    final canPublishGroupRoute =
+        group != null && group.isActive && group.isAdmin(widget.user.uid);
+    final hasSharedRoute = groupId != null &&
+        groupId.isNotEmpty &&
+        (ref.watch(groupHasSharedRouteProvider(groupId)).asData?.value ==
+            true);
+    final publishBusy = ref.watch(groupActionControllerProvider).isLoading;
 
     return OwnPositionWatcher(
       child: MapNetworkResumeBinder(
@@ -315,6 +356,12 @@ class _RoutePreviewScreenState extends ConsumerState<RoutePreviewScreen> {
                   onSelect: _selectAlternative,
                   onShare: () => unawaited(_shareGpx()),
                   onStart: _startNavigation,
+                  canPublishToGroup: canPublishGroupRoute,
+                  publishBusy: publishBusy,
+                  updatingGroupRoute: hasSharedRoute,
+                  onPublishToGroup: () => unawaited(
+                    _publishToGroup(updating: hasSharedRoute),
+                  ),
                   maxHeight: MediaQuery.sizeOf(context).height * 0.46,
                 ),
               ],
@@ -413,6 +460,7 @@ class _RoutePreviewMapLayerState extends ConsumerState<_RoutePreviewMapLayer> {
           previewFocusLatitude: _focusLat,
           previewFocusLongitude: _focusLng,
           previewFocusEpoch: _focusEpoch,
+          lowGlCompat: ref.watch(lowGlMapModeProvider),
           onControllerReady: (controller) {
             if (_mapController == controller) {
               return;
@@ -554,6 +602,10 @@ class _RoutePreviewSheet extends StatelessWidget {
     required this.onSelect,
     required this.onShare,
     required this.onStart,
+    this.canPublishToGroup = false,
+    this.publishBusy = false,
+    this.updatingGroupRoute = false,
+    this.onPublishToGroup,
     required this.maxHeight,
   });
 
@@ -569,6 +621,10 @@ class _RoutePreviewSheet extends StatelessWidget {
   final ValueChanged<int> onSelect;
   final VoidCallback onShare;
   final VoidCallback onStart;
+  final bool canPublishToGroup;
+  final bool publishBusy;
+  final bool updatingGroupRoute;
+  final VoidCallback? onPublishToGroup;
   final double maxHeight;
 
   int? get _fastestIndex {
@@ -793,6 +849,28 @@ class _RoutePreviewSheet extends StatelessWidget {
                       icon: const Icon(Icons.navigation),
                       label: const Text('Empezar navegación'),
                     ),
+                    if (canPublishToGroup) ...[
+                      const SizedBox(height: 8),
+                      FilledButton.tonalIcon(
+                        onPressed: enriching || publishBusy
+                            ? null
+                            : onPublishToGroup,
+                        icon: Icon(
+                          updatingGroupRoute
+                              ? Icons.sync_rounded
+                              : Icons.groups_rounded,
+                        ),
+                        label: Text(
+                          publishBusy
+                              ? (updatingGroupRoute
+                                  ? 'Actualizando…'
+                                  : 'Publicando…')
+                              : (updatingGroupRoute
+                                  ? 'Actualizar ruta del grupo'
+                                  : 'Publicar en el grupo'),
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 8),
                     OutlinedButton.icon(
                       onPressed: enriching ? null : onShare,

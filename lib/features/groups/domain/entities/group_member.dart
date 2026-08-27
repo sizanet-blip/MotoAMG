@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:loc_motos/features/groups/domain/entities/ride_role.dart';
 
 class GroupMember extends Equatable {
   const GroupMember({
@@ -9,6 +10,7 @@ class GroupMember extends Equatable {
     this.bikeBrand,
     this.bikeModel,
     this.bikePlate,
+    this.rideRole,
   });
 
   final String uid;
@@ -18,6 +20,7 @@ class GroupMember extends Equatable {
   final String? bikeBrand;
   final String? bikeModel;
   final String? bikePlate;
+  final RideRole? rideRole;
 
   String get bikeLabel {
     final parts = [
@@ -29,12 +32,13 @@ class GroupMember extends Equatable {
 
   @override
   List<Object?> get props => [
-    uid,
-    displayName,
-    joinedAt,
-    isSharingLocation,
-    bikeBrand,
-    bikeModel,
-    bikePlate,
-  ];
+        uid,
+        displayName,
+        joinedAt,
+        isSharingLocation,
+        bikeBrand,
+        bikeModel,
+        bikePlate,
+        rideRole,
+      ];
 }

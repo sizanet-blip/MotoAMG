@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:loc_motos/core/constants/app_constants.dart';
 import 'package:loc_motos/core/theme/app_theme.dart';
 import 'package:loc_motos/features/auth/presentation/widgets/auth_gate.dart';
+import 'package:loc_motos/features/navigation/presentation/providers/navigation_providers.dart';
 
 class LocMotosApp extends StatelessWidget {
   const LocMotosApp({super.key, this.overrides = const []});
@@ -14,20 +15,30 @@ class LocMotosApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return ProviderScope(
       overrides: overrides,
-      child: MaterialApp(
-        title: AppConstants.appName,
-        debugShowCheckedModeBanner: false,
-        locale: const Locale('es'),
-        supportedLocales: const [Locale('es')],
-        localizationsDelegates: const [
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-        ],
-        theme: AppTheme.light,
-        darkTheme: AppTheme.dark,
-        home: const AuthGate(),
-      ),
+      child: const _LocMotosRoot(),
+    );
+  }
+}
+
+class _LocMotosRoot extends ConsumerWidget {
+  const _LocMotosRoot();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(androidGraphicsCompatProvider);
+    return MaterialApp(
+      title: AppConstants.appName,
+      debugShowCheckedModeBanner: false,
+      locale: const Locale('es'),
+      supportedLocales: const [Locale('es')],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      theme: AppTheme.light,
+      darkTheme: AppTheme.dark,
+      home: const AuthGate(),
     );
   }
 }

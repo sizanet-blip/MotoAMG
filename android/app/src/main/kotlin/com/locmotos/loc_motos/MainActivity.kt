@@ -38,6 +38,26 @@ class MainActivity : FlutterActivity() {
                         result.success(null)
                     }
                 }
+                "getGraphicsCompat" -> {
+                    val fingerprint = Build.FINGERPRINT
+                    val model = Build.MODEL
+                    val product = Build.PRODUCT
+                    val hardware = Build.HARDWARE
+                    val isEmulator =
+                        fingerprint.startsWith("generic") ||
+                            fingerprint.contains("emulator", ignoreCase = true) ||
+                            model.contains("Emulator", ignoreCase = true) ||
+                            model.contains("Android SDK", ignoreCase = true) ||
+                            product.contains("sdk", ignoreCase = true) ||
+                            hardware.contains("goldfish", ignoreCase = true) ||
+                            hardware.contains("ranchu", ignoreCase = true)
+                    result.success(
+                        mapOf(
+                            "sdkInt" to Build.VERSION.SDK_INT,
+                            "isEmulator" to isEmulator,
+                        ),
+                    )
+                }
                 else -> result.notImplemented()
             }
         }

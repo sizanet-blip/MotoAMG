@@ -238,6 +238,11 @@ class _NavigationPlannerMapState extends State<NavigationPlannerMap> {
 
   @override
   Widget build(BuildContext context) {
+    final routeIsCurrent = ModalRoute.of(context)?.isCurrent ?? true;
+    if (!routeIsCurrent) {
+      return const ColoredBox(color: Color(0xFF1A1F24));
+    }
+
     return MapLibreMap(
       styleString: _activeStyle,
       initialCameraPosition: CameraPosition(

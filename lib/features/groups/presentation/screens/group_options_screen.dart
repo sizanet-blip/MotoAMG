@@ -6,6 +6,7 @@ import 'package:loc_motos/core/utils/distance_format.dart';
 import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
 import 'package:loc_motos/features/groups/domain/entities/group_member.dart';
 import 'package:loc_motos/features/groups/domain/entities/ride_group.dart';
+import 'package:loc_motos/features/groups/domain/entities/ride_role.dart';
 import 'package:loc_motos/features/groups/presentation/providers/group_providers.dart';
 import 'package:loc_motos/features/tracking/domain/entities/device_position.dart';
 import 'package:loc_motos/features/tracking/domain/entities/live_location.dart';
@@ -31,9 +32,9 @@ class GroupOptionsScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text('Grupo')),
       body: groupAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(
+        error: (error, _) => const Center(
           child: Padding(
-            padding: const EdgeInsets.all(24),
+            padding: EdgeInsets.all(24),
             child: Text(
               'No se pudieron cargar las opciones del grupo.',
               textAlign: TextAlign.center,
@@ -44,6 +45,7 @@ class GroupOptionsScreen extends ConsumerWidget {
           if (group == null || !group.isActive) {
             return const Center(child: Text('Este grupo ya está cerrado.'));
           }
+          final iAmAdmin = group.isAdmin(user.uid);
           return ListView(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
             children: [
@@ -51,8 +53,10 @@ class GroupOptionsScreen extends ConsumerWidget {
               const SizedBox(height: 4),
               Text(
                 group.isOwner(user.uid)
-                    ? 'Eres el creador. Aquí gestionas el código y los moteros.'
-                    : 'Comparte el código para que se unan más moteros.',
+                    ? 'Eres el creador. Gestionas admins, ruta y roles de marcha.'
+                    : iAmAdmin
+                        ? 'Eres administrador: puedes publicar la ruta y asignar cabecera/cola.'
+                        : 'Comparte el código para que se unan más moteros.',
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
               const SizedBox(height: 16),
@@ -86,7 +90,9 @@ class GroupOptionsScreen extends ConsumerWidget {
                     ? null
                     : () => _confirmLeave(context, ref, group),
                 icon: Icon(
-                  group.isOwner(user.uid) ? Icons.meeting_room_outlined : Icons.logout,
+                  group.isOwner(user.uid)
+                      ? Icons.meeting_room_outlined
+                      : Icons.logout,
                 ),
                 label: Text(
                   group.isOwner(user.uid)
@@ -163,9 +169,9 @@ class _InviteCodeCard extends StatelessWidget {
                   Text(
                     code,
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      letterSpacing: 4,
-                      fontWeight: FontWeight.bold,
-                    ),
+                          letterSpacing: 4,
+                          fontWeight: FontWeight.bold,
+                        ),
                   ),
                 ],
               ),
@@ -217,10 +223,11 @@ class _MembersCard extends ConsumerWidget {
 
     final locations =
         ref.watch(groupLocationsProvider(groupId)).valueOrNull ??
-        const <LiveLocation>[];
+            const <LiveLocation>[];
     final own = ref.watch(ownDevicePositionProvider);
     final byUid = {for (final location in locations) location.uid: location};
-    final isOwner = group.isOwner(user.uid);
+    final iAmAdmin = group.isAdmin(user.uid);
+    final iAmOwner = group.isOwner(user.uid);
 
     return Card(
       clipBehavior: Clip.antiAlias,
@@ -232,13 +239,35 @@ class _MembersCard extends ConsumerWidget {
               member: members[i],
               isMe: members[i].uid == user.uid,
               isCreator: group.isOwner(members[i].uid),
+              isAdmin: group.isAdmin(members[i].uid),
               distanceLabel: _distanceLabel(
                 member: members[i],
                 own: own,
                 location: byUid[members[i].uid],
               ),
-              canRemove: isOwner && members[i].uid != user.uid && !busy,
+              canManage: iAmAdmin && !busy,
+              canManageAdmins: iAmOwner && !busy,
+              canRemove: iAmAdmin &&
+                  members[i].uid != user.uid &&
+                  !group.isOwner(members[i].uid) &&
+                  !busy,
               onRemove: () => _confirmRemove(context, ref, members[i]),
+              onSetAdmin: (value) => ref
+                  .read(groupActionControllerProvider.notifier)
+                  .setMemberAdmin(
+                    actor: user,
+                    groupId: groupId,
+                    memberUid: members[i].uid,
+                    isAdmin: value,
+                  ),
+              onSetRideRole: (role) => ref
+                  .read(groupActionControllerProvider.notifier)
+                  .setMemberRideRole(
+                    actor: user,
+                    groupId: groupId,
+                    memberUid: members[i].uid,
+                    role: role,
+                  ),
             ),
           ],
         ],
@@ -286,9 +315,11 @@ class _MembersCard extends ConsumerWidget {
     if (ok != true || !context.mounted) {
       return;
     }
-    await ref
-        .read(groupActionControllerProvider.notifier)
-        .removeMember(owner: user, groupId: groupId, member: member);
+    await ref.read(groupActionControllerProvider.notifier).removeMember(
+          owner: user,
+          groupId: groupId,
+          member: member,
+        );
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Has quitado a ${member.displayName}')),
@@ -302,17 +333,27 @@ class _MemberTile extends StatelessWidget {
     required this.member,
     required this.isMe,
     required this.isCreator,
+    required this.isAdmin,
     required this.distanceLabel,
+    required this.canManage,
+    required this.canManageAdmins,
     required this.canRemove,
     required this.onRemove,
+    required this.onSetAdmin,
+    required this.onSetRideRole,
   });
 
   final GroupMember member;
   final bool isMe;
   final bool isCreator;
+  final bool isAdmin;
   final String? distanceLabel;
+  final bool canManage;
+  final bool canManageAdmins;
   final bool canRemove;
   final VoidCallback onRemove;
+  final ValueChanged<bool> onSetAdmin;
+  final ValueChanged<RideRole?> onSetRideRole;
 
   @override
   Widget build(BuildContext context) {
@@ -320,9 +361,18 @@ class _MemberTile extends StatelessWidget {
         ? 'Motero'
         : member.displayName.trim();
     final initial = name.isEmpty ? '?' : name[0].toUpperCase();
+    final chips = <Widget>[
+      if (isMe) const _RoleChip(label: 'Tú', color: Color(0xFF1565C0)),
+      if (isCreator)
+        const _RoleChip(label: 'Creador', color: Color(0xFF6A1B9A)),
+      if (isAdmin && !isCreator)
+        const _RoleChip(label: 'Admin', color: Color(0xFF00838F)),
+      if (member.rideRole == RideRole.cabecera)
+        const _RoleChip(label: 'Cabecera', color: Color(0xFF2E7D32)),
+      if (member.rideRole == RideRole.cola)
+        const _RoleChip(label: 'Cola', color: Color(0xFFEF6C00)),
+    ];
     final subtitleParts = <String>[
-      if (isMe) 'Tú',
-      if (isCreator) 'Creador',
       if (member.bikeLabel.isNotEmpty) member.bikeLabel,
       if (member.bikePlate != null && member.bikePlate!.trim().isNotEmpty)
         member.bikePlate!.trim().toUpperCase(),
@@ -332,14 +382,107 @@ class _MemberTile extends StatelessWidget {
     return ListTile(
       leading: CircleAvatar(child: Text(initial)),
       title: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: subtitleParts.isEmpty ? null : Text(subtitleParts.join(' · ')),
-      trailing: canRemove
-          ? IconButton(
-              tooltip: 'Quitar del grupo',
-              onPressed: onRemove,
-              icon: const Icon(Icons.person_remove_outlined),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (chips.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Wrap(spacing: 4, runSpacing: 4, children: chips),
+          ],
+          if (subtitleParts.isNotEmpty) ...[
+            const SizedBox(height: 2),
+            Text(subtitleParts.join(' · ')),
+          ],
+        ],
+      ),
+      isThreeLine: chips.isNotEmpty && subtitleParts.isNotEmpty,
+      trailing: canManage
+          ? PopupMenuButton<_MemberAction>(
+              tooltip: 'Gestionar',
+              onSelected: (action) {
+                switch (action) {
+                  case _MemberAction.makeAdmin:
+                    onSetAdmin(true);
+                  case _MemberAction.removeAdmin:
+                    onSetAdmin(false);
+                  case _MemberAction.cabecera:
+                    onSetRideRole(RideRole.cabecera);
+                  case _MemberAction.cola:
+                    onSetRideRole(RideRole.cola);
+                  case _MemberAction.clearRole:
+                    onSetRideRole(null);
+                  case _MemberAction.remove:
+                    onRemove();
+                }
+              },
+              itemBuilder: (context) => [
+                if (canManageAdmins && !isCreator) ...[
+                  PopupMenuItem(
+                    value: isAdmin
+                        ? _MemberAction.removeAdmin
+                        : _MemberAction.makeAdmin,
+                    child: Text(
+                      isAdmin ? 'Quitar administrador' : 'Hacer administrador',
+                    ),
+                  ),
+                ],
+                const PopupMenuItem(
+                  value: _MemberAction.cabecera,
+                  child: Text('Asignar cabecera'),
+                ),
+                const PopupMenuItem(
+                  value: _MemberAction.cola,
+                  child: Text('Asignar cola'),
+                ),
+                if (member.rideRole != null)
+                  const PopupMenuItem(
+                    value: _MemberAction.clearRole,
+                    child: Text('Quitar rol de marcha'),
+                  ),
+                if (canRemove)
+                  const PopupMenuItem(
+                    value: _MemberAction.remove,
+                    child: Text('Quitar del grupo'),
+                  ),
+              ],
             )
           : null,
+    );
+  }
+}
+
+enum _MemberAction {
+  makeAdmin,
+  removeAdmin,
+  cabecera,
+  cola,
+  clearRole,
+  remove,
+}
+
+class _RoleChip extends StatelessWidget {
+  const _RoleChip({required this.label, required this.color});
+
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.45)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: color,
+        ),
+      ),
     );
   }
 }

@@ -1,17 +1,32 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
 import 'package:loc_motos/features/auth/presentation/providers/auth_providers.dart';
+import 'package:loc_motos/features/groups/data/datasources/group_incident_remote_datasource.dart';
 import 'package:loc_motos/features/groups/data/datasources/group_remote_datasource.dart';
 import 'package:loc_motos/features/groups/data/repositories/group_repository_impl.dart';
+import 'package:loc_motos/features/groups/domain/entities/group_incident.dart';
 import 'package:loc_motos/features/groups/domain/entities/group_member.dart';
 import 'package:loc_motos/features/groups/domain/entities/group_membership.dart';
 import 'package:loc_motos/features/groups/domain/entities/ride_group.dart';
+import 'package:loc_motos/features/groups/domain/entities/ride_role.dart';
 import 'package:loc_motos/features/groups/domain/exceptions/group_exceptions.dart';
 import 'package:loc_motos/features/groups/domain/repositories/group_repository.dart';
+import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
+import 'package:loc_motos/features/navigation/domain/entities/navigation_route.dart';
 import 'package:loc_motos/features/tracking/presentation/providers/tracking_providers.dart';
 
 final groupRepositoryProvider = Provider<GroupRepository>((ref) {
   return GroupRepositoryImpl(GroupRemoteDataSource());
+});
+
+final groupIncidentDatasourceProvider =
+    Provider<GroupIncidentRemoteDataSource>((ref) {
+  return GroupIncidentRemoteDataSource();
+});
+
+final groupIncidentsProvider =
+    StreamProvider.family<List<GroupIncident>, String>((ref, groupId) {
+  return ref.watch(groupIncidentDatasourceProvider).watchGroup(groupId);
 });
 
 final liveUserProvider = StreamProvider.family<AppUser?, String>((ref, uid) {
@@ -30,6 +45,22 @@ final groupMembersProvider = StreamProvider.family<List<GroupMember>, String>((
   groupId,
 ) {
   return ref.watch(groupRepositoryProvider).watchMembers(groupId);
+});
+
+final groupSharedRouteProvider =
+    StreamProvider.family<NavigationRoute?, String>((ref, groupId) {
+  if (groupId.isEmpty) {
+    return Stream<NavigationRoute?>.value(null);
+  }
+  return ref.watch(groupRepositoryProvider).watchSharedRoute(groupId);
+});
+
+final groupHasSharedRouteProvider =
+    StreamProvider.family<bool, String>((ref, groupId) {
+  if (groupId.isEmpty) {
+    return Stream<bool>.value(false);
+  }
+  return ref.watch(groupRepositoryProvider).watchHasSharedRoute(groupId);
 });
 
 final myGroupsProvider = StreamProvider.family<List<GroupMembership>, String>((
@@ -145,6 +176,106 @@ class GroupActionController extends Notifier<AsyncValue<void>> {
     });
   }
 
+  Future<void> setMemberAdmin({
+    required AppUser actor,
+    required String groupId,
+    required String memberUid,
+    required bool isAdmin,
+  }) {
+    return _run(() async {
+      await _repo.setMemberAdmin(
+        actor: actor,
+        groupId: groupId,
+        memberUid: memberUid,
+        isAdmin: isAdmin,
+      );
+    });
+  }
+
+  Future<void> setMemberRideRole({
+    required AppUser actor,
+    required String groupId,
+    required String memberUid,
+    required RideRole? role,
+  }) {
+    return _run(() async {
+      await _repo.setMemberRideRole(
+        actor: actor,
+        groupId: groupId,
+        memberUid: memberUid,
+        role: role,
+      );
+    });
+  }
+
+  Future<void> publishSharedRoute({
+    required AppUser actor,
+    required String groupId,
+    required NavigationRoute route,
+  }) {
+    return _run(() async {
+      await _repo.publishSharedRoute(
+        actor: actor,
+        groupId: groupId,
+        route: route,
+      );
+    });
+  }
+
+  Future<void> raiseIncident({
+    required String groupId,
+    required String uid,
+    required String displayName,
+    required GroupIncidentType type,
+    required GeoPoint point,
+    GroupIncidentSeverity? severity,
+  }) {
+    return _run(() async {
+      final ds = ref.read(groupIncidentDatasourceProvider);
+      final existing = await ds.watchGroup(groupId).first;
+      GroupIncident? mine;
+      for (final i in existing) {
+        if (i.uid == uid) {
+          mine = i;
+          break;
+        }
+      }
+      if (mine != null) {
+        if (mine.type == GroupIncidentType.emergencia &&
+            type != GroupIncidentType.emergencia) {
+          throw const GroupException(
+            'Tienes una emergencia activa. Cancélala antes o mantén el aviso.',
+          );
+        }
+      }
+      await ds.publish(
+        groupId,
+        GroupIncident(
+          uid: uid,
+          type: type,
+          point: point,
+          at: DateTime.now(),
+          severity: type == GroupIncidentType.emergencia
+              ? (severity ?? GroupIncidentSeverity.alta)
+              : null,
+          displayName: displayName,
+        ),
+      );
+    });
+  }
+
+  Future<void> clearIncident({
+    required String groupId,
+    required String uid,
+  }) {
+    return _run(() async {
+      await ref.read(groupIncidentDatasourceProvider).clear(
+            groupId: groupId,
+            uid: uid,
+          );
+    });
+  }
+
   void _setLocalGroup(AppUser user, String groupId) {
     final current = ref.read(signedInUserProvider) ?? user;
     ref.read(signedInUserProvider.notifier).state = current.copyWith(
@@ -164,3 +295,4 @@ class GroupActionController extends Notifier<AsyncValue<void>> {
     }
   }
 }
+

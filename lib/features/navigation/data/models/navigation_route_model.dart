@@ -321,31 +321,35 @@ class NavigationRouteModel extends NavigationRoute {
   }
 
   factory NavigationRouteModel.fromJson(Map<String, dynamic> json) {
+    Map<String, dynamic> asMap(dynamic raw) =>
+        Map<String, dynamic>.from(raw as Map);
+
     final segmentsJson = json['speedLimitSegments'] as List<dynamic>?;
     final segments = segmentsJson == null
         ? const <SpeedLimitSegment>[]
         : segmentsJson
-            .whereType<Map<String, dynamic>>()
-            .map(SpeedLimitSegment.fromJson)
+            .whereType<Map>()
+            .map((raw) => SpeedLimitSegment.fromJson(asMap(raw)))
             .toList(growable: false);
     final waypointsJson = json['waypoints'] as List<dynamic>?;
     final waypoints = waypointsJson == null
         ? const <GeoPoint>[]
         : waypointsJson
-            .whereType<Map<String, dynamic>>()
-            .map(
-              (point) => GeoPoint(
-                lat: (point['lat'] as num).toDouble(),
-                lng: (point['lng'] as num).toDouble(),
-              ),
-            )
+            .whereType<Map>()
+            .map((point) {
+              final map = asMap(point);
+              return GeoPoint(
+                lat: (map['lat'] as num).toDouble(),
+                lng: (map['lng'] as num).toDouble(),
+              );
+            })
             .toList(growable: false);
     final alertsJson = json['alerts'] as List<dynamic>?;
     final alerts = alertsJson == null
         ? const <RouteAlert>[]
         : alertsJson
-            .whereType<Map<String, dynamic>>()
-            .map(RouteAlert.fromJson)
+            .whereType<Map>()
+            .map((raw) => RouteAlert.fromJson(asMap(raw)))
             .toList(growable: false);
     return NavigationRouteModel(
       id: json['id'] as String,
@@ -359,18 +363,22 @@ class NavigationRouteModel extends NavigationRoute {
       ),
       waypoints: waypoints,
       polyline: (json['polyline'] as List<dynamic>)
-          .map(
-            (point) => GeoPoint(
-              lat: (point['lat'] as num).toDouble(),
-              lng: (point['lng'] as num).toDouble(),
-            ),
-          )
+          .whereType<Map>()
+          .map((point) {
+            final map = asMap(point);
+            return GeoPoint(
+              lat: (map['lat'] as num).toDouble(),
+              lng: (map['lng'] as num).toDouble(),
+            );
+          })
           .toList(),
       maneuvers: (json['maneuvers'] as List<dynamic>)
-          .map(
-            (m) => NavigationManeuver(
-              index: m['index'] as int,
-              type: ManeuverType.values[m['type'] as int],
+          .whereType<Map>()
+          .map((raw) {
+            final m = asMap(raw);
+            return NavigationManeuver(
+              index: (m['index'] as num).toInt(),
+              type: ManeuverType.values[(m['type'] as num).toInt()],
               instruction: m['instruction'] as String,
               distanceMeters: (m['distanceMeters'] as num).toDouble(),
               location: GeoPoint(
@@ -382,21 +390,17 @@ class NavigationRouteModel extends NavigationRoute {
               laneHint: m['laneHint'] as String?,
               lanes: (m['lanes'] as List<dynamic>? ?? const [])
                   .whereType<Map>()
-                  .map(
-                    (raw) => LaneInfo.fromJson(
-                      Map<String, dynamic>.from(raw),
-                    ),
-                  )
+                  .map((lane) => LaneInfo.fromJson(asMap(lane)))
                   .toList(growable: false),
-              roundaboutExit: m['roundaboutExit'] as int?,
+              roundaboutExit: (m['roundaboutExit'] as num?)?.toInt(),
               voiceInstruction: m['voiceInstruction'] as String?,
-            ),
-          )
+            );
+          })
           .toList(),
       distanceMeters: (json['distanceMeters'] as num).toDouble(),
-      durationSeconds: json['durationSeconds'] as int,
+      durationSeconds: (json['durationSeconds'] as num).toInt(),
       createdAt: DateTime.parse(json['createdAt'] as String),
-      speedLimitKmh: json['speedLimitKmh'] as int?,
+      speedLimitKmh: (json['speedLimitKmh'] as num?)?.toInt(),
       speedLimitSegments: segments,
       alerts: alerts,
       originLabel: json['originLabel'] as String?,

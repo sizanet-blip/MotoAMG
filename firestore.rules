@@ -9,35 +9,45 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    /// El creador puede dejar a un motero sin grupo (solo ese campo).
-    function ownerCanClearMemberGroup() {
+    function groupDoc(groupId) {
+      return get(/databases/$(database)/documents/groups/$(groupId)).data;
+    }
+
+    function isGroupAdmin(groupId) {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/groups/$(groupId))
+        && (
+          groupDoc(groupId).ownerId == request.auth.uid
+          || (
+            'adminUids' in groupDoc(groupId)
+            && groupDoc(groupId).adminUids is list
+            && request.auth.uid in groupDoc(groupId).adminUids
+          )
+        );
+    }
+
+    /// Admin (o creador) puede dejar a un motero sin grupo (solo ese campo).
+    function adminCanClearMemberGroup() {
       let groupId = resource.data.currentGroupId;
       return isSignedIn()
         && groupId is string
         && request.resource.data.currentGroupId == null
         && request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(['currentGroupId'])
-        && exists(/databases/$(database)/documents/groups/$(groupId))
-        && get(/databases/$(database)/documents/groups/$(groupId)).data.ownerId
-            == request.auth.uid;
+        && isGroupAdmin(groupId);
     }
 
     match /users/{userId} {
       allow read: if isSignedIn();
       allow create, delete: if isSelf(userId);
-      allow update: if isSelf(userId) || ownerCanClearMemberGroup();
+      allow update: if isSelf(userId) || adminCanClearMemberGroup();
 
       match /memberships/{groupId} {
         allow read: if isSelf(userId);
         allow create, update: if isSelf(userId);
         allow delete: if isSelf(userId)
           || !exists(/databases/$(database)/documents/users/$(userId))
-          || (
-            isSignedIn()
-            && exists(/databases/$(database)/documents/groups/$(groupId))
-            && get(/databases/$(database)/documents/groups/$(groupId)).data.ownerId
-              == request.auth.uid
-          );
+          || isGroupAdmin(groupId);
       }
     }
 
@@ -85,6 +95,7 @@ service cloud.firestore {
         && !isAnonymous()
         && request.resource.data.ownerId == request.auth.uid;
       allow read: if isSignedIn();
+      /// Solo el creador gestiona el documento del grupo (p. ej. adminUids).
       allow update: if isSignedIn()
         && resource.data.ownerId == request.auth.uid;
       allow delete: if isSignedIn()
@@ -93,13 +104,22 @@ service cloud.firestore {
       match /members/{userId} {
         allow read: if isSignedIn();
         allow create: if isSignedIn() && request.auth.uid == userId;
-        allow update: if isSignedIn() && request.auth.uid == userId;
+        /// El propio miembro o un admin (roles de marcha, etc.).
+        allow update: if isSignedIn() && (
+          request.auth.uid == userId
+          || isGroupAdmin(groupId)
+        );
         allow delete: if isSignedIn() && (
           request.auth.uid == userId
-          || get(/databases/$(database)/documents/groups/$(groupId)).data.ownerId
-            == request.auth.uid
+          || isGroupAdmin(groupId)
           || !exists(/databases/$(database)/documents/users/$(userId))
         );
+      }
+
+      /// Ruta compartida del grupo (p. ej. sharedRoute/current).
+      match /sharedRoute/{docId} {
+        allow read: if isSignedIn();
+        allow create, update, delete: if isGroupAdmin(groupId);
       }
     }
   }
