@@ -259,7 +259,7 @@ class SpainRadarDatasource {
     if (inventory.isEmpty) {
       return const [];
     }
-    final buffer = NavigationConstants.routePoiBufferMeters;
+    final buffer = NavigationConstants.radarRouteBufferMeters;
     final routeBox = _routeBbox(polyline, buffer / 111320.0);
     final alerts = <RouteAlert>[];
     final seen = <String>{};

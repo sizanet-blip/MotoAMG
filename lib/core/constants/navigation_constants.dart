@@ -73,8 +73,16 @@ abstract final class NavigationConstants {
   static const String sctRadaresRemolcUrl =
       'https://transit.gencat.cat/web/.content/documents/seguretat_viaria/radars-remolc.txt';
 
-  /// Buffer lateral para buscar gasolineras/radares (metros).
+  /// Buffer lateral para gasolineras y POI Overpass (metros).
   static const double routePoiBufferMeters = 400;
+
+  /// Corredor lateral para radares en la ruta (metros). Más estrecho que
+  /// [routePoiBufferMeters] para no avisar de cámaras en calles paralelas.
+  static const double radarRouteBufferMeters = 75;
+
+  /// Holgura al filtrar en HUD: si el radar está mucho más lejos en línea
+  /// recta que lo que queda de ruta, se descarta (calzada / sentido opuesto).
+  static const double radarHudLateralSlackMeters = 100;
 
   /// Muestreo de la ruta para bboxes Overpass (metros entre anclas).
   static const double overpassSampleEveryMeters = 25000;
@@ -191,6 +199,12 @@ abstract final class NavigationConstants {
 
   /// Accuracy GPS por encima → aviso “señal baja”.
   static const double weakGpsAccuracyMeters = 45;
+
+  /// Panel de carriles: mostrar si faltan ≤ estos metros a la maniobra.
+  static const double laneGuidanceShowMeters = 600;
+
+  /// Ocultar panel muy cerca / al pasar (evita flash al cruzar).
+  static const double laneGuidanceHideMeters = 28;
 
   /// Desplaza el centro del mapa para dejar sitio al HUD.
   static const double mapPaddingTop = 148;

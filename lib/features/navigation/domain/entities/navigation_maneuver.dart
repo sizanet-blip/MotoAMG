@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
+import 'package:loc_motos/features/navigation/domain/entities/lane_guidance.dart';
 
 enum ManeuverType {
   depart,
@@ -27,6 +28,7 @@ class NavigationManeuver extends Equatable {
     this.beginShapeIndex = 0,
     this.streetName,
     this.laneHint,
+    this.lanes = const [],
     this.roundaboutExit,
     this.voiceInstruction,
   });
@@ -46,12 +48,18 @@ class NavigationManeuver extends Equatable {
 
   final String? streetName;
   final String? laneHint;
+
+  /// Carriles Valhalla (`turn_lanes`); vacío si no hay datos OSM/servidor.
+  final List<LaneInfo> lanes;
+
   final int? roundaboutExit;
 
   /// Texto para TTS; si es null se usa [instruction].
   final String? voiceInstruction;
 
   String get spokenInstruction => voiceInstruction ?? instruction;
+
+  bool get hasLaneGuidance => lanes.length >= 2;
 
   @override
   List<Object?> get props => [
@@ -63,6 +71,7 @@ class NavigationManeuver extends Equatable {
         beginShapeIndex,
         streetName,
         laneHint,
+        lanes,
         roundaboutExit,
         voiceInstruction,
       ];

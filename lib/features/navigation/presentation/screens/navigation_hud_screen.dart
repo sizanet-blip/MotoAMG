@@ -25,6 +25,7 @@ import 'package:loc_motos/features/navigation/presentation/theme/navigation_hud_
 import 'package:loc_motos/features/navigation/presentation/widgets/map_network_resume_binder.dart';
 import 'package:loc_motos/features/navigation/presentation/widgets/navigation_map_view.dart';
 import 'package:loc_motos/features/navigation/presentation/widgets/offline_map_banner.dart';
+import 'package:loc_motos/features/navigation/presentation/widgets/navigation_lane_guidance_panel.dart';
 import 'package:loc_motos/features/navigation/presentation/widgets/navigation_maneuver_card.dart';
 import 'package:loc_motos/features/navigation/presentation/widgets/navigation_status_bar.dart';
 import 'package:loc_motos/features/tracking/domain/entities/device_position.dart';
@@ -190,15 +191,21 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
         route.polyline,
       );
       final prefs = ref.read(alertPreferencesProvider);
-      _syncUpcomingFromAlong(route, along, prefs);
+      _syncUpcomingFromAlong(
+        route,
+        along,
+        prefs,
+        position: route.origin,
+      );
     }
   }
 
   void _syncUpcomingFromAlong(
     NavigationRoute route,
     double along,
-    AlertPreferences prefs,
-  ) {
+    AlertPreferences prefs, {
+    GeoPoint? position,
+  }) {
     final alerts = RouteAlertsService();
     final grace = NavigationConstants.alertPassedGraceMeters;
 
@@ -207,6 +214,7 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
         route: route,
         alongMeters: along,
         graceMeters: grace,
+        position: position,
       );
       final meters = next == null
           ? 0.0
@@ -412,6 +420,7 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
         route: _route,
         alongMeters: along,
         graceMeters: grace,
+        position: position,
       );
       final meters = nextRadar == null
           ? 0.0
@@ -1150,6 +1159,14 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
                         nextManeuver: _nextManeuver,
                         remainingMeters: _remainingMeters,
                       ),
+                      if (maneuver.hasLaneGuidance &&
+                          _remainingMeters <=
+                              NavigationConstants.laneGuidanceShowMeters &&
+                          _remainingMeters >=
+                              NavigationConstants.laneGuidanceHideMeters) ...[
+                        const SizedBox(height: 6),
+                        NavigationLaneGuidancePanel(lanes: maneuver.lanes),
+                      ],
                       if (weakGps) ...[
                         const SizedBox(height: 6),
                         const _WeakGpsBanner(),

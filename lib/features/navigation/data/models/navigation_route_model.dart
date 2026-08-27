@@ -1,4 +1,5 @@
 import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
+import 'package:loc_motos/features/navigation/domain/entities/lane_guidance.dart';
 import 'package:loc_motos/features/navigation/domain/entities/navigation_maneuver.dart';
 import 'package:loc_motos/features/navigation/domain/entities/navigation_route.dart';
 import 'package:loc_motos/features/navigation/domain/entities/route_alert.dart';
@@ -139,6 +140,13 @@ class NavigationRouteModel extends NavigationRoute {
                 : null;
         final verbal =
             (m['verbal_pre_transition_instruction'] as String?)?.trim();
+        final lanesJson = m['lanes'] as List<dynamic>? ?? const [];
+        final lanes = <LaneInfo>[
+          for (final raw in lanesJson)
+            if (raw is Map<String, dynamic>) LaneInfo.fromValhalla(raw)
+            else if (raw is Map)
+              LaneInfo.fromValhalla(Map<String, dynamic>.from(raw)),
+        ];
         maneuvers.add(
           NavigationManeuver(
             index: maneuverIndex++,
@@ -153,6 +161,7 @@ class NavigationRouteModel extends NavigationRoute {
                     (m['street_names'] as List).isNotEmpty
                 ? (m['street_names'] as List).first.toString()
                 : null,
+            lanes: List.unmodifiable(lanes),
             roundaboutExit: m['roundabout_exit_count'] as int?,
           ),
         );
@@ -371,6 +380,14 @@ class NavigationRouteModel extends NavigationRoute {
               beginShapeIndex: (m['beginShapeIndex'] as num?)?.toInt() ?? 0,
               streetName: m['streetName'] as String?,
               laneHint: m['laneHint'] as String?,
+              lanes: (m['lanes'] as List<dynamic>? ?? const [])
+                  .whereType<Map>()
+                  .map(
+                    (raw) => LaneInfo.fromJson(
+                      Map<String, dynamic>.from(raw),
+                    ),
+                  )
+                  .toList(growable: false),
               roundaboutExit: m['roundaboutExit'] as int?,
               voiceInstruction: m['voiceInstruction'] as String?,
             ),
@@ -414,6 +431,7 @@ class NavigationRouteModel extends NavigationRoute {
               'beginShapeIndex': m.beginShapeIndex,
               'streetName': m.streetName,
               'laneHint': m.laneHint,
+              'lanes': m.lanes.map((l) => l.toJson()).toList(growable: false),
               'roundaboutExit': m.roundaboutExit,
               'voiceInstruction': m.voiceInstruction,
             },

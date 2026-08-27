@@ -7,10 +7,10 @@ void main() {
       const avoid = RoutePreferences(avoidHighways: true);
       final fast = avoid
           .copyWith(curvature: RouteCurvatureLevel.fast)
-          .toValhallaCostingOptions();
+          .toValhallaCostingOptions('motorcycle');
       final max = avoid
           .copyWith(curvature: RouteCurvatureLevel.maxCurves)
-          .toValhallaCostingOptions();
+          .toValhallaCostingOptions('motorcycle');
 
       expect(fast['use_highways'], 0.35);
       expect(max['use_highways'], 0.0);
@@ -24,7 +24,7 @@ void main() {
           .map(
             (level) => prefs
                 .copyWith(curvature: level)
-                .toValhallaCostingOptions()['top_speed'],
+                .toValhallaCostingOptions('motorcycle')['top_speed'],
           )
           .toSet();
       expect(speeds.length, RouteCurvatureLevel.values.length);

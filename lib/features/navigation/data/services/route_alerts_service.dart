@@ -1,3 +1,7 @@
+import 'dart:math' as math;
+
+import 'package:geolocator/geolocator.dart';
+import 'package:loc_motos/core/constants/navigation_constants.dart';
 import 'package:loc_motos/features/auth/domain/entities/user_vehicle.dart';
 import 'package:loc_motos/features/navigation/data/datasources/spain_fuel_datasource.dart';
 import 'package:loc_motos/features/navigation/data/datasources/spain_radar_datasource.dart';
@@ -7,6 +11,7 @@ import 'package:loc_motos/features/navigation/data/services/route_guidance_servi
 import 'package:loc_motos/features/navigation/data/services/sharp_curve_detector.dart';
 import 'package:loc_motos/features/navigation/domain/entities/alert_preferences.dart';
 import 'package:loc_motos/features/navigation/domain/entities/fuel_alert_display.dart';
+import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
 import 'package:loc_motos/features/navigation/domain/entities/navigation_route.dart';
 import 'package:loc_motos/features/navigation/domain/entities/route_alert.dart';
 /// Enriquece una ruta con avisos (peajes, gasolineras MITECO, radares, curvas).
@@ -37,7 +42,7 @@ class RouteAlertsService {
       return route;
     }
     final cacheKey =
-        '${route.id}_${preferredFuel?.name ?? 'all'}_${preferences.enrichCacheSuffix}';
+        '${route.id}_${preferredFuel?.name ?? 'all'}_${preferences.enrichCacheSuffix}_radar75';
     final cached = _cache[cacheKey];
     if (cached != null) {
       return _withAlerts(route, cached);
@@ -174,13 +179,52 @@ class RouteAlertsService {
     required NavigationRoute route,
     required double alongMeters,
     double graceMeters = 40,
+    GeoPoint? position,
   }) {
-    return nextAlert(
-      route: route,
-      alongMeters: alongMeters,
-      graceMeters: graceMeters,
-      onlyType: RouteAlertType.speedCamera,
+    final slack = NavigationConstants.radarHudLateralSlackMeters;
+    for (final alert in route.alerts) {
+      if (alert.type != RouteAlertType.speedCamera) {
+        continue;
+      }
+      if (alongMeters > alert.distanceAlongRouteMeters + graceMeters) {
+        continue;
+      }
+      if (position != null &&
+          !_radarPlausibleOnRoute(
+            alert: alert,
+            alongMeters: alongMeters,
+            position: position,
+            lateralSlackMeters: slack,
+          )) {
+        continue;
+      }
+      return alert;
+    }
+    return null;
+  }
+
+  /// Descarta radares “cercanos” que no están en tu trazado (p. ej. paralelo).
+  bool _radarPlausibleOnRoute({
+    required RouteAlert alert,
+    required double alongMeters,
+    required GeoPoint position,
+    required double lateralSlackMeters,
+  }) {
+    final remaining =
+        (alert.distanceAlongRouteMeters - alongMeters).clamp(0.0, 1e9);
+    final direct = Geolocator.distanceBetween(
+      position.lat,
+      position.lng,
+      alert.point.lat,
+      alert.point.lng,
     );
+    // Componente lateral aproximada: si queda mucho más lejos en línea recta
+    // que lo que falta por ruta, no es el radar de esta calzada.
+    final lateralSq = direct * direct - remaining * remaining;
+    if (lateralSq <= 0) {
+      return true;
+    }
+    return math.sqrt(lateralSq) <= lateralSlackMeters;
   }
 
   RouteAlert? nextFuel({

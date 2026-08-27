@@ -76,6 +76,7 @@ class ValhallaRemoteDataSource {
       },
       'directions_options': {'language': 'es-ES', 'units': 'kilometers'},
       'shape_format': 'polyline6',
+      'turn_lanes': true,
     };
     if (alternates > 0) {
       requestBody['alternates'] = alternates;

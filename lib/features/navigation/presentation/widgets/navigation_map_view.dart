@@ -799,13 +799,42 @@ class _NavigationMapViewState extends State<NavigationMapView> {
     if (lat == null || lng == null) {
       return mapped.take(2).toList(growable: false);
     }
-    // Ordenados por distancia a lo largo de la ruta; mostrar solo los próximos.
-    final along = _approxAlongMeters(GeoPoint(lat: lat, lng: lng));
-    final ahead = [
-      for (final a in mapped)
-        if (a.distanceAlongRouteMeters >= along - 40) a,
-    ];
-    return ahead.take(2).toList(growable: false);
+    // Ordenados por distancia a lo largo de la ruta; mostrar solo los próximos
+    // y descartar radares laterales (calles / sentido paralelo).
+    final position = GeoPoint(lat: lat, lng: lng);
+    final along = _approxAlongMeters(position);
+    final slack = NavigationConstants.radarHudLateralSlackMeters;
+    final ahead = <RouteAlert>[];
+    for (final a in mapped) {
+      if (a.distanceAlongRouteMeters < along - 40) {
+        continue;
+      }
+      if (a.type == RouteAlertType.speedCamera &&
+          !_radarPlausibleOnRoute(a, along, position, slack)) {
+        continue;
+      }
+      ahead.add(a);
+      if (ahead.length >= 2) {
+        break;
+      }
+    }
+    return ahead;
+  }
+
+  bool _radarPlausibleOnRoute(
+    RouteAlert alert,
+    double alongMeters,
+    GeoPoint position,
+    double lateralSlackMeters,
+  ) {
+    final remaining =
+        (alert.distanceAlongRouteMeters - alongMeters).clamp(0.0, 1e9);
+    final direct = _haversineMetersLocal(position, alert.point);
+    final lateralSq = direct * direct - remaining * remaining;
+    if (lateralSq <= 0) {
+      return true;
+    }
+    return math.sqrt(lateralSq) <= lateralSlackMeters;
   }
 
   double _approxAlongMeters(GeoPoint position) {

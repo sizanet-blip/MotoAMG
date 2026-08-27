@@ -180,14 +180,11 @@ class ItinerarySheet extends ConsumerWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                       onTap: busy ? null : () => onEditStop(stop.id),
-                      trailing: !isOrigin
-                          ? IconButton(
-                              tooltip: 'Quitar',
-                              onPressed:
-                                  busy ? null : () => onRemoveStop(stop.id),
-                              icon: const Icon(Icons.close),
-                            )
-                          : null,
+                      trailing: IconButton(
+                        tooltip: 'Quitar',
+                        onPressed: busy ? null : () => onRemoveStop(stop.id),
+                        icon: const Icon(Icons.close),
+                      ),
                     );
                   },
                 ),
