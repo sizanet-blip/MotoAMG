@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:loc_motos/core/constants/navigation_constants.dart';
 import 'package:loc_motos/core/utils/navigation_duration_format.dart';
 import 'package:loc_motos/features/auth/domain/entities/vehicle_map_marker.dart';
+import 'package:loc_motos/features/auth/presentation/widgets/vehicle_navigation_marker.dart';
 import 'package:loc_motos/features/navigation/data/services/navigation_map_style_service.dart';
 import 'package:loc_motos/features/navigation/domain/entities/alert_preferences.dart';
 import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
@@ -1464,8 +1465,11 @@ class _NavigationMapViewState extends State<NavigationMapView> {
     final symbolOptions = SymbolOptions(
       geometry: geometry,
       iconImage: _puckIconImageId,
-      iconSize: 1.15,
-      iconRotate: 0,
+      iconSize: 1.35,
+      // Los symbols usan icon-rotation-alignment≈viewport: el ángulo es
+      // relativo a la pantalla. La cámara ya va en rumbo de marcha →
+      // iconRotate = bearing haría doble rotación (moto “de lado”).
+      iconRotate: _puckIconRotateDegrees(controller),
       iconAnchor: 'center',
     );
 
@@ -1476,65 +1480,33 @@ class _NavigationMapViewState extends State<NavigationMapView> {
     }
   }
 
-  /// Badge circular nítido: sin blur (el blur rellena el PNG cuadrado y se ve
-  /// como una “sombra rectangular” en el mapa).
+  /// Rumbo del icono respecto a la pantalla (morro del PNG = arriba).
+  double _puckIconRotateDegrees(MapLibreMapController controller) {
+    // Seguimiento HUD: la cámara ya orienta el mapa; el vehículo mira “arriba”.
+    if (widget.cameraFollowUser) {
+      return 0;
+    }
+    final cameraBearing =
+        controller.cameraPosition?.bearing ?? widget.bearing;
+    var delta = widget.bearing - cameraBearing;
+    while (delta > 180) {
+      delta -= 360;
+    }
+    while (delta < -180) {
+      delta += 360;
+    }
+    return delta;
+  }
+
+  /// Silueta del vehículo (cenital) tintada con el color del marcador.
   Future<Uint8List> _buildNavPuckPng({
     required NavigationPuckStyle style,
-  }) async {
-    const size = 96.0;
-    final recorder = ui.PictureRecorder();
-    final canvas = Canvas(recorder);
-    // Fondo totalmente transparente.
-    canvas.drawRect(
-      const Rect.fromLTWH(0, 0, size, size),
-      Paint()..color = const Color(0x00000000),
+  }) {
+    return VehicleNavigationMarker.toPng(
+      icon: style.icon,
+      color: style.color,
+      logicalSize: 160,
     );
-
-    final center = const Offset(size / 2, size / 2);
-    const radius = 28.0;
-
-    // Anillo exterior blanco fino (definición sobre el mapa).
-    canvas.drawCircle(
-      center,
-      radius + 3,
-      Paint()..color = Colors.white,
-    );
-    // Disco de color corporativo.
-    canvas.drawCircle(center, radius, Paint()..color = style.color);
-    // Contorno interior sutil para volumen.
-    canvas.drawCircle(
-      center,
-      radius - 1.5,
-      Paint()
-        ..color = Colors.white.withValues(alpha: 0.22)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2,
-    );
-
-    final icon = style.icon.iconData;
-    final textPainter = TextPainter(textDirection: TextDirection.ltr)
-      ..text = TextSpan(
-        text: String.fromCharCode(icon.codePoint),
-        style: TextStyle(
-          fontSize: 34,
-          fontFamily: icon.fontFamily,
-          package: icon.fontPackage,
-          color: Colors.white,
-        ),
-      )
-      ..layout();
-    textPainter.paint(
-      canvas,
-      Offset(
-        (size - textPainter.width) / 2,
-        (size - textPainter.height) / 2,
-      ),
-    );
-
-    final image =
-        await recorder.endRecording().toImage(size.toInt(), size.toInt());
-    final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
-    return bytes!.buffer.asUint8List();
   }
 
   Future<void> _drawEndpointMarkers(MapLibreMapController controller) async {

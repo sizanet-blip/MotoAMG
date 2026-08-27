@@ -9,6 +9,7 @@ import 'package:loc_motos/features/auth/domain/entities/vehicle_map_marker.dart'
 import 'package:loc_motos/features/auth/presentation/providers/auth_providers.dart';
 import 'package:loc_motos/features/auth/presentation/utils/auth_validators.dart';
 import 'package:loc_motos/features/auth/presentation/widgets/reveal_recovery_key_dialog.dart';
+import 'package:loc_motos/features/auth/presentation/widgets/vehicle_navigation_marker.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key, required this.user});
@@ -240,15 +241,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             if (vehicle.navigationPuckStyle != null)
                               Padding(
                                 padding: const EdgeInsets.only(right: 4),
-                                child: CircleAvatar(
-                                  radius: 14,
-                                  backgroundColor:
-                                      vehicle.navigationPuckStyle!.color,
-                                  child: Icon(
-                                    vehicle.navigationPuckStyle!.icon.iconData,
-                                    size: 16,
-                                    color: Colors.white,
-                                  ),
+                                child: VehicleNavigationMarkerPreview(
+                                  icon: vehicle.navigationPuckStyle!.icon,
+                                  color: vehicle.navigationPuckStyle!.color,
+                                  size: 32,
                                 ),
                               ),
                             PopupMenuButton<String>(
@@ -554,6 +550,7 @@ class _VehicleEditorSheetState extends State<_VehicleEditorSheet> {
               ),
               const SizedBox(height: 4),
               Text(
+                'Silueta del vehículo en el mapa (cenital). '
                 'Si no eliges ninguno, se usa el punto GPS azul habitual.',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: colors.onSurfaceVariant,
@@ -567,7 +564,7 @@ class _VehicleEditorSheetState extends State<_VehicleEditorSheet> {
                   _MapIconChoice(
                     selected: _mapIcon == null,
                     color: colors.surfaceContainerHighest,
-                    icon: Icons.gps_fixed_rounded,
+                    materialIcon: Icons.gps_fixed_rounded,
                     label: 'Por defecto',
                     onTap: () => setState(() => _mapIcon = null),
                     selectedBorder: colors.primary,
@@ -578,7 +575,7 @@ class _VehicleEditorSheetState extends State<_VehicleEditorSheet> {
                       color: _mapIcon == icon
                           ? _mapColor
                           : const Color(0xFF607D8B),
-                      icon: icon.iconData,
+                      vehicleIcon: icon,
                       label: icon.label,
                       onTap: () => setState(() {
                         final firstPick = _mapIcon == null;
@@ -595,7 +592,7 @@ class _VehicleEditorSheetState extends State<_VehicleEditorSheet> {
                       color: _mapIcon == icon
                           ? _mapColor
                           : const Color(0xFF78909C),
-                      icon: icon.iconData,
+                      vehicleIcon: icon,
                       label: icon.label,
                       onTap: () => setState(() {
                         final firstPick = _mapIcon == null;
@@ -611,7 +608,7 @@ class _VehicleEditorSheetState extends State<_VehicleEditorSheet> {
               if (_mapIcon != null) ...[
                 const SizedBox(height: 14),
                 Text(
-                  'Color del marcador',
+                  'Color del vehículo',
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
@@ -654,14 +651,10 @@ class _VehicleEditorSheetState extends State<_VehicleEditorSheet> {
                 const SizedBox(height: 12),
                 Align(
                   alignment: Alignment.centerLeft,
-                  child: CircleAvatar(
-                    radius: 28,
-                    backgroundColor: _mapColor,
-                    child: Icon(
-                      _mapIcon!.iconData,
-                      color: Colors.white,
-                      size: 30,
-                    ),
+                  child: VehicleNavigationMarkerPreview(
+                    icon: _mapIcon!,
+                    color: _mapColor,
+                    size: 72,
                   ),
                 ),
               ],
@@ -731,21 +724,24 @@ class _MapIconChoice extends StatelessWidget {
   const _MapIconChoice({
     required this.selected,
     required this.color,
-    required this.icon,
     required this.label,
     required this.onTap,
     required this.selectedBorder,
+    this.materialIcon,
+    this.vehicleIcon,
   });
 
   final bool selected;
   final Color color;
-  final IconData icon;
+  final IconData? materialIcon;
+  final VehicleMapIcon? vehicleIcon;
   final String label;
   final VoidCallback onTap;
   final Color selectedBorder;
 
   @override
   Widget build(BuildContext context) {
+    final vehicle = vehicleIcon;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(14),
@@ -765,11 +761,18 @@ class _MapIconChoice extends StatelessWidget {
         ),
         child: Column(
           children: [
-            CircleAvatar(
-              radius: 18,
-              backgroundColor: color,
-              child: Icon(icon, color: Colors.white, size: 20),
-            ),
+            if (vehicle != null)
+              VehicleNavigationMarkerPreview(
+                icon: vehicle,
+                color: color,
+                size: 40,
+              )
+            else
+              CircleAvatar(
+                radius: 18,
+                backgroundColor: color,
+                child: Icon(materialIcon, color: Colors.white, size: 20),
+              ),
             const SizedBox(height: 6),
             Text(
               label,
