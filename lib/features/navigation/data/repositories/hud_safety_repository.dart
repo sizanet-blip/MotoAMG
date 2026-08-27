@@ -10,6 +10,7 @@ class HudSafetyPreferences extends Equatable {
     this.keepScreenOn = true,
     this.highBrightness = false,
     this.helmetMode = false,
+    this.map3dEnabled = false,
   });
 
   static const defaults = HudSafetyPreferences();
@@ -23,15 +24,20 @@ class HudSafetyPreferences extends Equatable {
   /// Controles grandes (silenciar / cancelar) fáciles con guantes.
   final bool helmetMode;
 
+  /// Inclinación 3D del mapa al navegar (por defecto off = vista plana).
+  final bool map3dEnabled;
+
   HudSafetyPreferences copyWith({
     bool? keepScreenOn,
     bool? highBrightness,
     bool? helmetMode,
+    bool? map3dEnabled,
   }) {
     return HudSafetyPreferences(
       keepScreenOn: keepScreenOn ?? this.keepScreenOn,
       highBrightness: highBrightness ?? this.highBrightness,
       helmetMode: helmetMode ?? this.helmetMode,
+      map3dEnabled: map3dEnabled ?? this.map3dEnabled,
     );
   }
 
@@ -39,6 +45,7 @@ class HudSafetyPreferences extends Equatable {
         'keepScreenOn': keepScreenOn,
         'highBrightness': highBrightness,
         'helmetMode': helmetMode,
+        'map3dEnabled': map3dEnabled,
       };
 
   factory HudSafetyPreferences.fromJson(Map<String, dynamic> json) {
@@ -46,11 +53,13 @@ class HudSafetyPreferences extends Equatable {
       keepScreenOn: json['keepScreenOn'] as bool? ?? true,
       highBrightness: json['highBrightness'] as bool? ?? false,
       helmetMode: json['helmetMode'] as bool? ?? false,
+      map3dEnabled: json['map3dEnabled'] as bool? ?? false,
     );
   }
 
   @override
-  List<Object?> get props => [keepScreenOn, highBrightness, helmetMode];
+  List<Object?> get props =>
+      [keepScreenOn, highBrightness, helmetMode, map3dEnabled];
 }
 
 class HudSafetyRepository {

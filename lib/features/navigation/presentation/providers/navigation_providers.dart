@@ -229,6 +229,10 @@ class HudSafetyController extends Notifier<HudSafetyPreferences> {
   Future<void> setHelmetMode(bool value) {
     return _persist(state.copyWith(helmetMode: value));
   }
+
+  Future<void> setMap3dEnabled(bool value) {
+    return _persist(state.copyWith(map3dEnabled: value));
+  }
 }
 
 final mapRegionRepositoryProvider = Provider<MapRegionRepository>((ref) {

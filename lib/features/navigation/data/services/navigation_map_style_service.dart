@@ -8,7 +8,10 @@ import 'package:loc_motos/features/navigation/data/services/map_basemap_assets_s
 /// Resuelve qué estilo MapLibre usar en navegación (online vs PMTiles local).
 abstract final class NavigationMapStyleService {
   /// Subir al cambiar el parche de etiquetas (invalida caché en memoria).
-  static const _onlineStylePatchVersion = 3;
+  static const _onlineStylePatchVersion = 4;
+
+  /// Capa de edificios 3D en estilos Protomaps (visibilidad la controla el HUD).
+  static const buildings3dLayerId = 'locmotos-buildings-3d';
 
   static String? _cachedOnlineStyleJson;
   static int? _cachedOnlineStyleVersion;
@@ -155,6 +158,15 @@ abstract final class NavigationMapStyleService {
       }
       final layer = raw;
       final id = layer['id'] as String? ?? '';
+      // Liberty/Fiord traen building-3d visible; lo ocultamos hasta activar 3D.
+      if (id == 'building-3d' || id == 'building_3d') {
+        final layout = Map<String, dynamic>.from(
+          (layer['layout'] as Map?) ?? const {},
+        );
+        layout['visibility'] = 'none';
+        layer['layout'] = layout;
+        continue;
+      }
       switch (id) {
         case 'highway-name-major':
           layer['minzoom'] = 6;

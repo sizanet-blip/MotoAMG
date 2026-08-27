@@ -60,6 +60,27 @@ class HudSafetySettingsScreen extends ConsumerWidget {
                   ),
             ),
           ),
+          const Divider(height: 24),
+          SwitchListTile(
+            secondary: const Icon(Icons.threed_rotation_outlined),
+            title: const Text('Mapa en 3D'),
+            subtitle: const Text(
+              'Inclina el mapa y muestra edificios en volumen. '
+              'Desactivado = vista plana (2D)',
+            ),
+            value: prefs.map3dEnabled,
+            onChanged: controller.setMap3dEnabled,
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: Text(
+              'Por defecto está desactivado. Si lo activas, el mapa se inclina '
+              'y, al acercarte (zoom alto), verás los edificios en 3D.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: colors.onSurfaceVariant,
+                  ),
+            ),
+          ),
           if (defaultTargetPlatform == TargetPlatform.android) ...[
             const Divider(height: 32),
             Padding(

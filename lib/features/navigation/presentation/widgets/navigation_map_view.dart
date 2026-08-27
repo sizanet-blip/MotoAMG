@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:loc_motos/core/constants/navigation_constants.dart';
 import 'package:loc_motos/core/utils/navigation_duration_format.dart';
 import 'package:loc_motos/features/auth/domain/entities/vehicle_map_marker.dart';
+import 'package:loc_motos/features/navigation/data/services/navigation_map_style_service.dart';
 import 'package:loc_motos/features/navigation/domain/entities/alert_preferences.dart';
 import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
 import 'package:loc_motos/features/navigation/domain/entities/hybrid_map_styles.dart';
@@ -29,7 +30,8 @@ class NavigationMapView extends StatefulWidget {
     this.latitude,
     this.longitude,
     this.bearing = 0,
-    this.pitch = NavigationConstants.defaultMapPitch,
+    this.pitch = 0,
+    this.show3dBuildings = false,
     this.cameraMode = NavigationMapCameraMode.followDevice,
     this.cameraFollowUser = true,
     this.cameraFollowEpoch = 0,
@@ -54,6 +56,9 @@ class NavigationMapView extends StatefulWidget {
   final double? longitude;
   final double bearing;
   final double pitch;
+
+  /// Edificios extruidos (fill-extrusion). Solo navegación HUD con “Mapa en 3D”.
+  final bool show3dBuildings;
   final NavigationMapCameraMode cameraMode;
 
   /// Si es `false` (p. ej. el usuario ha arrastrado el mapa), no se fuerza el seguimiento.
@@ -235,6 +240,17 @@ class _NavigationMapViewState extends State<NavigationMapView> {
     if (!_routeDrawn || widget._isPreview) {
       return;
     }
+    if (oldWidget.pitch != widget.pitch && widget.cameraFollowUser) {
+      unawaited(_moveCamera(animate: true));
+      unawaited(_syncPuck());
+      if (oldWidget.show3dBuildings != widget.show3dBuildings) {
+        unawaited(_sync3dBuildings());
+      }
+      return;
+    }
+    if (oldWidget.show3dBuildings != widget.show3dBuildings) {
+      unawaited(_sync3dBuildings());
+    }
     final followResumed =
         !oldWidget.cameraFollowUser && widget.cameraFollowUser;
     final followForced =
@@ -359,6 +375,7 @@ class _NavigationMapViewState extends State<NavigationMapView> {
     } catch (_) {}
 
     _mapConfigured = true;
+    await _sync3dBuildings();
   }
 
   Future<void> _drawRoute() async {
@@ -429,6 +446,7 @@ class _NavigationMapViewState extends State<NavigationMapView> {
     }
 
     _routeDrawn = true;
+    await _sync3dBuildings();
     if (widget._isPreview) {
       if (_previewFocusOnUser || !_hasFittedPreview) {
         await _moveCamera(animate: true);
@@ -438,6 +456,101 @@ class _NavigationMapViewState extends State<NavigationMapView> {
       await _moveCamera(animate: !_cameraReady);
       _cameraReady = true;
     }
+  }
+
+  /// Muestra/oculta fill-extrusion según [show3dBuildings] (añade/quita capa).
+  Future<void> _sync3dBuildings() async {
+    final controller = _controller;
+    if (controller == null || !_mapConfigured) {
+      return;
+    }
+
+    const layerId = NavigationMapStyleService.buildings3dLayerId;
+    // OpenFreeMap trae building-3d; lo quitamos para no duplicar ni dejarlo en 2D.
+    for (final id in [layerId, 'building-3d', 'building_3d', 'buildings-3d']) {
+      try {
+        await controller.removeLayer(id);
+      } catch (_) {}
+    }
+
+    if (!widget.show3dBuildings || widget._isPreview) {
+      return;
+    }
+
+    List<String> sourceIds;
+    try {
+      sourceIds = await controller.getSourceIds();
+    } catch (_) {
+      return;
+    }
+
+    late final String sourceId;
+    late final String sourceLayer;
+    late final dynamic heightExpr;
+    late final dynamic baseExpr;
+    dynamic filter;
+    if (sourceIds.contains('protomaps')) {
+      sourceId = 'protomaps';
+      sourceLayer = 'buildings';
+      heightExpr = [
+        'coalesce',
+        ['get', 'height'],
+        10,
+      ];
+      baseExpr = [
+        'coalesce',
+        ['get', 'min_height'],
+        0,
+      ];
+      filter = [
+        'in',
+        'kind',
+        'building',
+        'building_part',
+      ];
+    } else if (sourceIds.contains('openmaptiles')) {
+      sourceId = 'openmaptiles';
+      sourceLayer = 'building';
+      heightExpr = ['get', 'render_height'];
+      baseExpr = ['get', 'render_min_height'];
+    } else {
+      return;
+    }
+
+    // Debajo de la ruta (si existe) o de la primera etiqueta del basemap.
+    String? belowLayerId;
+    try {
+      final ids = (await controller.getLayerIds())
+          .map((e) => e?.toString())
+          .whereType<String>()
+          .toSet();
+      if (ids.contains(_altsCasingLayerId)) {
+        belowLayerId = _altsCasingLayerId;
+      } else if (ids.contains(_routeCasingLayerId)) {
+        belowLayerId = _routeCasingLayerId;
+      } else {
+        belowLayerId = await _firstMapLabelLayerId(controller);
+      }
+    } catch (_) {}
+
+    try {
+      await controller.addFillExtrusionLayer(
+        sourceId,
+        layerId,
+        FillExtrusionLayerProperties(
+          fillExtrusionColor: '#c8c4bc',
+          fillExtrusionOpacity: 0.72,
+          fillExtrusionHeight: heightExpr,
+          fillExtrusionBase: baseExpr,
+          fillExtrusionVerticalGradient: true,
+        ),
+        sourceLayer: sourceLayer,
+        minzoom: 14,
+        belowLayerId: belowLayerId,
+        filter: filter,
+        enableInteraction: false,
+      );
+    } catch (_) {}
   }
 
   /// Quita capas/fuentes de ruta si ya existen (evita CannotAddLayerException).

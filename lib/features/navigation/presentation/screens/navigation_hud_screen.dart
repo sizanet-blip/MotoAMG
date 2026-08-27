@@ -1041,7 +1041,10 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
                 latitude: own?.lat,
                 longitude: own?.lng,
                 bearing: bearing,
-                pitch: NavigationConstants.defaultMapPitch,
+                pitch: ref.watch(hudSafetyProvider).map3dEnabled
+                    ? NavigationConstants.defaultMapPitch
+                    : 0,
+                show3dBuildings: ref.watch(hudSafetyProvider).map3dEnabled,
                 cameraFollowUser: _cameraFollowUser,
                 cameraFollowEpoch: _cameraFollowEpoch,
                 onCameraFollowChanged: (following) {
