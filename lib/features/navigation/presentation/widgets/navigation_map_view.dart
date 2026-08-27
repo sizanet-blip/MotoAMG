@@ -20,6 +20,15 @@ import 'package:loc_motos/features/navigation/presentation/models/navigation_map
 import 'package:loc_motos/core/utils/navigation_bearing.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 
+/// Estilo visual del compañero en el HUD (solo los que importan en marcha).
+enum HudGroupMateKind {
+  mate,
+  cabecera,
+  cola,
+  incident,
+  stale,
+}
+
 /// Compañero de grupo en el mapa de navegación (HUD).
 @immutable
 class HudGroupMate {
@@ -30,6 +39,7 @@ class HudGroupMate {
     required this.heading,
     required this.label,
     this.isStale = false,
+    this.kind = HudGroupMateKind.mate,
   });
 
   final String uid;
@@ -38,6 +48,7 @@ class HudGroupMate {
   final double heading;
   final String label;
   final bool isStale;
+  final HudGroupMateKind kind;
 
   @override
   bool operator ==(Object other) {
@@ -47,11 +58,13 @@ class HudGroupMate {
         other.lng == lng &&
         other.heading == heading &&
         other.label == label &&
-        other.isStale == isStale;
+        other.isStale == isStale &&
+        other.kind == kind;
   }
 
   @override
-  int get hashCode => Object.hash(uid, lat, lng, heading, label, isStale);
+  int get hashCode =>
+      Object.hash(uid, lat, lng, heading, label, isStale, kind);
 }
 
 /// Mapa MapLibre: seguimiento en HUD o encuadre de ruta en vista previa.
@@ -167,8 +180,14 @@ class _NavigationMapViewState extends State<NavigationMapView> {
   static const _puckIconImageId = 'locmotos-nav-puck-icon-v2';
   static const _groupMateIconId = 'locmotos-hud-group-mate';
   static const _groupMateStaleIconId = 'locmotos-hud-group-mate-stale';
+  static const _groupMateCabeceraIconId = 'locmotos-hud-group-cabecera';
+  static const _groupMateColaIconId = 'locmotos-hud-group-cola';
+  static const _groupMateIncidentIconId = 'locmotos-hud-group-incident';
   static const _groupMateColor = Color(0xFFE65100);
   static const _groupMateStaleColor = Color(0xFF78909C);
+  static const _groupMateCabeceraColor = Color(0xFF2E7D32);
+  static const _groupMateColaColor = Color(0xFFEF6C00);
+  static const _groupMateIncidentColor = Color(0xFFC62828);
 
   /// Refs tipo A-23 / N-234 / CV-624 / AP-7 (no calles largas).
   static final _roadRefPattern = RegExp(
@@ -1897,6 +1916,30 @@ class _NavigationMapViewState extends State<NavigationMapView> {
           logicalSize: 110,
         ),
       );
+      await controller.addImage(
+        _groupMateCabeceraIconId,
+        await VehicleNavigationMarker.toPng(
+          icon: VehicleMapIcon.motorcycle,
+          color: _groupMateCabeceraColor,
+          logicalSize: 110,
+        ),
+      );
+      await controller.addImage(
+        _groupMateColaIconId,
+        await VehicleNavigationMarker.toPng(
+          icon: VehicleMapIcon.motorcycle,
+          color: _groupMateColaColor,
+          logicalSize: 110,
+        ),
+      );
+      await controller.addImage(
+        _groupMateIncidentIconId,
+        await VehicleNavigationMarker.toPng(
+          icon: VehicleMapIcon.motorcycle,
+          color: _groupMateIncidentColor,
+          logicalSize: 110,
+        ),
+      );
       _groupMateIconsReady = true;
     } catch (_) {
       _groupMateIconsReady = false;
@@ -1969,16 +2012,30 @@ class _NavigationMapViewState extends State<NavigationMapView> {
         iconRotate = delta;
       }
       // GPS real: apilar solo el dibujo hacia arriba si coinciden.
+      final icon = switch (mate.kind) {
+        HudGroupMateKind.stale => _groupMateStaleIconId,
+        HudGroupMateKind.incident => _groupMateIncidentIconId,
+        HudGroupMateKind.cabecera => _groupMateCabeceraIconId,
+        HudGroupMateKind.cola => _groupMateColaIconId,
+        HudGroupMateKind.mate => _groupMateIconId,
+      };
+      final textColor = switch (mate.kind) {
+        HudGroupMateKind.stale => '#C62828',
+        HudGroupMateKind.incident => '#C62828',
+        HudGroupMateKind.cabecera => '#2E7D32',
+        HudGroupMateKind.cola => '#EF6C00',
+        HudGroupMateKind.mate => '#E65100',
+      };
       final options = SymbolOptions(
         geometry: LatLng(mate.lat, mate.lng),
-        iconImage: mate.isStale ? _groupMateStaleIconId : _groupMateIconId,
-        iconSize: mate.isStale ? 0.75 : 0.9,
+        iconImage: icon,
+        iconSize: mate.kind == HudGroupMateKind.stale ? 0.75 : 0.9,
         iconRotate: iconRotate,
         iconAnchor: 'center',
         iconOffset: Offset(0, -1.15 * stackIndex),
         textField: mate.label,
         textSize: 11,
-        textColor: mate.isStale ? '#C62828' : '#E65100',
+        textColor: textColor,
         textHaloColor: '#FFFFFF',
         textHaloWidth: 1.2,
         textOffset:

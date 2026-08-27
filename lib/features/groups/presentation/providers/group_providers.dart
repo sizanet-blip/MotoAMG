@@ -3,6 +3,7 @@ import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
 import 'package:loc_motos/features/auth/presentation/providers/auth_providers.dart';
 import 'package:loc_motos/features/groups/data/datasources/group_incident_remote_datasource.dart';
 import 'package:loc_motos/features/groups/data/datasources/group_remote_datasource.dart';
+import 'package:loc_motos/features/groups/data/repositories/group_pack_alert_repository.dart';
 import 'package:loc_motos/features/groups/data/repositories/group_repository_impl.dart';
 import 'package:loc_motos/features/groups/domain/entities/group_incident.dart';
 import 'package:loc_motos/features/groups/domain/entities/group_member.dart';
@@ -18,6 +19,66 @@ import 'package:loc_motos/features/tracking/presentation/providers/tracking_prov
 final groupRepositoryProvider = Provider<GroupRepository>((ref) {
   return GroupRepositoryImpl(GroupRemoteDataSource());
 });
+
+final groupPackAlertRepositoryProvider = Provider<GroupPackAlertRepository>((
+  ref,
+) {
+  return GroupPackAlertRepository();
+});
+
+final groupPackAlertProvider =
+    NotifierProvider<GroupPackAlertController, GroupPackAlertPreferences>(
+  GroupPackAlertController.new,
+);
+
+class GroupPackAlertController extends Notifier<GroupPackAlertPreferences> {
+  @override
+  GroupPackAlertPreferences build() {
+    Future.microtask(_hydrate);
+    return GroupPackAlertPreferences.defaults;
+  }
+
+  Future<void> _hydrate() async {
+    final loaded = await ref.read(groupPackAlertRepositoryProvider).load();
+    state = loaded;
+  }
+
+  Future<void> _persist(GroupPackAlertPreferences next) async {
+    state = next;
+    await ref.read(groupPackAlertRepositoryProvider).save(next);
+  }
+
+  Future<void> setEnabled(bool value) {
+    return _persist(state.copyWith(enabled: value));
+  }
+
+  Future<void> setBehindMeters(double meters) {
+    return _persist(state.copyWith(behindMeters: meters));
+  }
+
+  Future<void> setFarMeters(double meters) {
+    return _persist(state.copyWith(farMeters: meters));
+  }
+
+  Future<void> setMateDisplayMode(GroupMateDisplayMode mode) {
+    return _persist(state.copyWith(mateDisplayMode: mode));
+  }
+
+  Future<void> setShowGroupOnNavigation(bool value) {
+    return _persist(state.copyWith(showGroupOnNavigation: value));
+  }
+
+  Future<void> mutePackAlertsFor(Duration duration) {
+    final until = DateTime.now().add(duration);
+    return _persist(state.copyWith(packAlertsMutedUntil: until));
+  }
+
+  Future<void> clearPackAlertsMute() {
+    return _persist(state.copyWith(clearPackAlertsMute: true));
+  }
+
+  Future<void> reset() => _persist(GroupPackAlertPreferences.defaults);
+}
 
 final groupIncidentDatasourceProvider =
     Provider<GroupIncidentRemoteDataSource>((ref) {

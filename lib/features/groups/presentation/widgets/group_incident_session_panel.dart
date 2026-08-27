@@ -1,10 +1,11 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
 import 'package:loc_motos/features/groups/domain/entities/group_incident.dart';
+import 'package:loc_motos/features/groups/domain/entities/ride_role.dart';
+import 'package:loc_motos/features/groups/domain/services/group_ride_alert_feedback.dart';
 import 'package:loc_motos/features/groups/presentation/providers/group_providers.dart';
 import 'package:loc_motos/features/groups/presentation/widgets/group_incident_widgets.dart';
 import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
@@ -46,6 +47,15 @@ class _GroupIncidentSessionPanelState
     final group =
         ref.watch(rideGroupProvider(widget.groupId)).asData?.value;
     final iAmAdmin = group?.isAdmin(widget.user.uid) ?? false;
+    final members =
+        ref.watch(groupMembersProvider(widget.groupId)).asData?.value;
+    final iAmCabecera = members?.any(
+          (member) =>
+              member.uid == widget.user.uid &&
+              member.rideRole == RideRole.cabecera,
+        ) ??
+        false;
+    final canAskWait = iAmAdmin || iAmCabecera;
     final actionBusy = ref.watch(groupActionControllerProvider).isLoading;
     final ownIncident = _ownActiveIncident(incidents);
     final bannerIncident =
@@ -84,6 +94,8 @@ class _GroupIncidentSessionPanelState
         GroupIncidentActionsBar(
           hasOwnAlert: ownIncident != null || _pendingIncident != null,
           enabled: !actionBusy,
+          showWait: canAskWait,
+          onWait: () => unawaited(_raiseIncident(GroupIncidentType.espera)),
           onEmergency: () =>
               unawaited(_raiseIncident(GroupIncidentType.emergencia)),
           onBreakdown: () =>
@@ -144,14 +156,28 @@ class _GroupIncidentSessionPanelState
       _incidentAlertPrimed = true;
       return;
     }
+    final voice = ref.read(navigationVoiceServiceProvider);
     for (final incident in incidents) {
       if (!incident.active || incident.uid == widget.user.uid) {
         continue;
       }
       final key = _bannerId(incident);
       if (_seenIncidentKeys.add(key)) {
-        HapticFeedback.heavyImpact();
-        SystemSound.play(SystemSoundType.alert);
+        final members =
+            ref.read(groupMembersProvider(widget.groupId)).asData?.value;
+        final fromMember = members
+            ?.where((member) => member.uid == incident.uid)
+            .map((member) => member.displayName)
+            .firstOrNull;
+        final name =
+            (incident.displayName ?? fromMember ?? '').trim();
+        unawaited(
+          GroupRideAlertFeedback.playIncident(
+            incident: incident,
+            name: name,
+            voice: voice,
+          ),
+        );
       }
     }
   }

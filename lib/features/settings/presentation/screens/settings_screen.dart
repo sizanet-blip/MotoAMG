@@ -7,6 +7,7 @@ import 'package:loc_motos/features/navigation/data/repositories/map_appearance_r
 import 'package:loc_motos/features/navigation/presentation/providers/navigation_providers.dart';
 import 'package:loc_motos/features/settings/presentation/screens/alert_preferences_screen.dart';
 import 'package:loc_motos/features/settings/presentation/screens/fuel_cache_settings_screen.dart';
+import 'package:loc_motos/features/settings/presentation/screens/group_ride_settings_screen.dart';
 import 'package:loc_motos/features/settings/presentation/screens/hud_safety_settings_screen.dart';
 import 'package:loc_motos/features/settings/presentation/screens/map_appearance_settings_screen.dart';
 import 'package:loc_motos/features/settings/presentation/screens/offline_maps_settings_screen.dart';
@@ -52,6 +53,21 @@ class SettingsScreen extends ConsumerWidget {
               Navigator.of(context).push(
                 MaterialPageRoute<void>(
                   builder: (_) => const HudSafetySettingsScreen(),
+                ),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.groups_outlined),
+            title: const Text('Grupo en ruta'),
+            subtitle: const Text(
+              'Qué motos ver, botón en navegación y avisos si alguien se queda',
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const GroupRideSettingsScreen(),
                 ),
               );
             },

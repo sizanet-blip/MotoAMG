@@ -14,8 +14,11 @@ import 'package:loc_motos/features/auth/presentation/widgets/vehicle_navigation_
 import 'package:loc_motos/features/groups/domain/entities/group_incident.dart';
 import 'package:loc_motos/features/groups/domain/entities/group_member.dart';
 import 'package:loc_motos/features/groups/domain/entities/ride_role.dart';
+import 'package:loc_motos/features/groups/domain/services/group_pack_proximity_tracker.dart';
+import 'package:loc_motos/features/groups/domain/services/group_ride_alert_feedback.dart';
 import 'package:loc_motos/features/groups/presentation/providers/group_providers.dart';
 import 'package:loc_motos/features/groups/presentation/widgets/group_incident_widgets.dart';
+import 'package:loc_motos/features/groups/presentation/widgets/group_pack_list_sheet.dart';
 import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
 import 'package:loc_motos/features/navigation/domain/entities/hybrid_map_styles.dart';
 import 'package:loc_motos/features/navigation/domain/entities/navigation_route.dart';
@@ -142,6 +145,7 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
   final _seenIncidentKeys = <String>{};
   var _incidentAlertPrimed = false;
   _PendingIncidentRaise? _pendingIncident;
+  final _packTracker = GroupPackProximityTracker();
 
   LatLng get _initialTarget {
     final own = ref.read(ownDevicePositionProvider);
@@ -253,6 +257,12 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
           for (final e in entries) LatLng(e.lat, e.lng),
         ],
       );
+      _maybeEvaluatePackAlerts(
+        own: own,
+        locations: locations,
+        members: members,
+        now: now,
+      );
     });
 
     return Stack(
@@ -346,8 +356,9 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
               children: [
                 Align(
                   alignment: Alignment.centerRight,
-                  child: Row(
+                  child: Column(
                     mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       if (sharedRoute != null) ...[
                         FloatingActionButton.extended(
@@ -367,19 +378,38 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
                           icon: const Icon(Icons.navigation_rounded),
                           label: const Text('Navegar ruta del grupo'),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(height: 8),
                       ],
-                      FloatingActionButton.small(
-                        heroTag: 'group-map-recenter',
-                        tooltip: 'Centrar grupo',
-                        backgroundColor: _followGroup
-                            ? Theme.of(context).colorScheme.primary
-                            : Theme.of(context).colorScheme.surface,
-                        foregroundColor: _followGroup
-                            ? Theme.of(context).colorScheme.onPrimary
-                            : Theme.of(context).colorScheme.primary,
-                        onPressed: _recenterGroup,
-                        child: const Icon(Icons.groups),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          FloatingActionButton.extended(
+                            heroTag: 'group-map-pack-list',
+                            tooltip: 'Lista del pelotón',
+                            onPressed: () => unawaited(
+                              showGroupPackListSheet(
+                                context: context,
+                                groupId: widget.groupId,
+                                user: widget.user,
+                              ),
+                            ),
+                            icon: const Icon(Icons.format_list_bulleted_rounded),
+                            label: const Text('Pelotón'),
+                          ),
+                          const SizedBox(width: 8),
+                          FloatingActionButton.small(
+                            heroTag: 'group-map-recenter',
+                            tooltip: 'Centrar grupo',
+                            backgroundColor: _followGroup
+                                ? Theme.of(context).colorScheme.primary
+                                : Theme.of(context).colorScheme.surface,
+                            foregroundColor: _followGroup
+                                ? Theme.of(context).colorScheme.onPrimary
+                                : Theme.of(context).colorScheme.primary,
+                            onPressed: _recenterGroup,
+                            child: const Icon(Icons.groups),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -388,6 +418,15 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
                 GroupIncidentActionsBar(
                   hasOwnAlert: ownIncident != null || _pendingIncident != null,
                   enabled: !actionBusy,
+                  showWait: iAmAdmin ||
+                      (members?.any(
+                            (member) =>
+                                member.uid == widget.user.uid &&
+                                member.rideRole == RideRole.cabecera,
+                          ) ??
+                          false),
+                  onWait: () =>
+                      unawaited(_raiseIncident(GroupIncidentType.espera)),
                   onEmergency: () =>
                       unawaited(_raiseIncident(GroupIncidentType.emergencia)),
                   onBreakdown: () =>
@@ -819,6 +858,11 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
             iconSize: 1.2,
             textColor: '#1565C0',
           ),
+        GroupIncidentType.espera => (
+            iconImage: _iconSeparado,
+            iconSize: 1.2,
+            textColor: '#6A1B9A',
+          ),
       };
     }
     return switch (entry.rideRole) {
@@ -887,15 +931,78 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
       _incidentAlertPrimed = true;
       return;
     }
+    final voice = ref.read(navigationVoiceServiceProvider);
+    final names = <String, String>{
+      widget.user.uid: widget.user.displayName,
+    };
+    final members =
+        ref.read(groupMembersProvider(widget.groupId)).asData?.value;
+    if (members != null) {
+      for (final member in members) {
+        names[member.uid] = member.displayName;
+      }
+    }
     for (final incident in incidents) {
       if (!incident.active || incident.uid == widget.user.uid) {
         continue;
       }
       final key = _bannerId(incident);
       if (_seenIncidentKeys.add(key)) {
-        HapticFeedback.heavyImpact();
-        SystemSound.play(SystemSoundType.alert);
+        final name =
+            (incident.displayName ?? names[incident.uid] ?? '').trim();
+        unawaited(
+          GroupRideAlertFeedback.playIncident(
+            incident: incident,
+            name: name,
+            voice: voice,
+          ),
+        );
       }
+    }
+  }
+
+  void _maybeEvaluatePackAlerts({
+    required OwnDevicePosition? own,
+    required List<LiveLocation> locations,
+    required List<GroupMember>? members,
+    required DateTime now,
+  }) {
+    if (own == null) {
+      return;
+    }
+    final prefs = ref.read(groupPackAlertProvider);
+    if (!prefs.enabled || prefs.isPackAlertsMutedAt(now)) {
+      return;
+    }
+    final names = <String, String>{
+      for (final member in members ?? const <GroupMember>[])
+        member.uid: member.displayName,
+    };
+    final alerts = _packTracker.evaluate(
+      ownLat: own.lat,
+      ownLng: own.lng,
+      others: locations,
+      names: names,
+      now: now,
+      ownUid: widget.user.uid,
+      enabled: true,
+      behindMeters: prefs.behindMeters,
+      farMeters: prefs.farMeters,
+      resetMeters: prefs.resetMeters,
+    );
+    if (alerts.isEmpty) {
+      return;
+    }
+    final voice = ref.read(navigationVoiceServiceProvider);
+    for (final alert in alerts) {
+      unawaited(
+        GroupRideAlertFeedback.playPackDistance(
+          name: alert.name,
+          distanceLabel: alert.distanceLabel,
+          far: alert.kind == GroupPackAlertKind.far,
+          voice: voice,
+        ),
+      );
     }
   }
 

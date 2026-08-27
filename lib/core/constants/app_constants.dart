@@ -22,6 +22,22 @@ abstract final class AppConstants {
   /// Si un compañero no actualiza en este tiempo, su moto muestra «Sin señal».
   static const Duration gpsStaleAfter = Duration(minutes: 2);
 
+  /// Aviso de pelotón: compañero se queda atrás (metros desde ti).
+  static const double groupBehindAlertMeters = 1200;
+
+  /// Aviso más fuerte: compañero muy lejos del pelotón.
+  static const double groupFarAlertMeters = 2500;
+
+  /// En el HUD de navegación, mostrar también a quien esté más lejos que esto
+  /// (además de cabecera, cola, incidencias y sin señal).
+  static const double groupHudShowFarMeters = 800;
+
+  /// No repetir el mismo aviso de pelotón al mismo motero antes de esto.
+  static const Duration groupPackAlertCooldown = Duration(minutes: 3);
+
+  /// Si vuelve a acercarse por debajo de esto, se puede volver a avisar después.
+  static const double groupPackAlertResetMeters = 600;
+
   static const String locationNotificationTitle = 'LocMotos';
   static const String locationNotificationText =
       'Compartiendo tu ubicación con el grupo';

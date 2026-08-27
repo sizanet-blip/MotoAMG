@@ -12,6 +12,8 @@ class GroupIncidentActionsBar extends StatelessWidget {
     required this.onBreakdown,
     required this.onSeparated,
     required this.onClear,
+    this.onWait,
+    this.showWait = false,
     this.enabled = true,
   });
 
@@ -20,6 +22,8 @@ class GroupIncidentActionsBar extends StatelessWidget {
   final VoidCallback onBreakdown;
   final VoidCallback onSeparated;
   final VoidCallback onClear;
+  final VoidCallback? onWait;
+  final bool showWait;
   final bool enabled;
 
   @override
@@ -47,6 +51,20 @@ class GroupIncidentActionsBar extends StatelessWidget {
                 label: const Text(
                   'Ya estoy OK',
                   style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                ),
+              ),
+              const SizedBox(height: 6),
+            ],
+            if (showWait && onWait != null) ...[
+              OutlinedButton.icon(
+                onPressed: enabled ? onWait : null,
+                icon: const Icon(Icons.groups_rounded, size: 18),
+                label: const Text('Esperar / reunir'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF6A1B9A),
+                  side: const BorderSide(color: Color(0xFF6A1B9A)),
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  minimumSize: const Size(0, 36),
                 ),
               ),
               const SizedBox(height: 6),
@@ -143,6 +161,7 @@ class GroupIncidentBanner extends StatelessWidget {
       return switch (incident.type) {
         GroupIncidentType.averia => const Color(0xFFEF6C00),
         GroupIncidentType.separado => const Color(0xFF1565C0),
+        GroupIncidentType.espera => const Color(0xFF6A1B9A),
         GroupIncidentType.emergencia => const Color(0xFFC62828),
       };
     }
@@ -282,8 +301,10 @@ Future<bool> confirmGroupIncident(
     context: context,
     builder: (context) => AlertDialog(
       title: Text('¿Avisar: ${type.label}?'),
-      content: const Text(
-        'Todo el grupo verá el aviso en el mapa. Úsalo solo si hace falta.',
+      content: Text(
+        type == GroupIncidentType.espera
+            ? 'Todo el grupo verá que pedís esperar o reunirnos.'
+            : 'Todo el grupo verá el aviso en el mapa. Úsalo solo si hace falta.',
       ),
       actions: [
         TextButton(

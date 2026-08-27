@@ -6,6 +6,8 @@ enum GroupIncidentType {
   emergencia,
   averia,
   separado,
+  /// Cabecera/admin pide al pelotón esperar o reunirse.
+  espera,
 }
 
 extension GroupIncidentTypeX on GroupIncidentType {
@@ -13,12 +15,14 @@ extension GroupIncidentTypeX on GroupIncidentType {
         GroupIncidentType.emergencia => 'Emergencia',
         GroupIncidentType.averia => 'Avería',
         GroupIncidentType.separado => 'Separado',
+        GroupIncidentType.espera => 'Esperar / reunir',
       };
 
   /// Mayor = más prioritario.
   int get priorityRank => switch (this) {
-        GroupIncidentType.emergencia => 3,
-        GroupIncidentType.averia => 2,
+        GroupIncidentType.emergencia => 4,
+        GroupIncidentType.averia => 3,
+        GroupIncidentType.espera => 2,
         GroupIncidentType.separado => 1,
       };
 

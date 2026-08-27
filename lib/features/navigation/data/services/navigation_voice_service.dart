@@ -38,6 +38,18 @@ class NavigationVoiceService {
     if (_muted || text.trim().isEmpty) {
       return;
     }
+    await _speakNow(text);
+  }
+
+  /// Emergencias de grupo: habla aunque el copiloto de ruta esté silenciado.
+  Future<void> speakUrgent(String text) async {
+    if (text.trim().isEmpty) {
+      return;
+    }
+    await _speakNow(text);
+  }
+
+  Future<void> _speakNow(String text) async {
     await init();
     await _tts.stop();
     if (defaultTargetPlatform == TargetPlatform.android) {

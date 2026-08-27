@@ -2,15 +2,22 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:loc_motos/core/constants/navigation_constants.dart';
 import 'package:loc_motos/core/utils/distance_format.dart';
 import 'package:loc_motos/core/utils/gps_status.dart';
 import 'package:loc_motos/core/utils/navigation_bearing.dart';
 import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
 import 'package:loc_motos/features/auth/presentation/providers/auth_providers.dart';
+import 'package:loc_motos/features/groups/data/repositories/group_pack_alert_repository.dart';
+import 'package:loc_motos/features/groups/domain/entities/group_incident.dart';
 import 'package:loc_motos/features/groups/domain/entities/group_member.dart';
+import 'package:loc_motos/features/groups/domain/entities/ride_role.dart';
+import 'package:loc_motos/features/groups/domain/services/group_pack_proximity_tracker.dart';
+import 'package:loc_motos/features/groups/domain/services/group_ride_alert_feedback.dart';
 import 'package:loc_motos/features/groups/presentation/providers/group_providers.dart';
 import 'package:loc_motos/features/groups/presentation/widgets/group_incident_session_panel.dart';
+import 'package:loc_motos/features/groups/presentation/widgets/group_pack_list_sheet.dart';
 import 'package:loc_motos/features/navigation/data/repositories/map_appearance_repository.dart';
 import 'package:loc_motos/features/navigation/data/services/route_alerts_service.dart';
 import 'package:loc_motos/features/navigation/data/services/route_guidance_service.dart';
@@ -82,6 +89,10 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
   double _upcomingAlertMeters = 0;
   RouteAlert? _upcomingFuel;
   double _upcomingFuelMeters = 0;
+  final _packTracker = GroupPackProximityTracker();
+  /// Motos del grupo en el HUD (se puede apagar con el botón).
+  var _showGroupMates = true;
+  var _userToggledGroupVisibility = false;
   RouteAlert? _upcomingToll;
   String? _lastSharedRouteFingerprint;
   double _upcomingTollMeters = 0;
@@ -105,6 +116,8 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
     // Evitar arrastrar coordenadas de una simulación anterior.
     try {
       ref.read(routeSimulationActiveProvider.notifier).state = false;
+      _showGroupMates =
+          ref.read(groupPackAlertProvider).showGroupOnNavigation;
     } catch (_) {}
     _bootstrapGuidance(_route);
     if (!_route.hasAlerts) {
@@ -1109,6 +1122,21 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
     });
 
     final groupId = _resolveGroupId();
+    ref.listen(groupPackAlertProvider, (previous, next) {
+      if (_userToggledGroupVisibility) {
+        return;
+      }
+      if (previous?.showGroupOnNavigation == next.showGroupOnNavigation) {
+        return;
+      }
+      setState(() => _showGroupMates = next.showGroupOnNavigation);
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      _evaluateHudPackAlerts(groupId);
+    });
     final sharedRouteGroupId =
         (groupId != null && groupId.isNotEmpty) ? groupId : '';
     ref.listen(groupSharedRouteProvider(sharedRouteGroupId), (previous, next) {
@@ -1408,6 +1436,29 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
                           });
                         },
                       ),
+                      if (groupId != null) ...[
+                        const SizedBox(height: 8),
+                        _HudRoundButton(
+                          tooltip: _showGroupMates
+                              ? 'Ocultar grupo (mantener: lista)'
+                              : 'Mostrar grupo (mantener: lista)',
+                          icon: Icons.groups_rounded,
+                          emphasized: _showGroupMates,
+                          onTap: () {
+                            setState(() {
+                              _userToggledGroupVisibility = true;
+                              _showGroupMates = !_showGroupMates;
+                            });
+                          },
+                          onLongPress: () => unawaited(
+                            showGroupPackListSheet(
+                              context: context,
+                              groupId: groupId,
+                              user: widget.user,
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -1522,22 +1573,37 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
     );
   }
 
-  /// Compañeros visibles en el mapa de navegación (no incluye al propio).
+  /// Compañeros visibles en el mapa de navegación según ajustes + botón.
   List<HudGroupMate> _hudGroupMates(String? groupId) {
-    if (groupId == null || groupId.isEmpty) {
+    if (groupId == null || groupId.isEmpty || !_showGroupMates) {
       return const [];
     }
     ref.watch(gpsClockProvider);
+    final packPrefs = ref.watch(groupPackAlertProvider);
     final locations =
         ref.watch(groupLocationsProvider(groupId)).valueOrNull ??
             const <LiveLocation>[];
     final members =
         ref.watch(groupMembersProvider(groupId)).asData?.value ??
             const <GroupMember>[];
+    final incidents =
+        ref.watch(groupIncidentsProvider(groupId)).asData?.value ??
+            const <GroupIncident>[];
+    final own = ref.watch(ownDevicePositionProvider);
     final names = <String, String>{
       for (final member in members) member.uid: member.displayName,
     };
+    final roles = <String, RideRole?>{
+      for (final member in members) member.uid: member.rideRole,
+    };
+    final activeIncidents = <String, GroupIncident>{
+      for (final incident in incidents)
+        if (incident.active) incident.uid: incident,
+    };
     final now = DateTime.now();
+    final onlyLeaders =
+        packPrefs.mateDisplayMode == GroupMateDisplayMode.cabeceraCola;
+
     final mates = <HudGroupMate>[];
     for (final location in locations) {
       if (location.uid == widget.user.uid) {
@@ -1547,22 +1613,114 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
           !members.any((member) => member.uid == location.uid)) {
         continue;
       }
+      final role = roles[location.uid];
+      if (onlyLeaders &&
+          role != RideRole.cabecera &&
+          role != RideRole.cola) {
+        continue;
+      }
+
       final rawName = (names[location.uid] ?? location.displayName).trim();
-      final label = rawName.isEmpty ? 'Motero' : rawName;
+      final name = rawName.isEmpty ? 'Motero' : rawName;
       final stale =
           !location.hasSignal || isGpsStale(location.updatedAt, now);
+      final incident = activeIncidents[location.uid];
+      final distanceMeters = own == null
+          ? null
+          : Geolocator.distanceBetween(
+              own.lat,
+              own.lng,
+              location.lat,
+              location.lng,
+            );
+
+      final kind = stale
+          ? HudGroupMateKind.stale
+          : incident != null
+              ? HudGroupMateKind.incident
+              : role == RideRole.cabecera
+                  ? HudGroupMateKind.cabecera
+                  : role == RideRole.cola
+                      ? HudGroupMateKind.cola
+                      : HudGroupMateKind.mate;
+
+      final lines = <String>[name];
+      if (role == RideRole.cabecera) {
+        lines.add('cabecera');
+      } else if (role == RideRole.cola) {
+        lines.add('cola');
+      }
+      if (incident != null) {
+        lines.add(incident.type.label);
+      }
+      if (stale) {
+        lines.add('Sin señal');
+      } else if (distanceMeters != null) {
+        lines.add(formatRideDistance(distanceMeters));
+      }
+
       mates.add(
         HudGroupMate(
           uid: location.uid,
           lat: location.lat,
           lng: location.lng,
           heading: location.heading,
-          label: stale ? '$label\nSin señal' : label,
+          label: lines.join('\n'),
           isStale: stale,
+          kind: kind,
         ),
       );
     }
     return mates;
+  }
+
+  void _evaluateHudPackAlerts(String? groupId) {
+    if (groupId == null || groupId.isEmpty) {
+      return;
+    }
+    final own = ref.read(ownDevicePositionProvider);
+    if (own == null) {
+      return;
+    }
+    final locations =
+        ref.read(groupLocationsProvider(groupId)).valueOrNull ??
+            const <LiveLocation>[];
+    final members =
+        ref.read(groupMembersProvider(groupId)).asData?.value ??
+            const <GroupMember>[];
+    final names = <String, String>{
+      for (final member in members) member.uid: member.displayName,
+    };
+    final prefs = ref.read(groupPackAlertProvider);
+    if (!prefs.enabled || prefs.isPackAlertsMutedAt(DateTime.now())) {
+      return;
+    }
+    final alerts = _packTracker.evaluate(
+      ownLat: own.lat,
+      ownLng: own.lng,
+      others: locations,
+      names: names,
+      now: DateTime.now(),
+      ownUid: widget.user.uid,
+      enabled: true,
+      behindMeters: prefs.behindMeters,
+      farMeters: prefs.farMeters,
+      resetMeters: prefs.resetMeters,
+    );
+    if (alerts.isEmpty) {
+      return;
+    }
+    final voice = ref.read(navigationVoiceServiceProvider);
+    for (final alert in alerts) {
+      unawaited(
+        GroupRideAlertFeedback.playPackDistance(
+          name: alert.name,
+          distanceLabel: alert.distanceLabel,
+          far: alert.kind == GroupPackAlertKind.far,
+          voice: voice,
+        ),
+      );
+    }
   }
 }
 
@@ -2265,12 +2423,14 @@ class _HudRoundButton extends StatelessWidget {
   const _HudRoundButton({
     required this.icon,
     required this.onTap,
+    this.onLongPress,
     this.tooltip,
     this.emphasized = false,
   });
 
   final IconData icon;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
   final String? tooltip;
   final bool emphasized;
 
@@ -2285,6 +2445,7 @@ class _HudRoundButton extends StatelessWidget {
       child: InkWell(
         customBorder: const CircleBorder(),
         onTap: onTap,
+        onLongPress: onLongPress,
         child: SizedBox(
           width: 56,
           height: 56,
