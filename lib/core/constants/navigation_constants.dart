@@ -178,6 +178,13 @@ abstract final class NavigationConstants {
   /// Metros por delante para sesgar un poco la cámara en curvas.
   static const double cameraLookAheadMeters = 95;
 
+  /// Extra de inclinación (grados) al anticipar una curva en 3D.
+  static const double cameraLookAheadPitchBoost = 12;
+
+  /// Fundido día↔noche (ida y vuelta del velo).
+  static const Duration mapStyleCrossfadeIn = Duration(milliseconds: 280);
+  static const Duration mapStyleCrossfadeOut = Duration(milliseconds: 340);
+
   /// Banner maniobra: urgencia visual.
   static const double maneuverApproachingMeters = 420;
   static const double maneuverImminentMeters = 75;

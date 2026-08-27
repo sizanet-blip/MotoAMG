@@ -152,6 +152,8 @@ class _NavigationMapViewState extends State<NavigationMapView> {
   var _mapConfigured = false;
   var _styleSwitching = false;
   Timer? _styleDebounce;
+  var _styleVeilOpacity = 0.0;
+  var _awaitingStyleFadeOut = false;
   /// Evita confundir un animateCamera nuestro con un pan del usuario.
   var _programmaticCameraMove = false;
   late String _activeStyle;
@@ -360,25 +362,80 @@ class _NavigationMapViewState extends State<NavigationMapView> {
 
   Future<void> _syncStyleForPoint(LatLng point) async {
     final next = _resolveActiveStyle(point);
-    if (next == _activeStyle) {
+    if (next == _activeStyle || _styleSwitching || _awaitingStyleFadeOut) {
       return;
     }
     _styleDebounce?.cancel();
-    // Evita flash brusco día↔noche al cambiar de estilo.
-    _styleDebounce = Timer(const Duration(milliseconds: 380), () async {
-      if (!mounted || _controller == null) {
-        return;
+    if (widget._isPreview) {
+      // Preview: cambio rápido (encuadres grandes / CCAA).
+      _styleDebounce = Timer(const Duration(milliseconds: 200), () async {
+        if (!mounted || _controller == null) {
+          return;
+        }
+        final latest = _resolveActiveStyle(_visiblePoint());
+        if (latest == _activeStyle) {
+          return;
+        }
+        _activeStyle = latest;
+        _styleSwitching = true;
+        try {
+          await _controller!.setStyle(latest);
+        } catch (_) {
+          _styleSwitching = false;
+        }
+      });
+      return;
+    }
+    // HUD: fundido día↔noche / cambio de estilo.
+    unawaited(_crossfadeToStyle(next));
+  }
+
+  Future<void> _crossfadeToStyle(String next) async {
+    if (!mounted || _controller == null) {
+      return;
+    }
+    final latest = _resolveActiveStyle(_visiblePoint());
+    if (latest == _activeStyle) {
+      return;
+    }
+    setState(() => _styleVeilOpacity = 1);
+    await Future<void>.delayed(NavigationConstants.mapStyleCrossfadeIn);
+    if (!mounted || _controller == null) {
+      return;
+    }
+    final still = _resolveActiveStyle(_visiblePoint());
+    if (still == _activeStyle) {
+      if (mounted) {
+        setState(() => _styleVeilOpacity = 0);
       }
-      final latest = _resolveActiveStyle(_visiblePoint());
-      if (latest == _activeStyle) {
-        return;
+      return;
+    }
+    _activeStyle = still;
+    _styleSwitching = true;
+    _awaitingStyleFadeOut = true;
+    try {
+      await _controller!.setStyle(still);
+    } catch (_) {
+      _styleSwitching = false;
+      _awaitingStyleFadeOut = false;
+      if (mounted) {
+        setState(() => _styleVeilOpacity = 0);
       }
-      _activeStyle = latest;
-      _styleSwitching = true;
-      try {
-        await _controller!.setStyle(latest);
-      } catch (_) {
-        _styleSwitching = false;
+    }
+  }
+
+  void _finishStyleCrossfadeIfNeeded() {
+    if (!_awaitingStyleFadeOut) {
+      return;
+    }
+    _awaitingStyleFadeOut = false;
+    if (!mounted) {
+      return;
+    }
+    // Pequeño delay para que el basemap pinte antes de quitar el velo.
+    Future<void>.delayed(const Duration(milliseconds: 80), () {
+      if (mounted) {
+        setState(() => _styleVeilOpacity = 0);
       }
     });
   }
@@ -466,6 +523,7 @@ class _NavigationMapViewState extends State<NavigationMapView> {
   Future<void> _drawRouteBody() async {
     final controller = _controller;
     if (controller == null || widget.route.polyline.length < 2) {
+      _finishStyleCrossfadeIfNeeded();
       return;
     }
 
@@ -520,6 +578,7 @@ class _NavigationMapViewState extends State<NavigationMapView> {
 
     _routeDrawn = true;
     await _sync3dBuildings();
+    _finishStyleCrossfadeIfNeeded();
     if (widget._isPreview) {
       if (_previewFocusOnUser || !_hasFittedPreview) {
         await _moveCamera(animate: true);
@@ -1102,6 +1161,32 @@ class _NavigationMapViewState extends State<NavigationMapView> {
       polyline: widget.route.polyline,
       lookAheadMeters: NavigationConstants.cameraLookAheadMeters,
     );
+  }
+
+  /// Inclinación base (3D) + boost suave si hay curva por delante.
+  double get _navigationCameraPitch {
+    final base = widget.pitch;
+    if (base <= 0.5 || widget._isPreview) {
+      return 0;
+    }
+    final lat = widget.latitude;
+    final lng = widget.longitude;
+    if (lat == null || lng == null || widget.route.polyline.length < 2) {
+      return base;
+    }
+    final ahead = resolveLookAheadBearing(
+      lat: lat,
+      lng: lng,
+      headingDegrees: widget.bearing,
+      polyline: widget.route.polyline,
+      lookAheadMeters: NavigationConstants.cameraLookAheadMeters,
+      blend: 1,
+    );
+    final turn = shortestBearingDelta(widget.bearing, ahead).abs();
+    // Recto ≈ sin boost; a partir de ~8° de giro sube hasta +12°.
+    final t = ((turn - 8) / 40).clamp(0.0, 1.0);
+    return (base + t * NavigationConstants.cameraLookAheadPitchBoost)
+        .clamp(0.0, 55.0);
   }
 
   /// Línea bajo textos del mapa; refs de ruta encima de la línea azul.
@@ -1763,7 +1848,7 @@ class _NavigationMapViewState extends State<NavigationMapView> {
           target: _cameraTarget,
           zoom: _navigationCameraZoom,
           bearing: _navigationCameraBearing,
-          tilt: widget.pitch,
+          tilt: _navigationCameraPitch,
         ),
       );
     }
@@ -1805,33 +1890,51 @@ class _NavigationMapViewState extends State<NavigationMapView> {
   @override
   Widget build(BuildContext context) {
     final isPreview = widget._isPreview;
-    return MapLibreMap(
-      styleString: _activeStyle,
-      initialCameraPosition: CameraPosition(
-        target: _cameraTarget,
-        zoom: isPreview ? 12 : _navigationCameraZoom,
-        bearing: isPreview ? 0 : _navigationCameraBearing,
-        tilt: isPreview ? 0 : widget.pitch,
-      ),
-      onMapCreated: _onMapCreated,
-      onStyleLoadedCallback: _onStyleLoaded,
-      onCameraIdle: _onCameraIdle,
-      // Ruta = capas GeoJSON; no hace falta LineManager (taparía etiquetas).
-      annotationOrder: const [
-        AnnotationType.fill,
-        AnnotationType.circle,
-        AnnotationType.symbol,
+    final veilColor = widget.preferDarkMap
+        ? const Color(0xFF0A0E14)
+        : const Color(0xFF1A1F24);
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        MapLibreMap(
+          styleString: _activeStyle,
+          initialCameraPosition: CameraPosition(
+            target: _cameraTarget,
+            zoom: isPreview ? 12 : _navigationCameraZoom,
+            bearing: isPreview ? 0 : _navigationCameraBearing,
+            tilt: isPreview ? 0 : _navigationCameraPitch,
+          ),
+          onMapCreated: _onMapCreated,
+          onStyleLoadedCallback: _onStyleLoaded,
+          onCameraIdle: _onCameraIdle,
+          // Ruta = capas GeoJSON; no hace falta LineManager (taparía etiquetas).
+          annotationOrder: const [
+            AnnotationType.fill,
+            AnnotationType.circle,
+            AnnotationType.symbol,
+          ],
+          // En HUD usamos nuestro puck; en preview también (evita el botón/GPS nativo).
+          myLocationEnabled: false,
+          myLocationTrackingMode: MyLocationTrackingMode.none,
+          myLocationRenderMode: MyLocationRenderMode.normal,
+          compassEnabled: isPreview,
+          rotateGesturesEnabled: isPreview,
+          tiltGesturesEnabled: false,
+          zoomGesturesEnabled: true,
+          scrollGesturesEnabled: true,
+          trackCameraPosition: true,
+        ),
+        IgnorePointer(
+          child: AnimatedOpacity(
+            opacity: _styleVeilOpacity,
+            duration: _styleVeilOpacity > 0.5
+                ? NavigationConstants.mapStyleCrossfadeIn
+                : NavigationConstants.mapStyleCrossfadeOut,
+            curve: Curves.easeInOut,
+            child: ColoredBox(color: veilColor),
+          ),
+        ),
       ],
-      // En HUD usamos nuestro puck; en preview también (evita el botón/GPS nativo).
-      myLocationEnabled: false,
-      myLocationTrackingMode: MyLocationTrackingMode.none,
-      myLocationRenderMode: MyLocationRenderMode.normal,
-      compassEnabled: isPreview,
-      rotateGesturesEnabled: isPreview,
-      tiltGesturesEnabled: false,
-      zoomGesturesEnabled: true,
-      scrollGesturesEnabled: true,
-      trackCameraPosition: true,
     );
   }
 }
