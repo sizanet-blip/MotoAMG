@@ -58,12 +58,27 @@ class _OwnPositionWatcherState extends ConsumerState<OwnPositionWatcher>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    unawaited(_stop());
+    // Cancelar y limpiar providers de forma síncrona: no usar ref tras dispose
+    // (un await de _stop() puede completar cuando el elemento ya no es válido).
+    final clearSource = ref.read(ownPositionWatchSourceProvider) ==
+        OwnPositionWatchSource.navigation;
+    unawaited(_subscription?.cancel());
+    unawaited(_serviceSubscription?.cancel());
+    _subscription = null;
+    _serviceSubscription = null;
+    if (clearSource) {
+      ref.read(ownPositionWatchSourceProvider.notifier).state = null;
+    }
+    ref.read(ownGpsLostProvider.notifier).state = false;
+    _started = false;
     super.dispose();
   }
 
   Future<void> _restart() async {
     await _stop();
+    if (!mounted) {
+      return;
+    }
     await _start();
   }
 
@@ -84,6 +99,9 @@ class _OwnPositionWatcherState extends ConsumerState<OwnPositionWatcher>
       final gps = ref.read(deviceLocationServiceProvider);
       await gps.ensurePermission();
       final first = await gps.readPosition();
+      if (!mounted) {
+        return;
+      }
       if (first != null) {
         _apply(first);
       }
@@ -100,7 +118,11 @@ class _OwnPositionWatcherState extends ConsumerState<OwnPositionWatcher>
             _setGpsLost(true);
           }
         },
-        onDone: () => _subscription = null,
+        onDone: () {
+          if (mounted) {
+            _subscription = null;
+          }
+        },
       );
       _serviceSubscription = Geolocator.getServiceStatusStream().listen((
         status,
@@ -112,12 +134,13 @@ class _OwnPositionWatcherState extends ConsumerState<OwnPositionWatcher>
         }
       });
     } on LocationException catch (error) {
-      _started = false;
-      if (mounted) {
-        ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-          SnackBar(content: Text(error.message)),
-        );
+      if (!mounted) {
+        return;
       }
+      _started = false;
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
     }
   }
 
@@ -126,13 +149,14 @@ class _OwnPositionWatcherState extends ConsumerState<OwnPositionWatcher>
     _serviceSubscription = null;
     await _subscription?.cancel();
     _subscription = null;
+    if (!mounted) {
+      return;
+    }
     if (ref.read(ownPositionWatchSourceProvider) ==
         OwnPositionWatchSource.navigation) {
       ref.read(ownPositionWatchSourceProvider.notifier).state = null;
     }
-    if (mounted) {
-      ref.read(ownGpsLostProvider.notifier).state = false;
-    }
+    ref.read(ownGpsLostProvider.notifier).state = false;
     _started = false;
   }
 

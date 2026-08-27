@@ -125,6 +125,9 @@ class _NavigationMapViewState extends State<NavigationMapView> {
   var _routeLayersReady = false;
   var _etaPillsReady = false;
   var _alertIconsReady = false;
+  /// Evita dos `_drawRoute` concurrentes (p. ej. onMapCreated + onStyleLoaded).
+  var _drawRouteBusy = false;
+  var _drawRouteQueued = false;
   var _lastCameraTarget = const LatLng(0, 0);
   var _cameraReady = false;
   /// En preview: solo un encuadre inicial; no reajustar al soltar el dedo.
@@ -359,6 +362,22 @@ class _NavigationMapViewState extends State<NavigationMapView> {
   }
 
   Future<void> _drawRoute() async {
+    if (_drawRouteBusy) {
+      _drawRouteQueued = true;
+      return;
+    }
+    _drawRouteBusy = true;
+    try {
+      do {
+        _drawRouteQueued = false;
+        await _drawRouteBody();
+      } while (_drawRouteQueued && mounted);
+    } finally {
+      _drawRouteBusy = false;
+    }
+  }
+
+  Future<void> _drawRouteBody() async {
     final controller = _controller;
     if (controller == null || widget.route.polyline.length < 2) {
       return;
@@ -391,6 +410,7 @@ class _NavigationMapViewState extends State<NavigationMapView> {
       }
     }
     if (!_routeLayersReady) {
+      await _clearRouteOverlayLayers(controller);
       await _addRouteLayersBelowLabels(
         controller,
         altsGeoJson: altsGeoJson,
@@ -417,6 +437,36 @@ class _NavigationMapViewState extends State<NavigationMapView> {
     } else {
       await _moveCamera(animate: !_cameraReady);
       _cameraReady = true;
+    }
+  }
+
+  /// Quita capas/fuentes de ruta si ya existen (evita CannotAddLayerException).
+  Future<void> _clearRouteOverlayLayers(MapLibreMapController controller) async {
+    const layerIds = [
+      _alertsSymbolLayerId,
+      _etaLayerId,
+      _routeLabelsLayerId,
+      _routeLineLayerId,
+      _routeCasingLayerId,
+      _altsLineLayerId,
+      _altsCasingLayerId,
+    ];
+    const sourceIds = [
+      _alertsSourceId,
+      _etaSourceId,
+      _routeLabelsSourceId,
+      _routeSourceId,
+      _altsSourceId,
+    ];
+    for (final id in layerIds) {
+      try {
+        await controller.removeLayer(id);
+      } catch (_) {}
+    }
+    for (final id in sourceIds) {
+      try {
+        await controller.removeSource(id);
+      } catch (_) {}
     }
   }
 

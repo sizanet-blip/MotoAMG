@@ -9,10 +9,12 @@ class AlertPreferences extends Equatable {
   const AlertPreferences({
     this.radarsEnabled = true,
     this.radarShowOnMap = true,
+    this.radarShowOnPreview = false,
     this.radarVoiceEnabled = true,
     this.radarAnnounceDistances = defaultRadarAnnounceDistances,
     this.fuelEnabled = true,
     this.fuelShowOnMap = true,
+    this.fuelShowOnPreview = false,
     this.fuelShowPrice = true,
     this.fuelPriceFilterEnabled = false,
     this.fuelMaxPriceEur,
@@ -20,10 +22,12 @@ class AlertPreferences extends Equatable {
     this.fuelAnnounceMeters = NavigationConstants.fuelAnnounceMeters,
     this.tollsEnabled = true,
     this.tollShowOnMap = true,
+    this.tollShowOnPreview = false,
     this.tollVoiceEnabled = true,
     this.tollAnnounceMeters = NavigationConstants.tollAnnounceMeters,
     this.curvesEnabled = true,
     this.curvesShowOnMap = false,
+    this.curvesShowOnPreview = false,
     this.curvesVoiceEnabled = false,
   });
 
@@ -34,6 +38,9 @@ class AlertPreferences extends Equatable {
 
   final bool radarsEnabled;
   final bool radarShowOnMap;
+
+  /// Iconos de radar en la vista previa de ruta (por defecto off: rutas largas).
+  final bool radarShowOnPreview;
   final bool radarVoiceEnabled;
 
   /// Distancias de aviso de radar (varias). Orden interno: mayor → menor.
@@ -41,6 +48,9 @@ class AlertPreferences extends Equatable {
 
   final bool fuelEnabled;
   final bool fuelShowOnMap;
+
+  /// Iconos de gasolinera en la vista previa de ruta (por defecto off).
+  final bool fuelShowOnPreview;
   final bool fuelShowPrice;
 
   /// Si está activo, solo se muestran gasolineras cuyo precio de referencia
@@ -55,11 +65,17 @@ class AlertPreferences extends Equatable {
 
   final bool tollsEnabled;
   final bool tollShowOnMap;
+
+  /// Iconos de peaje en la vista previa de ruta (por defecto off).
+  final bool tollShowOnPreview;
   final bool tollVoiceEnabled;
   final double tollAnnounceMeters;
 
   final bool curvesEnabled;
   final bool curvesShowOnMap;
+
+  /// Iconos de curva en la vista previa de ruta (por defecto off).
+  final bool curvesShowOnPreview;
   final bool curvesVoiceEnabled;
 
   /// Opciones de distancia para la UI.
@@ -138,6 +154,18 @@ class AlertPreferences extends Equatable {
     };
   }
 
+  bool showTypeOnPreview(RouteAlertType type) {
+    if (!isTypeEnabled(type)) {
+      return false;
+    }
+    return switch (type) {
+      RouteAlertType.speedCamera => radarShowOnPreview,
+      RouteAlertType.fuel => fuelShowOnPreview,
+      RouteAlertType.toll => tollShowOnPreview,
+      RouteAlertType.sharpCurve => curvesShowOnPreview,
+    };
+  }
+
   bool voiceEnabledFor(RouteAlertType type) {
     if (!isTypeEnabled(type)) {
       return false;
@@ -184,10 +212,12 @@ class AlertPreferences extends Equatable {
   AlertPreferences copyWith({
     bool? radarsEnabled,
     bool? radarShowOnMap,
+    bool? radarShowOnPreview,
     bool? radarVoiceEnabled,
     List<double>? radarAnnounceDistances,
     bool? fuelEnabled,
     bool? fuelShowOnMap,
+    bool? fuelShowOnPreview,
     bool? fuelShowPrice,
     bool? fuelPriceFilterEnabled,
     double? fuelMaxPriceEur,
@@ -196,21 +226,25 @@ class AlertPreferences extends Equatable {
     double? fuelAnnounceMeters,
     bool? tollsEnabled,
     bool? tollShowOnMap,
+    bool? tollShowOnPreview,
     bool? tollVoiceEnabled,
     double? tollAnnounceMeters,
     bool? curvesEnabled,
     bool? curvesShowOnMap,
+    bool? curvesShowOnPreview,
     bool? curvesVoiceEnabled,
   }) {
     return AlertPreferences(
       radarsEnabled: radarsEnabled ?? this.radarsEnabled,
       radarShowOnMap: radarShowOnMap ?? this.radarShowOnMap,
+      radarShowOnPreview: radarShowOnPreview ?? this.radarShowOnPreview,
       radarVoiceEnabled: radarVoiceEnabled ?? this.radarVoiceEnabled,
       radarAnnounceDistances: radarAnnounceDistances != null
           ? _normalizeDistances(radarAnnounceDistances)
           : this.radarAnnounceDistances,
       fuelEnabled: fuelEnabled ?? this.fuelEnabled,
       fuelShowOnMap: fuelShowOnMap ?? this.fuelShowOnMap,
+      fuelShowOnPreview: fuelShowOnPreview ?? this.fuelShowOnPreview,
       fuelShowPrice: fuelShowPrice ?? this.fuelShowPrice,
       fuelPriceFilterEnabled:
           fuelPriceFilterEnabled ?? this.fuelPriceFilterEnabled,
@@ -221,10 +255,12 @@ class AlertPreferences extends Equatable {
       fuelAnnounceMeters: fuelAnnounceMeters ?? this.fuelAnnounceMeters,
       tollsEnabled: tollsEnabled ?? this.tollsEnabled,
       tollShowOnMap: tollShowOnMap ?? this.tollShowOnMap,
+      tollShowOnPreview: tollShowOnPreview ?? this.tollShowOnPreview,
       tollVoiceEnabled: tollVoiceEnabled ?? this.tollVoiceEnabled,
       tollAnnounceMeters: tollAnnounceMeters ?? this.tollAnnounceMeters,
       curvesEnabled: curvesEnabled ?? this.curvesEnabled,
       curvesShowOnMap: curvesShowOnMap ?? this.curvesShowOnMap,
+      curvesShowOnPreview: curvesShowOnPreview ?? this.curvesShowOnPreview,
       curvesVoiceEnabled: curvesVoiceEnabled ?? this.curvesVoiceEnabled,
     );
   }
@@ -232,10 +268,12 @@ class AlertPreferences extends Equatable {
   Map<String, dynamic> toJson() => {
         'radarsEnabled': radarsEnabled,
         'radarShowOnMap': radarShowOnMap,
+        'radarShowOnPreview': radarShowOnPreview,
         'radarVoiceEnabled': radarVoiceEnabled,
         'radarAnnounceDistances': radarAnnounceDistances,
         'fuelEnabled': fuelEnabled,
         'fuelShowOnMap': fuelShowOnMap,
+        'fuelShowOnPreview': fuelShowOnPreview,
         'fuelShowPrice': fuelShowPrice,
         'fuelPriceFilterEnabled': fuelPriceFilterEnabled,
         if (fuelMaxPriceEur != null) 'fuelMaxPriceEur': fuelMaxPriceEur,
@@ -243,10 +281,12 @@ class AlertPreferences extends Equatable {
         'fuelAnnounceMeters': fuelAnnounceMeters,
         'tollsEnabled': tollsEnabled,
         'tollShowOnMap': tollShowOnMap,
+        'tollShowOnPreview': tollShowOnPreview,
         'tollVoiceEnabled': tollVoiceEnabled,
         'tollAnnounceMeters': tollAnnounceMeters,
         'curvesEnabled': curvesEnabled,
         'curvesShowOnMap': curvesShowOnMap,
+        'curvesShowOnPreview': curvesShowOnPreview,
         'curvesVoiceEnabled': curvesVoiceEnabled,
       };
 
@@ -293,10 +333,12 @@ class AlertPreferences extends Equatable {
     return AlertPreferences(
       radarsEnabled: flag('radarsEnabled', true),
       radarShowOnMap: flag('radarShowOnMap', true),
+      radarShowOnPreview: flag('radarShowOnPreview', false),
       radarVoiceEnabled: flag('radarVoiceEnabled', true),
       radarAnnounceDistances: distances,
       fuelEnabled: flag('fuelEnabled', true),
       fuelShowOnMap: flag('fuelShowOnMap', true),
+      fuelShowOnPreview: flag('fuelShowOnPreview', false),
       fuelShowPrice: flag('fuelShowPrice', true),
       fuelPriceFilterEnabled: flag(
         'fuelPriceFilterEnabled',
@@ -316,6 +358,7 @@ class AlertPreferences extends Equatable {
       ),
       tollsEnabled: flag('tollsEnabled', true),
       tollShowOnMap: flag('tollShowOnMap', true),
+      tollShowOnPreview: flag('tollShowOnPreview', false),
       tollVoiceEnabled: flag('tollVoiceEnabled', true),
       tollAnnounceMeters: meters(
         'tollAnnounceMeters',
@@ -323,6 +366,7 @@ class AlertPreferences extends Equatable {
       ),
       curvesEnabled: flag('curvesEnabled', true),
       curvesShowOnMap: flag('curvesShowOnMap', false),
+      curvesShowOnPreview: flag('curvesShowOnPreview', false),
       curvesVoiceEnabled: flag('curvesVoiceEnabled', false),
     );
   }
@@ -331,10 +375,12 @@ class AlertPreferences extends Equatable {
   List<Object?> get props => [
         radarsEnabled,
         radarShowOnMap,
+        radarShowOnPreview,
         radarVoiceEnabled,
         radarAnnounceDistances,
         fuelEnabled,
         fuelShowOnMap,
+        fuelShowOnPreview,
         fuelShowPrice,
         fuelPriceFilterEnabled,
         fuelMaxPriceEur,
@@ -342,10 +388,12 @@ class AlertPreferences extends Equatable {
         fuelAnnounceMeters,
         tollsEnabled,
         tollShowOnMap,
+        tollShowOnPreview,
         tollVoiceEnabled,
         tollAnnounceMeters,
         curvesEnabled,
         curvesShowOnMap,
+        curvesShowOnPreview,
         curvesVoiceEnabled,
       ];
 }

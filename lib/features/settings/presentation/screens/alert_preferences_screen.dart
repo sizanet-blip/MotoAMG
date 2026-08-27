@@ -236,34 +236,65 @@ class _AlertTypeDetailScreen extends ConsumerWidget {
       _AlertCategory.radars => [
           _CompactSwitchTile(
             title: 'Mostrar en el mapa',
+            subtitle: 'Durante la navegación',
             value: prefs.radarShowOnMap,
             onChanged: (v) =>
                 notifier.update((p) => p.copyWith(radarShowOnMap: v)),
+          ),
+          _CompactSwitchTile(
+            title: 'Mostrar en vista previa',
+            subtitle: 'Al elegir la ruta (puedes cambiarlo en el mapa)',
+            value: prefs.radarShowOnPreview,
+            onChanged: (v) =>
+                notifier.update((p) => p.copyWith(radarShowOnPreview: v)),
           ),
         ],
       _AlertCategory.fuel => [
           _CompactSwitchTile(
             title: 'Mostrar en el mapa',
+            subtitle: 'Durante la navegación',
             value: prefs.fuelShowOnMap,
             onChanged: (v) =>
                 notifier.update((p) => p.copyWith(fuelShowOnMap: v)),
+          ),
+          _CompactSwitchTile(
+            title: 'Mostrar en vista previa',
+            subtitle: 'Al elegir la ruta (puedes cambiarlo en el mapa)',
+            value: prefs.fuelShowOnPreview,
+            onChanged: (v) =>
+                notifier.update((p) => p.copyWith(fuelShowOnPreview: v)),
           ),
         ],
       _AlertCategory.tolls => [
           _CompactSwitchTile(
             title: 'Mostrar en el mapa',
+            subtitle: 'Durante la navegación',
             value: prefs.tollShowOnMap,
             onChanged: (v) =>
                 notifier.update((p) => p.copyWith(tollShowOnMap: v)),
+          ),
+          _CompactSwitchTile(
+            title: 'Mostrar en vista previa',
+            subtitle: 'Al elegir la ruta (puedes cambiarlo en el mapa)',
+            value: prefs.tollShowOnPreview,
+            onChanged: (v) =>
+                notifier.update((p) => p.copyWith(tollShowOnPreview: v)),
           ),
         ],
       _AlertCategory.curves => [
           _CompactSwitchTile(
             title: 'Mostrar en el mapa',
-            subtitle: 'Desactivado por defecto para no saturar el mapa',
+            subtitle: 'Durante la navegación (por defecto off)',
             value: prefs.curvesShowOnMap,
             onChanged: (v) =>
                 notifier.update((p) => p.copyWith(curvesShowOnMap: v)),
+          ),
+          _CompactSwitchTile(
+            title: 'Mostrar en vista previa',
+            subtitle: 'Al elegir la ruta (puedes cambiarlo en el mapa)',
+            value: prefs.curvesShowOnPreview,
+            onChanged: (v) =>
+                notifier.update((p) => p.copyWith(curvesShowOnPreview: v)),
           ),
         ],
     };
@@ -539,6 +570,7 @@ String _radarSummary(AlertPreferences prefs) {
   }
   return _joinSummary([
     if (prefs.radarShowOnMap) 'Mapa',
+    if (prefs.radarShowOnPreview) 'Vista previa',
     if (prefs.radarVoiceEnabled) 'Voz',
     _formatDistances(prefs.radarAnnounceDistances),
   ]);
@@ -550,6 +582,7 @@ String _fuelSummary(AlertPreferences prefs) {
   }
   return _joinSummary([
     if (prefs.fuelShowOnMap) 'Mapa',
+    if (prefs.fuelShowOnPreview) 'Vista previa',
     if (prefs.fuelShowPrice) 'Precio',
     if (prefs.fuelVoiceEnabled) 'Voz',
     if (prefs.fuelPriceFilterEnabled && prefs.activeFuelMaxPriceEur != null)
@@ -564,6 +597,7 @@ String _tollSummary(AlertPreferences prefs) {
   }
   return _joinSummary([
     if (prefs.tollShowOnMap) 'Mapa',
+    if (prefs.tollShowOnPreview) 'Vista previa',
     if (prefs.tollVoiceEnabled) 'Voz',
     _formatDistance(prefs.tollAnnounceMeters),
   ]);
@@ -575,8 +609,12 @@ String _curveSummary(AlertPreferences prefs) {
   }
   return _joinSummary([
     if (prefs.curvesShowOnMap) 'Mapa',
+    if (prefs.curvesShowOnPreview) 'Vista previa',
     if (prefs.curvesVoiceEnabled) 'Voz',
-    if (!prefs.curvesShowOnMap && !prefs.curvesVoiceEnabled) 'Solo detección',
+    if (!prefs.curvesShowOnMap &&
+        !prefs.curvesShowOnPreview &&
+        !prefs.curvesVoiceEnabled)
+      'Solo detección',
   ]);
 }
 

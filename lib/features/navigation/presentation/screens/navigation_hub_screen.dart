@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:loc_motos/core/constants/navigation_constants.dart';
 import 'package:loc_motos/core/widgets/app_popup_menu.dart';
 import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
@@ -259,6 +260,45 @@ class _NavigationHubScreenState extends ConsumerState<NavigationHubScreen> {
         .map((stop) => stop.point)
         .toList(growable: false);
 
+    final straightKm = _estimateItineraryKmStraightLine(
+      origin: origin.point,
+      destination: destination.point,
+      waypoints: waypoints,
+    );
+    // Línea recta ≈ menor que la ruta real; factor conservador para avisar a tiempo.
+    final estimatedRoadKm = straightKm * 1.25;
+    final limitKm =
+        (NavigationConstants.valhallaMotorcycleMaxDistanceMeters / 1000)
+            .round();
+    if (estimatedRoadKm >= limitKm) {
+      final proceed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Itinerario muy largo'),
+          content: Text(
+            'Este recorrido suma unos ${straightKm.round()} km en línea '
+            'recta (~${estimatedRoadKm.round()} km estimados por carretera). '
+            'El límite del servidor es ~$limitKm km y puede fallar el cálculo.\n\n'
+            'Prueba con menos paradas o un destino más cercano, '
+            'o continúa si quieres intentarlo igual.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Calcular igual'),
+            ),
+          ],
+        ),
+      );
+      if (proceed != true || !mounted) {
+        return;
+      }
+    }
+
     try {
       final plan = await ref.read(navigationSessionProvider.notifier).planRoute(
             origin: origin.point,
@@ -283,6 +323,25 @@ class _NavigationHubScreenState extends ConsumerState<NavigationHubScreen> {
         SnackBar(content: Text(navigationUserMessage(error))),
       );
     }
+  }
+
+  /// Distancia aproximada del itinerario (suma tramos en línea recta).
+  double _estimateItineraryKmStraightLine({
+    required GeoPoint origin,
+    required GeoPoint destination,
+    required List<GeoPoint> waypoints,
+  }) {
+    final points = <GeoPoint>[origin, ...waypoints, destination];
+    var meters = 0.0;
+    for (var i = 0; i < points.length - 1; i++) {
+      meters += Geolocator.distanceBetween(
+        points[i].lat,
+        points[i].lng,
+        points[i + 1].lat,
+        points[i + 1].lng,
+      );
+    }
+    return meters / 1000;
   }
 
   Future<void> _resumeOffline() async {

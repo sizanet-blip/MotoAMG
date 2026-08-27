@@ -88,6 +88,10 @@ abstract final class NavigationConstants {
   /// Separación mínima entre avisos de curva (metros).
   static const double sharpCurveMinSeparationMeters = 400;
 
+  /// Límite de distancia del costing motorcycle en Valhalla (metros).
+  /// Si el itinerario lo supera, el servidor puede rechazar la ruta.
+  static const double valhallaMotorcycleMaxDistanceMeters = 1500000;
+
   /// Distancia a la que se anuncia un aviso por voz (metros).
   static const double alertAnnounceMeters = 350;
 
@@ -100,7 +104,7 @@ abstract final class NavigationConstants {
   /// Tras anunciar, no repetir hasta pasar el punto (+ gracia).
   static const double alertPassedGraceMeters = 40;
 
-  /// Fase 2 (tráfico TomTom): ver `deploy/traffic-tomtom-phase2.md` — no implementado.
+  /// Tráfico TomTom: descartado por ahora. Ver `deploy/traffic-tomtom-phase2.md`.
 
   /// Perfil de costing para motos en asfalto.
   static const String valhallaCosting = 'motorcycle';

@@ -41,6 +41,11 @@ class _RoutePreviewScreenState extends ConsumerState<RoutePreviewScreen> {
   late RoutePlan _plan;
   var _enriching = false;
   final _enrichedRouteIds = <String>{};
+  /// null = valor de Configuración; true/false = override en esta pantalla.
+  bool? _showFuelOnMap;
+  bool? _showRadarOnMap;
+  bool? _showTollOnMap;
+  bool? _showCurveOnMap;
 
   @override
   void initState() {
@@ -58,6 +63,63 @@ class _RoutePreviewScreenState extends ConsumerState<RoutePreviewScreen> {
     }
     setState(() => _plan = next);
     ref.read(activeNavigationRouteProvider.notifier).state = next.selected;
+  }
+
+  bool _fuelVisibleOnMap(AlertPreferences prefs) {
+    if (!prefs.fuelEnabled) {
+      return false;
+    }
+    return _showFuelOnMap ?? prefs.fuelShowOnPreview;
+  }
+
+  bool _radarVisibleOnMap(AlertPreferences prefs) {
+    if (!prefs.radarsEnabled) {
+      return false;
+    }
+    return _showRadarOnMap ?? prefs.radarShowOnPreview;
+  }
+
+  bool _tollVisibleOnMap(AlertPreferences prefs) {
+    if (!prefs.tollsEnabled) {
+      return false;
+    }
+    return _showTollOnMap ?? prefs.tollShowOnPreview;
+  }
+
+  bool _curveVisibleOnMap(AlertPreferences prefs) {
+    if (!prefs.curvesEnabled) {
+      return false;
+    }
+    return _showCurveOnMap ?? prefs.curvesShowOnPreview;
+  }
+
+  AlertPreferences _mapAlertPreferences(AlertPreferences prefs) {
+    return prefs.copyWith(
+      fuelShowOnMap: _fuelVisibleOnMap(prefs),
+      radarShowOnMap: _radarVisibleOnMap(prefs),
+      tollShowOnMap: _tollVisibleOnMap(prefs),
+      curvesShowOnMap: _curveVisibleOnMap(prefs),
+    );
+  }
+
+  void _toggleFuelOnMap() {
+    final prefs = ref.read(alertPreferencesProvider);
+    setState(() => _showFuelOnMap = !_fuelVisibleOnMap(prefs));
+  }
+
+  void _toggleRadarOnMap() {
+    final prefs = ref.read(alertPreferencesProvider);
+    setState(() => _showRadarOnMap = !_radarVisibleOnMap(prefs));
+  }
+
+  void _toggleTollOnMap() {
+    final prefs = ref.read(alertPreferencesProvider);
+    setState(() => _showTollOnMap = !_tollVisibleOnMap(prefs));
+  }
+
+  void _toggleCurveOnMap() {
+    final prefs = ref.read(alertPreferencesProvider);
+    setState(() => _showCurveOnMap = !_curveVisibleOnMap(prefs));
   }
 
   Future<void> _enrichAllAlternatives() async {
@@ -167,6 +229,16 @@ class _RoutePreviewScreenState extends ConsumerState<RoutePreviewScreen> {
     final hasNetwork = networkAsync.asData?.value ?? true;
     final showOfflineBanner = networkAsync.asData?.value == false;
     final route = _plan.selected;
+    final alertPrefs = ref.watch(alertPreferencesProvider);
+    final mapAlertPrefs = _mapAlertPreferences(alertPrefs);
+    final showFuelToggle = alertPrefs.fuelEnabled;
+    final showRadarToggle = alertPrefs.radarsEnabled;
+    final showTollToggle = alertPrefs.tollsEnabled;
+    final showCurveToggle = alertPrefs.curvesEnabled;
+    final fuelOnMap = _fuelVisibleOnMap(alertPrefs);
+    final radarOnMap = _radarVisibleOnMap(alertPrefs);
+    final tollOnMap = _tollVisibleOnMap(alertPrefs);
+    final curveOnMap = _curveVisibleOnMap(alertPrefs);
 
     return OwnPositionWatcher(
       child: MapNetworkResumeBinder(
@@ -184,7 +256,19 @@ class _RoutePreviewScreenState extends ConsumerState<RoutePreviewScreen> {
                     mapStyles: mapStyles,
                     hasNetwork: hasNetwork,
                     showOfflineBanner: showOfflineBanner,
-                    alertPreferences: ref.watch(alertPreferencesProvider),
+                    alertPreferences: mapAlertPrefs,
+                    showFuelToggle: showFuelToggle,
+                    showRadarToggle: showRadarToggle,
+                    showTollToggle: showTollToggle,
+                    showCurveToggle: showCurveToggle,
+                    fuelVisibleOnMap: fuelOnMap,
+                    radarVisibleOnMap: radarOnMap,
+                    tollVisibleOnMap: tollOnMap,
+                    curveVisibleOnMap: curveOnMap,
+                    onToggleFuel: _toggleFuelOnMap,
+                    onToggleRadar: _toggleRadarOnMap,
+                    onToggleToll: _toggleTollOnMap,
+                    onToggleCurve: _toggleCurveOnMap,
                   ),
                 ),
                 _RoutePreviewSheet(
@@ -226,10 +310,8 @@ class _RoutePreviewScreenState extends ConsumerState<RoutePreviewScreen> {
                     );
                     return message.isEmpty ? null : message;
                   }(),
-                  fuelAlertsEnabled:
-                      ref.watch(alertPreferencesProvider).fuelEnabled,
-                  radarAlertsEnabled:
-                      ref.watch(alertPreferencesProvider).radarsEnabled,
+                  fuelAlertsEnabled: alertPrefs.fuelEnabled,
+                  radarAlertsEnabled: alertPrefs.radarsEnabled,
                   onSelect: _selectAlternative,
                   onShare: () => unawaited(_shareGpx()),
                   onStart: _startNavigation,
@@ -252,6 +334,18 @@ class _RoutePreviewMapLayer extends ConsumerStatefulWidget {
     required this.hasNetwork,
     required this.showOfflineBanner,
     required this.alertPreferences,
+    required this.showFuelToggle,
+    required this.showRadarToggle,
+    required this.showTollToggle,
+    required this.showCurveToggle,
+    required this.fuelVisibleOnMap,
+    required this.radarVisibleOnMap,
+    required this.tollVisibleOnMap,
+    required this.curveVisibleOnMap,
+    required this.onToggleFuel,
+    required this.onToggleRadar,
+    required this.onToggleToll,
+    required this.onToggleCurve,
   });
 
   final NavigationRoute route;
@@ -260,6 +354,18 @@ class _RoutePreviewMapLayer extends ConsumerStatefulWidget {
   final bool hasNetwork;
   final bool showOfflineBanner;
   final AlertPreferences alertPreferences;
+  final bool showFuelToggle;
+  final bool showRadarToggle;
+  final bool showTollToggle;
+  final bool showCurveToggle;
+  final bool fuelVisibleOnMap;
+  final bool radarVisibleOnMap;
+  final bool tollVisibleOnMap;
+  final bool curveVisibleOnMap;
+  final VoidCallback onToggleFuel;
+  final VoidCallback onToggleRadar;
+  final VoidCallback onToggleToll;
+  final VoidCallback onToggleCurve;
 
   @override
   ConsumerState<_RoutePreviewMapLayer> createState() =>
@@ -340,6 +446,50 @@ class _RoutePreviewMapLayerState extends ConsumerState<_RoutePreviewMapLayer> {
                   enabled: own != null,
                   onPressed: own == null ? null : _recenterOnMe,
                 ),
+                if (widget.showFuelToggle) ...[
+                  const SizedBox(height: 8),
+                  _PreviewMapToggleButton(
+                    tooltip: widget.fuelVisibleOnMap
+                        ? 'Ocultar gasolineras'
+                        : 'Mostrar gasolineras',
+                    icon: Icons.local_gas_station_outlined,
+                    active: widget.fuelVisibleOnMap,
+                    onPressed: widget.onToggleFuel,
+                  ),
+                ],
+                if (widget.showRadarToggle) ...[
+                  const SizedBox(height: 8),
+                  _PreviewMapToggleButton(
+                    tooltip: widget.radarVisibleOnMap
+                        ? 'Ocultar radares'
+                        : 'Mostrar radares',
+                    icon: Icons.camera_alt_outlined,
+                    active: widget.radarVisibleOnMap,
+                    onPressed: widget.onToggleRadar,
+                  ),
+                ],
+                if (widget.showTollToggle) ...[
+                  const SizedBox(height: 8),
+                  _PreviewMapToggleButton(
+                    tooltip: widget.tollVisibleOnMap
+                        ? 'Ocultar peajes'
+                        : 'Mostrar peajes',
+                    icon: Icons.toll_outlined,
+                    active: widget.tollVisibleOnMap,
+                    onPressed: widget.onToggleToll,
+                  ),
+                ],
+                if (widget.showCurveToggle) ...[
+                  const SizedBox(height: 8),
+                  _PreviewMapToggleButton(
+                    tooltip: widget.curveVisibleOnMap
+                        ? 'Ocultar curvas'
+                        : 'Mostrar curvas',
+                    icon: Icons.turn_sharp_right,
+                    active: widget.curveVisibleOnMap,
+                    onPressed: widget.onToggleCurve,
+                  ),
+                ],
               ],
             ),
           ),
@@ -351,6 +501,41 @@ class _RoutePreviewMapLayerState extends ConsumerState<_RoutePreviewMapLayer> {
             child: OfflineMapBanner(compact: true),
           ),
       ],
+    );
+  }
+}
+
+class _PreviewMapToggleButton extends StatelessWidget {
+  const _PreviewMapToggleButton({
+    required this.tooltip,
+    required this.icon,
+    required this.active,
+    required this.onPressed,
+  });
+
+  final String tooltip;
+  final IconData icon;
+  final bool active;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Material(
+      elevation: 3,
+      color: active
+          ? colors.primaryContainer.withValues(alpha: 0.96)
+          : colors.surface.withValues(alpha: 0.96),
+      shape: const CircleBorder(),
+      clipBehavior: Clip.antiAlias,
+      child: IconButton(
+        tooltip: tooltip,
+        onPressed: onPressed,
+        icon: Icon(
+          icon,
+          color: active ? colors.primary : colors.onSurfaceVariant,
+        ),
+      ),
     );
   }
 }
