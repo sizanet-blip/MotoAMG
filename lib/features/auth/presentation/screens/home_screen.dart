@@ -154,8 +154,12 @@ class _InGroupView extends ConsumerWidget {
       });
     });
 
+    final landscape =
+        MediaQuery.orientationOf(context) == Orientation.landscape;
+
     return Scaffold(
       appBar: AppBar(
+        toolbarHeight: landscape ? 44 : kToolbarHeight,
         leading: user.isAnonymous
             ? null
             : IconButton(
@@ -167,17 +171,25 @@ class _InGroupView extends ConsumerWidget {
                           .closeMap(user: user),
                 icon: const Icon(Icons.arrow_back),
               ),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(groupName ?? AppConstants.appName),
-            if (memberCount > 0)
-              Text(
-                memberCount == 1 ? '1 motero' : '$memberCount moteros',
-                style: Theme.of(context).textTheme.labelSmall,
+        title: landscape
+            ? Text(
+                memberCount > 0
+                    ? '${groupName ?? AppConstants.appName} · $memberCount'
+                    : (groupName ?? AppConstants.appName),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              )
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(groupName ?? AppConstants.appName),
+                  if (memberCount > 0)
+                    Text(
+                      memberCount == 1 ? '1 motero' : '$memberCount moteros',
+                      style: Theme.of(context).textTheme.labelSmall,
+                    ),
+                ],
               ),
-          ],
-        ),
         actions: [
           IconButton(
             tooltip: 'Navegación',

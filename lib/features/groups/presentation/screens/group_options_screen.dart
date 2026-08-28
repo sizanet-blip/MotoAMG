@@ -85,21 +85,36 @@ class GroupOptionsScreen extends ConsumerWidget {
                 style: Theme.of(context).textTheme.bodySmall,
               ),
               const SizedBox(height: 24),
-              OutlinedButton.icon(
-                onPressed: busy
-                    ? null
-                    : () => _confirmLeave(context, ref, group),
-                icon: Icon(
-                  group.isOwner(user.uid)
-                      ? Icons.meeting_room_outlined
-                      : Icons.logout,
+              if (group.isOwner(user.uid)) ...[
+                OutlinedButton.icon(
+                  onPressed: busy
+                      ? null
+                      : () => _confirmDeleteGroup(context, ref, group),
+                  icon: const Icon(Icons.delete_outline_rounded),
+                  label: const Text('Eliminar grupo'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Theme.of(context).colorScheme.error,
+                    side: BorderSide(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
                 ),
-                label: Text(
-                  group.isOwner(user.uid)
-                      ? 'Cerrar y salir del grupo'
-                      : 'Salir del grupo',
+                const SizedBox(height: 8),
+                Text(
+                  'Se borra el grupo, el código y la ruta compartida. '
+                  'No se puede deshacer.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                 ),
-              ),
+              ] else
+                OutlinedButton.icon(
+                  onPressed: busy
+                      ? null
+                      : () => _confirmLeave(context, ref),
+                  icon: const Icon(Icons.logout),
+                  label: const Text('Salir del grupo'),
+                ),
             ],
           );
         },
@@ -107,21 +122,12 @@ class GroupOptionsScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _confirmLeave(
-    BuildContext context,
-    WidgetRef ref,
-    RideGroup group,
-  ) async {
-    final isOwner = group.isOwner(user.uid);
+  Future<void> _confirmLeave(BuildContext context, WidgetRef ref) async {
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(isOwner ? '¿Cerrar el grupo?' : '¿Salir del grupo?'),
-        content: Text(
-          isOwner
-              ? 'Si sales, el grupo se cierra y el código dejará de valer.'
-              : 'Podrás unirte otra vez con el código.',
-        ),
+        title: const Text('¿Salir del grupo?'),
+        content: const Text('Podrás unirte otra vez con el código.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -140,6 +146,46 @@ class GroupOptionsScreen extends ConsumerWidget {
           .leaveGroup(user: user, groupId: groupId);
       if (context.mounted) {
         Navigator.of(context).pop();
+      }
+    }
+  }
+
+  Future<void> _confirmDeleteGroup(
+    BuildContext context,
+    WidgetRef ref,
+    RideGroup group,
+  ) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('¿Eliminar el grupo?'),
+        content: Text(
+          'Se borrará «${group.name}», el código ${group.code} y la ruta '
+          'compartida. Los demás moteros dejarán de verlo.\n\n'
+          'Esta acción no se puede deshacer.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
+            ),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+    if (ok == true && context.mounted) {
+      await ref
+          .read(groupActionControllerProvider.notifier)
+          .deleteGroup(user: user, groupId: groupId);
+      if (context.mounted) {
+        Navigator.of(context).popUntil((route) => route.isFirst);
       }
     }
   }

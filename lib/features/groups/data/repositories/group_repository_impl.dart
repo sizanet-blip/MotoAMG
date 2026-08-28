@@ -38,6 +38,14 @@ class GroupRepositoryImpl implements GroupRepository {
   }
 
   @override
+  Future<void> deleteGroup({
+    required AppUser user,
+    required String groupId,
+  }) {
+    return _remote.deleteGroup(user: user, groupId: groupId);
+  }
+
+  @override
   Future<void> setActiveGroup({
     required String uid,
     required String? groupId,

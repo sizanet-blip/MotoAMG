@@ -25,6 +25,7 @@ import 'package:loc_motos/features/navigation/data/services/route_progress_simul
 import 'package:loc_motos/features/navigation/domain/entities/alert_preferences.dart';
 import 'package:loc_motos/features/navigation/domain/entities/fuel_alert_display.dart';
 import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
+import 'package:loc_motos/features/navigation/domain/entities/hybrid_map_styles.dart';
 import 'package:loc_motos/features/navigation/domain/entities/navigation_maneuver.dart';
 import 'package:loc_motos/features/navigation/domain/entities/navigation_route.dart';
 import 'package:loc_motos/features/navigation/domain/entities/route_alert.dart';
@@ -1206,6 +1207,8 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
     );
     final topInset = MediaQuery.paddingOf(context).top;
     final bottomInset = MediaQuery.paddingOf(context).bottom;
+    final screenSize = MediaQuery.sizeOf(context);
+    final landscape = screenSize.width > screenSize.height;
     final showOffRouteBanner =
         !_arrived && (_offRoute || _rerouting || _rerouteError != null);
 
@@ -1229,47 +1232,24 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
             error: (_, _) => const Center(
               child: Text('No se pudo cargar el mapa.'),
             ),
-            data: (mapStyles) => Stack(
-            fit: StackFit.expand,
-            children: [
-              NavigationMapView(
-                key: const ValueKey('navigation-hud-map'),
-                route: _route,
+            data: (mapStyles) {
+              return _buildHudMapLayer(
                 mapStyles: mapStyles,
                 hasNetwork: hasNetwork,
                 latitude: own?.lat,
                 longitude: own?.lng,
                 bearing: bearing,
                 speedMps: own?.speedMps ?? 0,
-                pitch: ref.watch(lowGlMapModeProvider)
-                    ? 0
-                    : (ref.watch(hudSafetyProvider).map3dEnabled
-                        ? NavigationConstants.defaultMapPitch
-                        : 0),
-                show3dBuildings: !ref.watch(lowGlMapModeProvider) &&
-                    ref.watch(hudSafetyProvider).map3dEnabled,
-                lowGlCompat: ref.watch(lowGlMapModeProvider),
-                cameraFollowUser: _cameraFollowUser,
-                cameraFollowEpoch: _cameraFollowEpoch,
-                onCameraFollowChanged: (following) {
-                  if (_cameraFollowUser == following) {
-                    return;
-                  }
-                  setState(() => _cameraFollowUser = following);
-                },
-                alertPreferences: ref.watch(alertPreferencesProvider),
-                preferDarkMap: ref.watch(effectiveMapDarkProvider),
-                puckStyle: resolveNavigationPuckStyle(
-                  user: widget.user,
-                  vehicleId: ref.watch(navigationVehicleIdProvider),
-                ),
-                groupMates: _hudGroupMates(groupId),
-              ),
+                groupId: groupId,
+                overlay: Stack(
+                  clipBehavior: Clip.none,
+                  fit: StackFit.expand,
+                  children: [
               Positioned(
                 top: 0,
                 left: 0,
                 right: 0,
-                height: topInset + 72,
+                height: topInset + (landscape ? 40 : 72),
                 child: DecoratedBox(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
@@ -1319,22 +1299,44 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
                 Positioned(
                   top: topInset + (showOffRouteBanner ? 64 : 8),
                   left: 12,
-                  child: const _WeakGpsBanner(),
+                  width: landscape ? 220 : null,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const _WeakGpsBanner(),
+                      if (landscape &&
+                          (groupId ?? '').isNotEmpty &&
+                          !_arrived) ...[
+                        const SizedBox(height: 6),
+                        _buildLandscapeIncidentRail(groupId!),
+                      ],
+                    ],
+                  ),
                 )
               else if (maneuver != null) ...[
                 Positioned(
                   top: topInset + (showOffRouteBanner ? 64 : 8),
                   left: 12,
+                  width: landscape ? 220 : null,
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       NavigationManeuverCard(
+                        compact: landscape,
                         maneuver: maneuver,
-                        nextManeuver: _nextManeuver,
+                        nextManeuver: landscape ? null : _nextManeuver,
                         remainingMeters: _remainingMeters,
                       ),
-                      if (maneuver.hasLaneGuidance &&
+                      if (landscape &&
+                          (groupId ?? '').isNotEmpty &&
+                          !_arrived) ...[
+                        const SizedBox(height: 6),
+                        _buildLandscapeIncidentRail(groupId!),
+                      ],
+                      if (!landscape &&
+                          maneuver.hasLaneGuidance &&
                           _remainingMeters <=
                               NavigationConstants.laneGuidanceShowMeters &&
                           _remainingMeters >=
@@ -1346,7 +1348,8 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
                         const SizedBox(height: 6),
                         const _WeakGpsBanner(),
                       ],
-                      if (secondaryAlert == _HudSecondarySlot.radar &&
+                      if (!landscape &&
+                          secondaryAlert == _HudSecondarySlot.radar &&
                           _upcomingAlert != null) ...[
                         const SizedBox(height: 6),
                         _UpcomingRadarBanner(
@@ -1356,14 +1359,16 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
                               .watch(alertPreferencesProvider)
                               .radarImminentMeters,
                         ),
-                      ] else if (secondaryAlert == _HudSecondarySlot.toll &&
+                      ] else if (!landscape &&
+                          secondaryAlert == _HudSecondarySlot.toll &&
                           _upcomingToll != null) ...[
                         const SizedBox(height: 6),
                         _UpcomingTollBanner(
                           alert: _upcomingToll!,
                           remainingMeters: _upcomingTollMeters,
                         ),
-                      ] else if (secondaryAlert == _HudSecondarySlot.fuel &&
+                      ] else if (!landscape &&
+                          secondaryAlert == _HudSecondarySlot.fuel &&
                           _upcomingFuel != null) ...[
                         const SizedBox(height: 6),
                         _UpcomingFuelBanner(
@@ -1382,182 +1387,301 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
                 Positioned(
                   top: topInset + (showOffRouteBanner ? 64 : 8),
                   right: 12,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      _HudRoundButton(
-                        tooltip: 'Cerrar navegación',
-                        icon: Icons.close_rounded,
-                        onTap: _stop,
-                      ),
-                      const SizedBox(height: 8),
-                      _HudRoundButton(
-                        tooltip: ref.watch(navigationVoiceMutedProvider)
-                            ? 'Activar voz'
-                            : 'Silenciar voz',
-                        icon: ref.watch(navigationVoiceMutedProvider)
-                            ? Icons.volume_off_rounded
-                            : Icons.volume_up_rounded,
-                        onTap: () {
-                          final muted =
-                              !ref.read(navigationVoiceMutedProvider);
-                          ref
-                              .read(navigationVoiceMutedProvider.notifier)
-                              .state = muted;
-                          unawaited(
-                            ref
-                                .read(navigationVoiceServiceProvider)
-                                .setMuted(muted),
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 8),
-                      _HudRoundButton(
-                        tooltip: ref.watch(mapAppearanceProvider).mode.label,
-                        icon: switch (ref.watch(mapAppearanceProvider).mode) {
-                          MapAppearanceMode.auto =>
-                            Icons.brightness_auto_rounded,
-                          MapAppearanceMode.day => Icons.light_mode_rounded,
-                          MapAppearanceMode.night => Icons.dark_mode_rounded,
-                        },
-                        onTap: () => unawaited(
-                          ref.read(mapAppearanceProvider.notifier).cycleMode(),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      _HudRoundButton(
-                        tooltip: 'Volver a mi posición',
-                        icon: Icons.my_location_rounded,
-                        emphasized: !_cameraFollowUser,
-                        onTap: () {
-                          setState(() {
-                            _cameraFollowUser = true;
-                            _cameraFollowEpoch++;
-                          });
-                        },
-                      ),
-                      if (groupId != null) ...[
-                        const SizedBox(height: 8),
-                        _HudRoundButton(
-                          tooltip: _showGroupMates
-                              ? 'Ocultar grupo (mantener: lista)'
-                              : 'Mostrar grupo (mantener: lista)',
-                          icon: Icons.groups_rounded,
-                          emphasized: _showGroupMates,
-                          onTap: () {
-                            setState(() {
-                              _userToggledGroupVisibility = true;
-                              _showGroupMates = !_showGroupMates;
-                            });
-                          },
-                          onLongPress: () => unawaited(
-                            showGroupPackListSheet(
-                              context: context,
-                              groupId: groupId,
-                              user: widget.user,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
+                  child: _buildHudRoundButtonsColumn(groupId: groupId),
                 ),
               if (!hasNetwork && !_arrived)
                 Positioned(
                   left: 12,
-                  right: 12,
+                  right: landscape ? 220 : 12,
                   bottom: bottomInset +
-                      (groupId != null ? 168 : 92),
+                      (landscape ? 58 : (groupId != null ? 168 : 92)),
                   child: const OfflineMapBanner(compact: true),
                 ),
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (_showSimulatorControls)
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(10, 0, 10, 6),
-                        child: Row(
-                          children: [
-                            _CompactSimChip(
-                              icon: Icons.arrow_back_rounded,
-                              label: 'Volver',
-                              onTap: _stop,
-                            ),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: _SimulationSpeedSlider(
-                                speedKmh: _simulationSpeedKmh,
-                                onChanged: (value) {
-                                  setState(() => _simulationSpeedKmh = value);
-                                  final simulator = _simulator;
-                                  if (simulator != null) {
-                                    simulator.speedMps = value / 3.6;
-                                  }
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            _CompactSimChip(
-                              icon: _simulating
-                                  ? Icons.pause_rounded
-                                  : Icons.play_arrow_rounded,
-                              label: _simulating
-                                  ? 'Pausar'
-                                  : (_simulator != null
-                                      ? 'Reanudar'
-                                      : 'Simular'),
-                              emphasized: _simulating,
-                              onTap: _toggleSimulation,
-                            ),
-                          ],
-                        ),
+              if (landscape && !_arrived) ...[
+                Positioned(
+                  left: 10,
+                  bottom: bottomInset + 8,
+                  width: 268,
+                  child: Material(
+                    elevation: 6,
+                    color: (_speedLimitKmh != null &&
+                            _speedLimitKmh! > 0 &&
+                            speedKmh > _speedLimitKmh! + 1)
+                        ? const Color(0xFF3B1010).withValues(alpha: 0.96)
+                        : NavigationHudTheme.panel.withValues(alpha: 0.96),
+                    borderRadius: BorderRadius.circular(14),
+                    child: NavigationStatusBar(
+                        compact: true,
+                        embedded: true,
+                        speedKmh: speedKmh,
+                        speedLimitKmh: _speedLimitKmh,
+                        eta: eta,
+                        remaining: remaining,
+                        distanceLabel:
+                            formatRideDistance(_routeRemainingMeters),
                       ),
-                    if ((groupId ?? '').isNotEmpty && !_arrived)
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
-                        child: GroupIncidentSessionPanel(
-                          groupId: groupId!,
-                          user: widget.user,
-                        ),
-                      ),
-                    if (ref.watch(hudSafetyProvider).helmetMode && !_arrived)
-                      _HelmetModeBar(
-                        muted: ref.watch(navigationVoiceMutedProvider),
-                        onToggleMute: () {
-                          final muted =
-                              !ref.read(navigationVoiceMutedProvider);
-                          ref
-                              .read(navigationVoiceMutedProvider.notifier)
-                              .state = muted;
-                          unawaited(
-                            ref
-                                .read(navigationVoiceServiceProvider)
-                                .setMuted(muted),
-                          );
-                        },
-                        onCancel: _stop,
-                      ),
-                    NavigationStatusBar(
-                      speedKmh: speedKmh,
-                      speedLimitKmh: _speedLimitKmh,
-                      eta: eta,
-                      remaining: remaining,
-                      distanceLabel: formatRideDistance(_routeRemainingMeters),
+                  ),
+                ),
+                if (_showSimulatorControls)
+                  Positioned(
+                    right: 12,
+                    bottom: bottomInset + 8,
+                    child: _LandscapeSimBar(
+                      simulating: _simulating,
+                      hasSimulator: _simulator != null,
+                      speedKmh: _simulationSpeedKmh,
+                      onBack: _stop,
+                      onToggle: _toggleSimulation,
+                      onSpeedChanged: (value) {
+                        setState(() => _simulationSpeedKmh = value);
+                        final simulator = _simulator;
+                        if (simulator != null) {
+                          simulator.speedMps = value / 3.6;
+                        }
+                      },
                     ),
+                  ),
+              ] else if (!landscape)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (_showSimulatorControls)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(10, 0, 10, 6),
+                          child: Row(
+                            children: [
+                              _CompactSimChip(
+                                icon: Icons.arrow_back_rounded,
+                                label: 'Volver',
+                                onTap: _stop,
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: _SimulationSpeedSlider(
+                                  speedKmh: _simulationSpeedKmh,
+                                  onChanged: (value) {
+                                    setState(
+                                      () => _simulationSpeedKmh = value,
+                                    );
+                                    final simulator = _simulator;
+                                    if (simulator != null) {
+                                      simulator.speedMps = value / 3.6;
+                                    }
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              _CompactSimChip(
+                                icon: _simulating
+                                    ? Icons.pause_rounded
+                                    : Icons.play_arrow_rounded,
+                                label: _simulating
+                                    ? 'Pausar'
+                                    : (_simulator != null
+                                        ? 'Reanudar'
+                                        : 'Simular'),
+                                emphasized: _simulating,
+                                onTap: _toggleSimulation,
+                              ),
+                            ],
+                          ),
+                        ),
+                      if ((groupId ?? '').isNotEmpty && !_arrived)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
+                          child: GroupIncidentSessionPanel(
+                            compact: false,
+                            drivingMode: true,
+                            groupId: groupId!,
+                            user: widget.user,
+                          ),
+                        ),
+                      if (ref.watch(hudSafetyProvider).helmetMode &&
+                          !_arrived)
+                        _HelmetModeBar(
+                          muted: ref.watch(navigationVoiceMutedProvider),
+                          onToggleMute: () {
+                            final muted =
+                                !ref.read(navigationVoiceMutedProvider);
+                            ref
+                                .read(navigationVoiceMutedProvider.notifier)
+                                .state = muted;
+                            unawaited(
+                              ref
+                                  .read(navigationVoiceServiceProvider)
+                                  .setMuted(muted),
+                            );
+                          },
+                          onCancel: _stop,
+                        ),
+                      NavigationStatusBar(
+                        speedKmh: speedKmh,
+                        speedLimitKmh: _speedLimitKmh,
+                        eta: eta,
+                        remaining: remaining,
+                        distanceLabel:
+                            formatRideDistance(_routeRemainingMeters),
+                      ),
+                    ],
+                  ),
+                ),
                   ],
                 ),
-              ),
-            ],
+              );
+            },
           ),
         ),
       ),
       ),
       ),
+    );
+  }
+
+  Widget _buildHudMapLayer({
+    required HybridMapStyles mapStyles,
+    required bool hasNetwork,
+    required double? latitude,
+    required double? longitude,
+    required double bearing,
+    required double speedMps,
+    required String? groupId,
+    Widget? overlay,
+  }) {
+    return NavigationMapView(
+      key: const ValueKey('navigation-hud-map'),
+      route: _route,
+      mapStyles: mapStyles,
+      hasNetwork: hasNetwork,
+      latitude: latitude,
+      longitude: longitude,
+      bearing: bearing,
+      speedMps: speedMps,
+      pitch: ref.watch(lowGlMapModeProvider)
+          ? 0
+          : (ref.watch(hudSafetyProvider).map3dEnabled
+              ? NavigationConstants.defaultMapPitch
+              : 0),
+      show3dBuildings: !ref.watch(lowGlMapModeProvider) &&
+          ref.watch(hudSafetyProvider).map3dEnabled,
+      lowGlCompat: ref.watch(lowGlMapModeProvider),
+      cameraFollowUser: _cameraFollowUser,
+      cameraFollowEpoch: _cameraFollowEpoch,
+      onCameraFollowChanged: (following) {
+        if (_cameraFollowUser == following) {
+          return;
+        }
+        setState(() => _cameraFollowUser = following);
+      },
+      alertPreferences: ref.watch(alertPreferencesProvider),
+      preferDarkMap: ref.watch(effectiveMapDarkProvider),
+      puckStyle: resolveNavigationPuckStyle(
+        user: widget.user,
+        vehicleId: ref.watch(navigationVehicleIdProvider),
       ),
+      groupMates: _hudGroupMates(groupId),
+      overlay: overlay,
+    );
+  }
+
+  Widget _buildHudRoundButtonsColumn({String? groupId}) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        _HudRoundButton(
+          tooltip: 'Cerrar navegación',
+          icon: Icons.close_rounded,
+          onTap: _stop,
+        ),
+        const SizedBox(height: 4),
+        _HudRoundButton(
+          tooltip: ref.watch(navigationVoiceMutedProvider)
+              ? 'Activar voz'
+              : 'Silenciar voz',
+          icon: ref.watch(navigationVoiceMutedProvider)
+              ? Icons.volume_off_rounded
+              : Icons.volume_up_rounded,
+          onTap: () {
+            final muted = !ref.read(navigationVoiceMutedProvider);
+            ref.read(navigationVoiceMutedProvider.notifier).state = muted;
+            unawaited(
+              ref.read(navigationVoiceServiceProvider).setMuted(muted),
+            );
+          },
+        ),
+        const SizedBox(height: 4),
+        _HudRoundButton(
+          tooltip: ref.watch(mapAppearanceProvider).mode.label,
+          icon: switch (ref.watch(mapAppearanceProvider).mode) {
+            MapAppearanceMode.auto => Icons.brightness_auto_rounded,
+            MapAppearanceMode.day => Icons.light_mode_rounded,
+            MapAppearanceMode.night => Icons.dark_mode_rounded,
+          },
+          onTap: () => unawaited(
+            ref.read(mapAppearanceProvider.notifier).cycleMode(),
+          ),
+        ),
+        const SizedBox(height: 4),
+        _HudRoundButton(
+          tooltip: 'Volver a mi posición',
+          icon: Icons.my_location_rounded,
+          emphasized: !_cameraFollowUser,
+          onTap: () {
+            setState(() {
+              _cameraFollowUser = true;
+              _cameraFollowEpoch++;
+            });
+          },
+        ),
+        if (groupId != null) ...[
+          const SizedBox(height: 4),
+          _HudRoundButton(
+            tooltip: _showGroupMates
+                ? 'Ocultar grupo (mantener: lista)'
+                : 'Mostrar grupo (mantener: lista)',
+            icon: Icons.groups_rounded,
+            emphasized: _showGroupMates,
+            onTap: () {
+              setState(() {
+                _userToggledGroupVisibility = true;
+                _showGroupMates = !_showGroupMates;
+              });
+            },
+            onLongPress: () => unawaited(
+              showGroupPackListSheet(
+                context: context,
+                groupId: groupId,
+                user: widget.user,
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildLandscapeIncidentRail(String groupId) {
+    return SizedBox(
+      width: 48,
+      child: Material(
+      color: NavigationHudTheme.panel.withValues(alpha: 0.9),
+      elevation: 4,
+      borderRadius: BorderRadius.circular(12),
+      clipBehavior: Clip.antiAlias,
+      child: GroupIncidentSessionPanel(
+        compact: true,
+        vertical: true,
+        embedded: true,
+        drivingMode: true,
+        showBanner: false,
+        groupId: groupId,
+        user: widget.user,
+      ),
+    ),
     );
   }
 
@@ -1728,33 +1852,39 @@ class _SimulationSpeedSlider extends StatelessWidget {
   const _SimulationSpeedSlider({
     required this.speedKmh,
     required this.onChanged,
+    this.compact = false,
   });
 
   final double speedKmh;
   final ValueChanged<double> onChanged;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
-    final label = '${speedKmh.round()} km/h';
+    final label = '${speedKmh.round()}';
     return Material(
       color: NavigationHudTheme.panelElevated,
-      borderRadius: BorderRadius.circular(20),
-      elevation: 2,
+      borderRadius: BorderRadius.circular(compact ? 10 : 20),
+      elevation: compact ? 0 : 2,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(8, 0, 10, 0),
+        padding: EdgeInsets.fromLTRB(compact ? 4 : 8, 0, compact ? 4 : 10, 0),
         child: Row(
           children: [
-            const Icon(
+            Icon(
               Icons.speed_rounded,
-              size: 14,
+              size: compact ? 12 : 14,
               color: NavigationHudTheme.textPrimary,
             ),
             Expanded(
               child: SliderTheme(
                 data: SliderTheme.of(context).copyWith(
-                  trackHeight: 2,
-                  thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
-                  overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
+                  trackHeight: compact ? 1.5 : 2,
+                  thumbShape: RoundSliderThumbShape(
+                    enabledThumbRadius: compact ? 5 : 7,
+                  ),
+                  overlayShape: RoundSliderOverlayShape(
+                    overlayRadius: compact ? 10 : 12,
+                  ),
                   activeTrackColor: NavigationHudTheme.textPrimary,
                   inactiveTrackColor:
                       NavigationHudTheme.textPrimary.withValues(alpha: 0.25),
@@ -1771,17 +1901,119 @@ class _SimulationSpeedSlider extends StatelessWidget {
                 ),
               ),
             ),
-            Text(
-              label,
-              style: const TextStyle(
-                color: NavigationHudTheme.textPrimary,
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
+            if (!compact)
+              Text(
+                '$label km/h',
+                style: const TextStyle(
+                  color: NavigationHudTheme.textPrimary,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              )
+            else
+              Text(
+                label,
+                style: const TextStyle(
+                  color: NavigationHudTheme.textPrimary,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Controles de simulación compactos (landscape): acoplados abajo a la derecha.
+class _LandscapeSimBar extends StatelessWidget {
+  const _LandscapeSimBar({
+    required this.simulating,
+    required this.hasSimulator,
+    required this.speedKmh,
+    required this.onBack,
+    required this.onToggle,
+    required this.onSpeedChanged,
+  });
+
+  final bool simulating;
+  final bool hasSimulator;
+  final double speedKmh;
+  final VoidCallback onBack;
+  final VoidCallback onToggle;
+  final ValueChanged<double> onSpeedChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: NavigationHudTheme.panel.withValues(alpha: 0.94),
+      borderRadius: BorderRadius.circular(14),
+      elevation: 6,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(4, 3, 4, 3),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _LandscapeSimIconButton(
+              tooltip: 'Volver',
+              icon: Icons.arrow_back_rounded,
+              onTap: onBack,
+            ),
+            SizedBox(
+              width: 112,
+              child: _SimulationSpeedSlider(
+                speedKmh: speedKmh,
+                onChanged: onSpeedChanged,
+                compact: true,
+              ),
+            ),
+            _LandscapeSimIconButton(
+              tooltip: simulating
+                  ? 'Pausar'
+                  : (hasSimulator ? 'Reanudar' : 'Simular'),
+              icon: simulating
+                  ? Icons.pause_rounded
+                  : Icons.play_arrow_rounded,
+              emphasized: simulating,
+              onTap: onToggle,
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _LandscapeSimIconButton extends StatelessWidget {
+  const _LandscapeSimIconButton({
+    required this.tooltip,
+    required this.icon,
+    required this.onTap,
+    this.emphasized = false,
+  });
+
+  final String tooltip;
+  final IconData icon;
+  final VoidCallback onTap;
+  final bool emphasized;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      tooltip: tooltip,
+      visualDensity: VisualDensity.compact,
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
+      style: IconButton.styleFrom(
+        backgroundColor: emphasized
+            ? NavigationHudTheme.warning
+            : NavigationHudTheme.panelElevated,
+        foregroundColor: NavigationHudTheme.textPrimary,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+      onPressed: onTap,
+      icon: Icon(icon, size: 18),
     );
   }
 }

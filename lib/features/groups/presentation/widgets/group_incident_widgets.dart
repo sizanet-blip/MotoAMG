@@ -15,6 +15,9 @@ class GroupIncidentActionsBar extends StatelessWidget {
     this.onWait,
     this.showWait = false,
     this.enabled = true,
+    this.compact = false,
+    this.embedded = false,
+    this.vertical = false,
   });
 
   final bool hasOwnAlert;
@@ -26,15 +29,87 @@ class GroupIncidentActionsBar extends StatelessWidget {
   final bool showWait;
   final bool enabled;
 
+  /// Landscape / poco alto: una sola fila compacta.
+  final bool compact;
+
+  /// Dentro de un panel compartido (sin Material propio).
+  final bool embedded;
+
+  /// Landscape: columna de iconos en el lateral.
+  final bool vertical;
+
   @override
   Widget build(BuildContext context) {
+    final content = vertical
+        ? _buildVertical(context)
+        : compact
+            ? _buildCompact(context)
+            : _buildExpanded(context);
+    if (embedded) {
+      return content;
+    }
     return Material(
-      elevation: 6,
+      elevation: compact || vertical ? 4 : 6,
       color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.96),
-      borderRadius: BorderRadius.circular(16),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(6, 6, 6, 6),
-        child: Column(
+      borderRadius: BorderRadius.circular(compact || vertical ? 14 : 16),
+      child: content,
+    );
+  }
+
+  Widget _buildVertical(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (hasOwnAlert) ...[
+            _SideIncidentIcon(
+              color: const Color(0xFF2E7D32),
+              icon: Icons.check_circle_rounded,
+              tooltip: 'Ya estoy OK',
+              onPressed: enabled ? onClear : null,
+            ),
+            const SizedBox(height: 4),
+          ],
+          if (showWait && onWait != null) ...[
+            _SideIncidentIcon(
+              color: const Color(0xFF6A1B9A),
+              icon: Icons.groups_rounded,
+              tooltip: 'Esperar / reunir',
+              outlined: true,
+              onPressed: enabled ? onWait : null,
+            ),
+            const SizedBox(height: 4),
+          ],
+          _SideIncidentIcon(
+            color: const Color(0xFFC62828),
+            icon: Icons.emergency_rounded,
+            tooltip: 'Emergencia',
+            onPressed: enabled ? onEmergency : null,
+          ),
+          const SizedBox(height: 4),
+          _SideIncidentIcon(
+            color: const Color(0xFFEF6C00),
+            icon: Icons.car_crash_outlined,
+            tooltip: 'Avería',
+            onPressed: enabled ? onBreakdown : null,
+          ),
+          const SizedBox(height: 4),
+          _SideIncidentIcon(
+            color: const Color(0xFF1565C0),
+            icon: Icons.person_search_rounded,
+            tooltip: 'Separado',
+            onPressed: enabled ? onSeparated : null,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExpanded(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(6, 6, 6, 6),
+      child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -101,8 +176,143 @@ class GroupIncidentActionsBar extends StatelessWidget {
             ),
           ],
         ),
+    );
+  }
+
+  Widget _buildCompact(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+      child: Row(
+        children: [
+          if (hasOwnAlert) ...[
+            Expanded(
+              child: FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF2E7D32),
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.zero,
+                  minimumSize: const Size(0, 38),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                onPressed: enabled ? onClear : null,
+                child: const Icon(Icons.check_circle_rounded, size: 20),
+              ),
+            ),
+            const SizedBox(width: 4),
+          ],
+          if (showWait && onWait != null) ...[
+            Expanded(
+              child: OutlinedButton(
+                onPressed: enabled ? onWait : null,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF6A1B9A),
+                  side: const BorderSide(color: Color(0xFF6A1B9A)),
+                  padding: EdgeInsets.zero,
+                  minimumSize: const Size(0, 38),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: const Icon(Icons.groups_rounded, size: 18),
+              ),
+            ),
+            const SizedBox(width: 4),
+          ],
+          Expanded(
+            child: _CompactIncidentIcon(
+              color: const Color(0xFFC62828),
+              icon: Icons.emergency_rounded,
+              onPressed: enabled ? onEmergency : null,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: _CompactIncidentIcon(
+              color: const Color(0xFFEF6C00),
+              icon: Icons.car_crash_outlined,
+              onPressed: enabled ? onBreakdown : null,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: _CompactIncidentIcon(
+              color: const Color(0xFF1565C0),
+              icon: Icons.person_search_rounded,
+              onPressed: enabled ? onSeparated : null,
+            ),
+          ),
+        ],
       ),
     );
+  }
+}
+
+class _CompactIncidentIcon extends StatelessWidget {
+  const _CompactIncidentIcon({
+    required this.color,
+    required this.icon,
+    required this.onPressed,
+  });
+
+  final Color color;
+  final IconData icon;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return FilledButton(
+      style: FilledButton.styleFrom(
+        backgroundColor: color,
+        foregroundColor: Colors.white,
+        padding: EdgeInsets.zero,
+        minimumSize: const Size(0, 40),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      onPressed: onPressed,
+      child: Icon(icon, size: 20),
+    );
+  }
+}
+
+class _SideIncidentIcon extends StatelessWidget {
+  const _SideIncidentIcon({
+    required this.color,
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+    this.outlined = false,
+  });
+
+  final Color color;
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback? onPressed;
+  final bool outlined;
+
+  @override
+  Widget build(BuildContext context) {
+    final child = outlined
+        ? IconButton(
+            tooltip: tooltip,
+            onPressed: onPressed,
+            style: IconButton.styleFrom(
+              foregroundColor: color,
+              side: BorderSide(color: color),
+              minimumSize: const Size(40, 40),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            icon: Icon(icon, size: 20),
+          )
+        : IconButton.filled(
+            tooltip: tooltip,
+            onPressed: onPressed,
+            style: IconButton.styleFrom(
+              backgroundColor: color,
+              foregroundColor: Colors.white,
+              minimumSize: const Size(40, 40),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            icon: Icon(icon, size: 20),
+          );
+    return child;
   }
 }
 
@@ -147,13 +357,17 @@ class GroupIncidentBanner extends StatelessWidget {
     super.key,
     required this.incident,
     this.onDismiss,
-    this.canClear = false,
+    this.isOwnIncident = false,
     this.onClear,
   });
 
   final GroupIncident incident;
+
+  /// Oculta el banner solo en este móvil (el aviso sigue activo en el grupo).
   final VoidCallback? onDismiss;
-  final bool canClear;
+
+  /// El aviso es tuyo → botón «Ya estoy OK» (quita el aviso para todo el grupo).
+  final bool isOwnIncident;
   final VoidCallback? onClear;
 
   Color get _color {
@@ -208,7 +422,7 @@ class GroupIncidentBanner extends StatelessWidget {
                 ),
                 if (onDismiss != null)
                   IconButton(
-                    tooltip: 'Ocultar solo en este móvil',
+                    tooltip: 'Ocultar en mi pantalla (el aviso sigue activo)',
                     onPressed: onDismiss,
                     icon: const Icon(Icons.close, color: Colors.white),
                   ),
@@ -249,7 +463,7 @@ class GroupIncidentBanner extends StatelessWidget {
                 ],
               ),
             ],
-            if (canClear && onClear != null) ...[
+            if (isOwnIncident && onClear != null) ...[
               const SizedBox(height: 8),
               FilledButton(
                 style: FilledButton.styleFrom(
@@ -261,6 +475,7 @@ class GroupIncidentBanner extends StatelessWidget {
                 child: const Text(
                   'Ya estoy OK · quitar aviso',
                   style: TextStyle(fontWeight: FontWeight.w800),
+                  textAlign: TextAlign.center,
                 ),
               ),
             ],
@@ -299,6 +514,8 @@ Future<bool> confirmGroupIncident(
 }) async {
   final ok = await showDialog<bool>(
     context: context,
+    useRootNavigator: true,
+    barrierDismissible: false,
     builder: (context) => AlertDialog(
       title: Text('¿Avisar: ${type.label}?'),
       content: Text(
@@ -326,6 +543,8 @@ Future<GroupIncidentSeverity?> pickEmergencySeverity(
 ) async {
   return showModalBottomSheet<GroupIncidentSeverity>(
     context: context,
+    useRootNavigator: true,
+    isScrollControlled: true,
     showDragHandle: true,
     builder: (context) {
       return SafeArea(

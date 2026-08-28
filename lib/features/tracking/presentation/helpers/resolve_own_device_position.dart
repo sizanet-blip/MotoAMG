@@ -5,7 +5,9 @@ import 'package:loc_motos/features/tracking/domain/exceptions/location_exception
 import 'package:loc_motos/features/tracking/presentation/providers/tracking_providers.dart';
 
 /// Obtiene la posición GPS: caché del provider o lectura directa del GPS.
-Future<OwnDevicePosition> resolveOwnDevicePosition(Ref ref) async {
+///
+/// Acepta [Ref] (notifiers) o [WidgetRef] (widgets).
+Future<OwnDevicePosition> resolveOwnDevicePosition(dynamic ref) async {
   final cached = ref.read(ownDevicePositionProvider);
   if (cached != null) {
     return cached;

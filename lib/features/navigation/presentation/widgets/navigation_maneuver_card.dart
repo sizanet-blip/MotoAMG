@@ -48,11 +48,15 @@ class NavigationManeuverCard extends StatelessWidget {
     required this.maneuver,
     this.nextManeuver,
     this.remainingMeters,
+    this.compact = false,
   });
 
   final NavigationManeuver maneuver;
   final NavigationManeuver? nextManeuver;
   final double? remainingMeters;
+
+  /// Landscape: icono y tipografía más pequeños.
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -76,14 +80,14 @@ class NavigationManeuverCard extends StatelessWidget {
       ManeuverBannerUrgency.normal => NavigationHudTheme.accentStrong,
     };
     final iconSize = switch (urgency) {
-      ManeuverBannerUrgency.imminent => 56.0,
-      ManeuverBannerUrgency.approaching => 50.0,
-      ManeuverBannerUrgency.normal => 48.0,
+      ManeuverBannerUrgency.imminent => compact ? 40.0 : 56.0,
+      ManeuverBannerUrgency.approaching => compact ? 36.0 : 50.0,
+      ManeuverBannerUrgency.normal => compact ? 34.0 : 48.0,
     };
     final distanceSize = switch (urgency) {
-      ManeuverBannerUrgency.imminent => 28.0,
-      ManeuverBannerUrgency.approaching => 26.0,
-      ManeuverBannerUrgency.normal => 24.0,
+      ManeuverBannerUrgency.imminent => compact ? 20.0 : 28.0,
+      ManeuverBannerUrgency.approaching => compact ? 18.0 : 26.0,
+      ManeuverBannerUrgency.normal => compact ? 18.0 : 24.0,
     };
 
     return AnimatedContainer(
@@ -91,26 +95,33 @@ class NavigationManeuverCard extends StatelessWidget {
       curve: Curves.easeOut,
       decoration: BoxDecoration(
         color: panelColor,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(compact ? 12 : 16),
         border: urgency == ManeuverBannerUrgency.imminent
-            ? Border.all(color: NavigationHudTheme.warning, width: 1.6)
+            ? Border.all(
+                color: NavigationHudTheme.warning,
+                width: compact ? 1 : 1.6,
+              )
             : null,
         boxShadow: [
           BoxShadow(
             color: urgency == ManeuverBannerUrgency.imminent
-                ? const Color(0x66F9A825)
+                ? (compact
+                    ? const Color(0x33F9A825)
+                    : const Color(0x66F9A825))
                 : const Color(0x55000000),
-            blurRadius: urgency == ManeuverBannerUrgency.imminent ? 16 : 12,
-            offset: const Offset(0, 4),
+            blurRadius: urgency == ManeuverBannerUrgency.imminent
+                ? (compact ? 6 : 16)
+                : (compact ? 8 : 12),
+            offset: Offset(0, compact ? 2 : 4),
           ),
         ],
       ),
       child: Padding(
         padding: EdgeInsets.fromLTRB(
-          12,
-          urgency == ManeuverBannerUrgency.normal ? 10 : 12,
-          14,
-          urgency == ManeuverBannerUrgency.normal ? 10 : 12,
+          compact ? 8 : 12,
+          compact ? 6 : (urgency == ManeuverBannerUrgency.normal ? 10 : 12),
+          compact ? 10 : 14,
+          compact ? 6 : (urgency == ManeuverBannerUrgency.normal ? 10 : 12),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -121,9 +132,9 @@ class NavigationManeuverCard extends StatelessWidget {
               size: iconSize,
               accent: accent,
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: compact ? 8 : 12),
             ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 200),
+              constraints: BoxConstraints(maxWidth: compact ? 160 : 200),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
@@ -140,9 +151,9 @@ class NavigationManeuverCard extends StatelessWidget {
                   ),
                   Text(
                     action,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: NavigationHudTheme.textPrimary,
-                      fontSize: 15,
+                      fontSize: compact ? 13 : 15,
                       fontWeight: FontWeight.w700,
                       height: 1.15,
                     ),
@@ -152,16 +163,16 @@ class NavigationManeuverCard extends StatelessWidget {
                   if (hasStreet)
                     Text(
                       street,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: NavigationHudTheme.textSecondary,
-                        fontSize: 13,
+                        fontSize: compact ? 11 : 13,
                         fontWeight: FontWeight.w600,
                         height: 1.2,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                  if (showNext && nextManeuver != null)
+                  if (!compact && showNext && nextManeuver != null)
                     Text(
                       '→ ${maneuverHudAction(nextManeuver!)}',
                       style: const TextStyle(

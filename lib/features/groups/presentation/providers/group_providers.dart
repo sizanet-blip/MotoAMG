@@ -175,6 +175,27 @@ class GroupActionController extends Notifier<AsyncValue<void>> {
     });
   }
 
+  Future<void> deleteGroup({
+    required AppUser user,
+    required String groupId,
+  }) {
+    return _run(() async {
+      await _repo.deleteGroup(user: user, groupId: groupId);
+      try {
+        await ref.read(locationRepositoryProvider).clearLocation(
+          groupId: groupId,
+          uid: user.uid,
+        );
+      } catch (_) {}
+      final current = ref.read(signedInUserProvider);
+      if (current != null && current.currentGroupId == groupId) {
+        ref.read(signedInUserProvider.notifier).state = current.copyWith(
+          clearCurrentGroupId: true,
+        );
+      }
+    });
+  }
+
   Future<void> openGroup({
     required AppUser user,
     required String groupId,
@@ -290,12 +311,13 @@ class GroupActionController extends Notifier<AsyncValue<void>> {
     required GroupIncidentType type,
     required GeoPoint point,
     GroupIncidentSeverity? severity,
-  }) {
-    return _run(() async {
-      final ds = ref.read(groupIncidentDatasourceProvider);
-      final existing = await ds.watchGroup(groupId).first;
+  }) async {
+    await _run(() async {
+      final cached =
+          ref.read(groupIncidentsProvider(groupId)).valueOrNull ??
+              const <GroupIncident>[];
       GroupIncident? mine;
-      for (final i in existing) {
+      for (final i in cached) {
         if (i.uid == uid) {
           mine = i;
           break;
@@ -309,32 +331,40 @@ class GroupActionController extends Notifier<AsyncValue<void>> {
           );
         }
       }
-      await ds.publish(
-        groupId,
-        GroupIncident(
-          uid: uid,
-          type: type,
-          point: point,
-          at: DateTime.now(),
-          severity: type == GroupIncidentType.emergencia
-              ? (severity ?? GroupIncidentSeverity.alta)
-              : null,
-          displayName: displayName,
-        ),
-      );
+      await ref.read(groupIncidentDatasourceProvider).publish(
+            groupId,
+            GroupIncident(
+              uid: uid,
+              type: type,
+              point: point,
+              at: DateTime.now(),
+              severity: type == GroupIncidentType.emergencia
+                  ? (severity ?? GroupIncidentSeverity.alta)
+                  : null,
+              displayName: displayName,
+            ),
+          );
     });
+    final failure = state.asError;
+    if (failure != null) {
+      Error.throwWithStackTrace(failure.error, failure.stackTrace);
+    }
   }
 
   Future<void> clearIncident({
     required String groupId,
     required String uid,
-  }) {
-    return _run(() async {
+  }) async {
+    await _run(() async {
       await ref.read(groupIncidentDatasourceProvider).clear(
             groupId: groupId,
             uid: uid,
           );
     });
+    final failure = state.asError;
+    if (failure != null) {
+      Error.throwWithStackTrace(failure.error, failure.stackTrace);
+    }
   }
 
   void _setLocalGroup(AppUser user, String groupId) {

@@ -15,6 +15,7 @@ import 'package:loc_motos/features/navigation/domain/entities/route_plan.dart';
 import 'package:loc_motos/features/navigation/presentation/models/navigation_map_camera_mode.dart';
 import 'package:loc_motos/features/navigation/presentation/providers/navigation_providers.dart';
 import 'package:loc_motos/features/navigation/presentation/screens/navigation_hud_screen.dart';
+import 'package:loc_motos/features/navigation/presentation/widgets/collapsible_map_bottom_panel.dart';
 import 'package:loc_motos/features/navigation/presentation/widgets/map_network_resume_binder.dart';
 import 'package:loc_motos/features/navigation/presentation/widgets/navigation_map_view.dart';
 import 'package:loc_motos/features/navigation/presentation/widgets/navigation_map_zoom_controls.dart';
@@ -280,6 +281,10 @@ class _RoutePreviewScreenState extends ConsumerState<RoutePreviewScreen> {
         (ref.watch(groupHasSharedRouteProvider(groupId)).asData?.value ==
             true);
     final publishBusy = ref.watch(groupActionControllerProvider).isLoading;
+    final landscape =
+        MediaQuery.orientationOf(context) == Orientation.landscape;
+    final screenSize = MediaQuery.sizeOf(context);
+    final top = MediaQuery.paddingOf(context).top;
 
     return OwnPositionWatcher(
       child: MapNetworkResumeBinder(
@@ -288,84 +293,104 @@ class _RoutePreviewScreenState extends ConsumerState<RoutePreviewScreen> {
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (_, _) =>
                 const Center(child: Text('No se pudo cargar el mapa.')),
-            data: (mapStyles) => Column(
-              children: [
-                Expanded(
-                  child: _RoutePreviewMapLayer(
-                    route: route,
-                    alternativeRoutes: _plan.otherAlternatives,
-                    mapStyles: mapStyles,
-                    hasNetwork: hasNetwork,
-                    showOfflineBanner: showOfflineBanner,
-                    alertPreferences: mapAlertPrefs,
-                    showFuelToggle: showFuelToggle,
-                    showRadarToggle: showRadarToggle,
-                    showTollToggle: showTollToggle,
-                    showCurveToggle: showCurveToggle,
-                    fuelVisibleOnMap: fuelOnMap,
-                    radarVisibleOnMap: radarOnMap,
-                    tollVisibleOnMap: tollOnMap,
-                    curveVisibleOnMap: curveOnMap,
-                    onToggleFuel: _toggleFuelOnMap,
-                    onToggleRadar: _toggleRadarOnMap,
-                    onToggleToll: _toggleTollOnMap,
-                    onToggleCurve: _toggleCurveOnMap,
-                  ),
-                ),
-                _RoutePreviewSheet(
-                  plan: _plan,
-                  enriching: _enriching,
-                  enrichedRouteIds: _enrichedRouteIds,
-                  preferencesSummary:
-                      ref.watch(routePreferencesProvider).summaryLabel,
-                  fuelCacheReady: ref
-                          .watch(spainFuelCacheStatusProvider)
-                          .asData
-                          ?.value
-                          .isReady ??
-                      false,
-                  fuelStaleMessage: () {
-                    final status = ref
+            data: (mapStyles) {
+              final mapLayer = _RoutePreviewMapLayer(
+                route: route,
+                alternativeRoutes: _plan.otherAlternatives,
+                mapStyles: mapStyles,
+                hasNetwork: hasNetwork,
+                showOfflineBanner: showOfflineBanner,
+                alertPreferences: mapAlertPrefs,
+                showFuelToggle: showFuelToggle,
+                showRadarToggle: showRadarToggle,
+                showTollToggle: showTollToggle,
+                showCurveToggle: showCurveToggle,
+                fuelVisibleOnMap: fuelOnMap,
+                radarVisibleOnMap: radarOnMap,
+                tollVisibleOnMap: tollOnMap,
+                curveVisibleOnMap: curveOnMap,
+                onToggleFuel: _toggleFuelOnMap,
+                onToggleRadar: _toggleRadarOnMap,
+                onToggleToll: _toggleTollOnMap,
+                onToggleCurve: _toggleCurveOnMap,
+              );
+
+              final previewSheet = _RoutePreviewSheet(
+                plan: _plan,
+                enriching: _enriching,
+                enrichedRouteIds: _enrichedRouteIds,
+                preferencesSummary:
+                    ref.watch(routePreferencesProvider).summaryLabel,
+                fuelCacheReady: ref
                         .watch(spainFuelCacheStatusProvider)
                         .asData
-                        ?.value;
-                    if (status == null || !status.isReady) {
-                      return null;
-                    }
-                    final message = spainFuelStaleMessage(status.fetchedAt);
-                    return message.isEmpty ? null : message;
-                  }(),
-                  radarStaleMessage: () {
-                    final status = ref
-                        .watch(spainRadarCacheStatusProvider)
-                        .asData
-                        ?.value;
-                    if (status == null || !status.isReady) {
-                      return null;
-                    }
-                    final message = spainRadarCacheStaleMessage(
-                      hasOfficial: status.hasOfficial,
-                      officialFetchedAt: status.officialFetchedAt,
-                      hasOsm: status.hasOsm,
-                      osmFetchedAt: status.osmFetchedAt,
-                    );
-                    return message.isEmpty ? null : message;
-                  }(),
-                  fuelAlertsEnabled: alertPrefs.fuelEnabled,
-                  radarAlertsEnabled: alertPrefs.radarsEnabled,
-                  onSelect: _selectAlternative,
-                  onShare: () => unawaited(_shareGpx()),
-                  onStart: _startNavigation,
-                  canPublishToGroup: canPublishGroupRoute,
-                  publishBusy: publishBusy,
-                  updatingGroupRoute: hasSharedRoute,
-                  onPublishToGroup: () => unawaited(
-                    _publishToGroup(updating: hasSharedRoute),
-                  ),
-                  maxHeight: MediaQuery.sizeOf(context).height * 0.46,
+                        ?.value
+                        .isReady ??
+                    false,
+                fuelStaleMessage: () {
+                  final status = ref
+                      .watch(spainFuelCacheStatusProvider)
+                      .asData
+                      ?.value;
+                  if (status == null || !status.isReady) {
+                    return null;
+                  }
+                  final message = spainFuelStaleMessage(status.fetchedAt);
+                  return message.isEmpty ? null : message;
+                }(),
+                radarStaleMessage: () {
+                  final status = ref
+                      .watch(spainRadarCacheStatusProvider)
+                      .asData
+                      ?.value;
+                  if (status == null || !status.isReady) {
+                    return null;
+                  }
+                  final message = spainRadarCacheStaleMessage(
+                    hasOfficial: status.hasOfficial,
+                    officialFetchedAt: status.officialFetchedAt,
+                    hasOsm: status.hasOsm,
+                    osmFetchedAt: status.osmFetchedAt,
+                  );
+                  return message.isEmpty ? null : message;
+                }(),
+                fuelAlertsEnabled: alertPrefs.fuelEnabled,
+                radarAlertsEnabled: alertPrefs.radarsEnabled,
+                onSelect: _selectAlternative,
+                onShare: () => unawaited(_shareGpx()),
+                onStart: _startNavigation,
+                canPublishToGroup: canPublishGroupRoute,
+                publishBusy: publishBusy,
+                updatingGroupRoute: hasSharedRoute,
+                onPublishToGroup: () => unawaited(
+                  _publishToGroup(updating: hasSharedRoute),
                 ),
-              ],
-            ),
+                maxHeight: screenSize.height * 0.46,
+              );
+
+              if (landscape) {
+                return Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    mapLayer,
+                    Positioned(
+                      left: 8,
+                      top: top + 64,
+                      bottom: 8,
+                      width: (screenSize.width * 0.38).clamp(300.0, 400.0),
+                      child: previewSheet,
+                    ),
+                  ],
+                );
+              }
+
+              return Column(
+                children: [
+                  Expanded(child: mapLayer),
+                  previewSheet,
+                ],
+              );
+            },
           ),
         ),
       ),
@@ -668,6 +693,9 @@ class _RoutePreviewSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
+    final landscape =
+        MediaQuery.orientationOf(context) == Orientation.landscape;
+    final hPad = landscape ? 14.0 : 20.0;
     final route = plan.selected;
     final alertCounts = <RouteAlertType, int>{
       for (final t in RouteAlertType.values) t: 0,
@@ -686,204 +714,234 @@ class _RoutePreviewSheet extends StatelessWidget {
       if (!enriching && radarAlertsEnabled && radarStaleMessage != null)
         radarStaleMessage!,
     ];
+    final panelTitle = route.hasWaypoints
+        ? 'Vista previa del circuito'
+        : 'Vista previa de la ruta';
+    final panelSubtitle =
+        '${formatRideDistance(route.distanceMeters)} · '
+        '${formatNavigationDurationCompact(route.durationSeconds)}';
 
-    return Material(
-      elevation: 12,
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-      color: colors.surface,
-      child: SafeArea(
-        top: false,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(maxHeight: maxHeight),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Center(
-                      child: Container(
-                        width: 36,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: colors.outlineVariant,
-                          borderRadius: BorderRadius.circular(99),
-                        ),
+    Widget alternativesHeader() {
+      if (!plan.hasAlternatives) {
+        return Padding(
+          padding: EdgeInsets.fromLTRB(hPad, 0, hPad, 0),
+          child: Text(
+            preferencesSummary,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: colors.onSurfaceVariant,
+            ),
+          ),
+        );
+      }
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(height: landscape ? 6 : 10),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: hPad),
+            child: Row(
+              children: [
+                for (var index = 0;
+                    index < plan.alternatives.length;
+                    index++) ...[
+                  if (index > 0) SizedBox(width: landscape ? 4 : 6),
+                  Expanded(
+                    child: _RouteAlternativeChip(
+                      index: index,
+                      route: plan.alternatives[index],
+                      selected: index == plan.selectedIndex,
+                      enriched: enrichedRouteIds.contains(
+                        plan.alternatives[index].id,
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      route.hasWaypoints
-                          ? 'Vista previa del circuito'
-                          : 'Vista previa de la ruta',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    if (!plan.hasAlternatives) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        '${formatRideDistance(route.distanceMeters)} · '
-                        '${formatNavigationDurationCompact(route.durationSeconds)} · '
-                        '$preferencesSummary',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: colors.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              if (plan.hasAlternatives) ...[
-                const SizedBox(height: 10),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Row(
-                    children: [
-                      for (var index = 0;
-                          index < plan.alternatives.length;
-                          index++) ...[
-                        if (index > 0) const SizedBox(width: 6),
-                        Expanded(
-                          child: _RouteAlternativeChip(
-                            index: index,
-                            route: plan.alternatives[index],
-                            selected: index == plan.selectedIndex,
-                            enriched: enrichedRouteIds.contains(
-                              plan.alternatives[index].id,
-                            ),
-                            isFastest: fastestIndex == index,
-                            onTap: () => onSelect(index),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Text(
-                    preferencesSummary,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: colors.onSurfaceVariant,
+                      isFastest: fastestIndex == index,
+                      onTap: () => onSelect(index),
                     ),
                   ),
-                ),
+                ],
               ],
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(20, 10, 20, 8),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      if (enriching)
-                        Row(
-                          children: [
-                            SizedBox(
-                              width: 14,
-                              height: 14,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: colors.primary,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                comparingLabel,
-                                style: theme.textTheme.labelMedium?.copyWith(
-                                  color: colors.onSurfaceVariant,
-                                ),
-                              ),
-                            ),
-                          ],
-                        )
-                      else if (alertsLine != null)
-                        Text(
-                          alertsLine,
-                          style: theme.textTheme.labelMedium?.copyWith(
-                            color: colors.onSurfaceVariant,
-                          ),
-                        )
-                      else if (fuelAlertsEnabled && !fuelCacheReady)
-                        Text(
-                          'Descarga gasolineras en Configuración para ver precios en la ruta.',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: colors.onSurfaceVariant,
-                          ),
-                        ),
-                      if (staleMessages.isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        _SpainDataStaleHint(message: staleMessages.join(' ')),
-                      ],
-                      const SizedBox(height: 12),
-                      _RouteTripEndpointsCompact(
-                        origin: route.originDisplay,
-                        destination: route.destinationDisplay,
-                        waypointCount:
-                            route.hasWaypoints ? route.waypoints.length : 0,
-                      ),
-                    ],
+            ),
+          ),
+          SizedBox(height: landscape ? 4 : 6),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: hPad),
+            child: Text(
+              preferencesSummary,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: colors.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    Widget routeDetails() {
+      return Padding(
+        padding: EdgeInsets.fromLTRB(hPad, landscape ? 6 : 10, hPad, 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (enriching)
+              Row(
+                children: [
+                  SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: colors.primary,
+                    ),
                   ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      comparingLabel,
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: colors.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                ],
+              )
+            else if (alertsLine != null)
+              Text(
+                alertsLine,
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: colors.onSurfaceVariant,
+                ),
+              )
+            else if (fuelAlertsEnabled && !fuelCacheReady)
+              Text(
+                'Descarga gasolineras en Configuración para ver precios en la ruta.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: colors.onSurfaceVariant,
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
-                decoration: BoxDecoration(
-                  color: colors.surface,
-                  border: Border(
-                    top: BorderSide(color: colors.outlineVariant.withValues(alpha: 0.5)),
+            if (staleMessages.isNotEmpty) ...[
+              SizedBox(height: landscape ? 6 : 8),
+              _SpainDataStaleHint(message: staleMessages.join(' ')),
+            ],
+            SizedBox(height: landscape ? 8 : 12),
+            _RouteTripEndpointsCompact(
+              origin: route.originDisplay,
+              destination: route.destinationDisplay,
+              waypointCount:
+                  route.hasWaypoints ? route.waypoints.length : 0,
+              compact: landscape,
+            ),
+          ],
+        ),
+      );
+    }
+
+    Widget actionButtons({required bool withBorder}) {
+      return Container(
+        padding: EdgeInsets.fromLTRB(
+          hPad,
+          landscape ? 6 : 8,
+          hPad,
+          landscape ? 10 : 12,
+        ),
+        decoration: withBorder
+            ? BoxDecoration(
+                color: colors.surface,
+                border: Border(
+                  top: BorderSide(
+                    color: colors.outlineVariant.withValues(alpha: 0.5),
                   ),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    FilledButton.icon(
-                      onPressed: enriching ? null : onStart,
-                      icon: const Icon(Icons.navigation),
-                      label: const Text('Empezar navegación'),
-                    ),
-                    if (canPublishToGroup) ...[
-                      const SizedBox(height: 8),
-                      FilledButton.tonalIcon(
-                        onPressed: enriching || publishBusy
-                            ? null
-                            : onPublishToGroup,
-                        icon: Icon(
-                          updatingGroupRoute
-                              ? Icons.sync_rounded
-                              : Icons.groups_rounded,
-                        ),
-                        label: Text(
-                          publishBusy
-                              ? (updatingGroupRoute
-                                  ? 'Actualizando…'
-                                  : 'Publicando…')
-                              : (updatingGroupRoute
-                                  ? 'Actualizar ruta del grupo'
-                                  : 'Publicar en el grupo'),
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 8),
-                    OutlinedButton.icon(
-                      onPressed: enriching ? null : onShare,
-                      icon: const Icon(Icons.ios_share_rounded),
-                      label: const Text('Compartir GPX'),
-                    ),
-                  ],
+              )
+            : null,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            FilledButton.icon(
+              onPressed: enriching ? null : onStart,
+              style: FilledButton.styleFrom(
+                visualDensity:
+                    landscape ? VisualDensity.compact : VisualDensity.standard,
+                padding: landscape
+                    ? const EdgeInsets.symmetric(vertical: 10)
+                    : null,
+              ),
+              icon: Icon(Icons.navigation, size: landscape ? 18 : 24),
+              label: const Text('Empezar navegación'),
+            ),
+            if (canPublishToGroup) ...[
+              SizedBox(height: landscape ? 6 : 8),
+              FilledButton.tonalIcon(
+                onPressed: enriching || publishBusy ? null : onPublishToGroup,
+                style: FilledButton.styleFrom(
+                  visualDensity:
+                      landscape ? VisualDensity.compact : VisualDensity.standard,
+                  padding: landscape
+                      ? const EdgeInsets.symmetric(vertical: 10)
+                      : null,
+                ),
+                icon: Icon(
+                  updatingGroupRoute
+                      ? Icons.sync_rounded
+                      : Icons.groups_rounded,
+                  size: landscape ? 18 : 24,
+                ),
+                label: Text(
+                  publishBusy
+                      ? (updatingGroupRoute
+                          ? 'Actualizando…'
+                          : 'Publicando…')
+                      : (updatingGroupRoute
+                          ? 'Actualizar ruta del grupo'
+                          : 'Publicar en el grupo'),
                 ),
               ),
             ],
-          ),
+            SizedBox(height: landscape ? 6 : 8),
+            OutlinedButton.icon(
+              onPressed: enriching ? null : onShare,
+              style: OutlinedButton.styleFrom(
+                visualDensity:
+                    landscape ? VisualDensity.compact : VisualDensity.standard,
+                padding: landscape
+                    ? const EdgeInsets.symmetric(vertical: 10)
+                    : null,
+              ),
+              icon: Icon(Icons.ios_share_rounded, size: landscape ? 18 : 24),
+              label: const Text('Compartir GPX'),
+            ),
+          ],
         ),
-      ),
+      );
+    }
+
+    return CollapsibleMapBottomPanel(
+      title: panelTitle,
+      subtitle: panelSubtitle,
+      sidePanel: landscape,
+      maxExpandedHeight: landscape ? null : maxHeight,
+      child: landscape
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                alternativesHeader(),
+                routeDetails(),
+                actionButtons(withBorder: false),
+              ],
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                alternativesHeader(),
+                Flexible(
+                  child: SingleChildScrollView(
+                    child: routeDetails(),
+                  ),
+                ),
+                actionButtons(withBorder: true),
+              ],
+            ),
     );
   }
 }
@@ -893,11 +951,13 @@ class _RouteTripEndpointsCompact extends StatelessWidget {
     required this.origin,
     required this.destination,
     this.waypointCount = 0,
+    this.compact = false,
   });
 
   final String origin;
   final String destination;
   final int waypointCount;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -905,7 +965,10 @@ class _RouteTripEndpointsCompact extends StatelessWidget {
     final colors = theme.colorScheme;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 10 : 12,
+        vertical: compact ? 8 : 10,
+      ),
       decoration: BoxDecoration(
         color: colors.surfaceContainerHighest.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(12),
@@ -917,6 +980,7 @@ class _RouteTripEndpointsCompact extends StatelessWidget {
             icon: Icons.trip_origin,
             iconColor: const Color(0xFF2E7D32),
             label: origin,
+            compact: compact,
           ),
           if (waypointCount > 0) ...[
             Padding(
@@ -953,6 +1017,7 @@ class _RouteTripEndpointsCompact extends StatelessWidget {
             icon: Icons.flag_outlined,
             iconColor: const Color(0xFFC62828),
             label: destination,
+            compact: compact,
           ),
         ],
       ),
@@ -965,11 +1030,13 @@ class _RouteEndpointLine extends StatelessWidget {
     required this.icon,
     required this.iconColor,
     required this.label,
+    this.compact = false,
   });
 
   final IconData icon;
   final Color iconColor;
   final String label;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {

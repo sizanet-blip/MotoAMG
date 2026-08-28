@@ -16,7 +16,9 @@ import 'package:loc_motos/features/groups/domain/entities/group_member.dart';
 import 'package:loc_motos/features/groups/domain/entities/ride_role.dart';
 import 'package:loc_motos/features/groups/domain/services/group_pack_proximity_tracker.dart';
 import 'package:loc_motos/features/groups/domain/services/group_ride_alert_feedback.dart';
+import 'package:loc_motos/features/groups/domain/services/group_incident_service.dart';
 import 'package:loc_motos/features/groups/presentation/providers/group_providers.dart';
+import 'package:loc_motos/features/groups/presentation/widgets/group_incident_session_panel.dart';
 import 'package:loc_motos/features/groups/presentation/widgets/group_incident_widgets.dart';
 import 'package:loc_motos/features/groups/presentation/widgets/group_pack_list_sheet.dart';
 import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
@@ -25,6 +27,7 @@ import 'package:loc_motos/features/navigation/domain/entities/navigation_route.d
 import 'package:loc_motos/features/navigation/data/services/navigation_map_style_service.dart';
 import 'package:loc_motos/features/navigation/presentation/providers/navigation_providers.dart';
 import 'package:loc_motos/features/navigation/presentation/screens/navigation_hud_screen.dart';
+import 'package:loc_motos/features/navigation/presentation/theme/navigation_hud_theme.dart';
 import 'package:loc_motos/features/navigation/presentation/widgets/offline_map_banner.dart';
 import 'package:loc_motos/features/tracking/domain/entities/device_position.dart';
 import 'package:loc_motos/features/tracking/domain/entities/live_location.dart';
@@ -32,7 +35,7 @@ import 'package:loc_motos/features/tracking/presentation/providers/tracking_prov
 import 'package:maplibre_gl/maplibre_gl.dart';
 
 /// Mapa en vivo del grupo: mismo motor/estilos que navegación (MapLibre).
-class GroupMapView extends ConsumerWidget {
+class GroupMapView extends ConsumerStatefulWidget {
   const GroupMapView({
     super.key,
     required this.user,
@@ -43,17 +46,30 @@ class GroupMapView extends ConsumerWidget {
   final String groupId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // Si hay hub/preview/HUD encima, no mantener otro MapLibre (crash en API 30).
-    final routeIsCurrent = ModalRoute.of(context)?.isCurrent ?? true;
-    if (!routeIsCurrent) {
+  ConsumerState<GroupMapView> createState() => _GroupMapViewState();
+}
+
+class _GroupMapViewState extends ConsumerState<GroupMapView> {
+  /// Evita destruir el mapa si el GPS parpadea un instante.
+  var _hadGpsFix = false;
+
+  @override
+  Widget build(BuildContext context) {
+    // Pausar MapLibre solo si hay otra pantalla completa encima (HUD, hub…),
+    // NO cuando hay un diálogo modal: isCurrent=false pero isActive=true.
+    final route = ModalRoute.of(context);
+    final routeIsActive = route?.isActive ?? true;
+    if (!routeIsActive) {
       return const ColoredBox(color: Color(0xFF1A1F24));
     }
 
     final hasFix = ref.watch(
       ownDevicePositionProvider.select((value) => value != null),
     );
-    if (!hasFix) {
+    if (hasFix) {
+      _hadGpsFix = true;
+    }
+    if (!_hadGpsFix && !hasFix) {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(24),
@@ -74,19 +90,24 @@ class GroupMapView extends ConsumerWidget {
     }
 
     final mapStylesAsync = ref.watch(hybridMapStylesProvider);
-    return mapStylesAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, _) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Text('No se pudo cargar el mapa.\n$error'),
+    final cachedStyles = mapStylesAsync.valueOrNull;
+    if (cachedStyles == null) {
+      return mapStylesAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, _) => Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text('No se pudo cargar el mapa.\n$error'),
+          ),
         ),
-      ),
-      data: (styles) => _GroupMapCanvas(
-        user: user,
-        groupId: groupId,
-        mapStyles: styles,
-      ),
+        data: (_) => const SizedBox.shrink(),
+      );
+    }
+
+    return _GroupMapCanvas(
+      user: widget.user,
+      groupId: widget.groupId,
+      mapStyles: cachedStyles,
     );
   }
 }
@@ -144,7 +165,6 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
   final _dismissedBannerIds = <String>{};
   final _seenIncidentKeys = <String>{};
   var _incidentAlertPrimed = false;
-  _PendingIncidentRaise? _pendingIncident;
   final _packTracker = GroupPackProximityTracker();
 
   LatLng get _initialTarget {
@@ -179,10 +199,8 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
         ref.watch(groupMembersProvider(widget.groupId)).asData?.value;
     final sharedRoute =
         ref.watch(groupSharedRouteProvider(widget.groupId)).asData?.value;
-    final incidents =
-        ref.watch(groupIncidentsProvider(widget.groupId)).asData?.value ??
-            const <GroupIncident>[];
-    final actionBusy = ref.watch(groupActionControllerProvider).isLoading;
+    final incidentsAsync = ref.watch(groupIncidentsProvider(widget.groupId));
+    final incidents = incidentsAsync.valueOrNull ?? const <GroupIncident>[];
     final locations = locationsAsync.valueOrNull ?? const <LiveLocation>[];
     final entries = _buildEntries(
       locations,
@@ -216,14 +234,7 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
         .toList();
 
     final puckStyle = resolveNavigationPuckStyle(user: widget.user);
-    final ownIncident = _ownActiveIncident(incidents);
     final bannerIncident = _highestPriorityBanner(incidents);
-    final iAmAdmin = ref
-            .watch(rideGroupProvider(widget.groupId))
-            .asData
-            ?.value
-            ?.isAdmin(widget.user.uid) ??
-        false;
     final lowGl = ref.watch(lowGlMapModeProvider);
 
     ref.listen(mapNetworkAvailableProvider, (previous, next) {
@@ -232,17 +243,14 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
         return;
       }
       unawaited(_syncStyle(hasNetwork: online));
-      if (online) {
-        unawaited(_flushPendingIncident());
-      }
     });
 
     ref.listen(groupIncidentsProvider(widget.groupId), (previous, next) {
-      final list = next.asData?.value;
-      if (list == null) {
-        return;
-      }
-      _maybeAlertNewIncidents(list);
+      next.when(
+        data: (list) => _maybeAlertNewIncidents(list),
+        error: (_, _) {},
+        loading: () {},
+      );
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -265,53 +273,97 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
       );
     });
 
-    return Stack(
-      children: [
-        MapLibreMap(
-          styleString: lowGl
-              ? NavigationMapStyleService.lowGlCompatStyle()
-              : _activeStyle,
-          initialCameraPosition: CameraPosition(
-            target: _initialTarget,
-            zoom: 15,
+    final landscape =
+        MediaQuery.orientationOf(context) == Orientation.landscape;
+
+    Widget quickActions({required bool embedded, bool vertical = false}) {
+      return _GroupMapQuickActions(
+        embedded: embedded,
+        vertical: vertical,
+        hasSharedRoute: sharedRoute != null,
+        followGroup: _followGroup,
+        onNavigate: sharedRoute == null
+            ? null
+            : () {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute<void>(
+                    builder: (_) => NavigationHudScreen(
+                      route: sharedRoute,
+                      user: widget.user,
+                    ),
+                  ),
+                  (route) => route.isFirst,
+                );
+              },
+        onPackList: () => unawaited(
+          showGroupPackListSheet(
+            context: context,
+            groupId: widget.groupId,
+            user: widget.user,
           ),
-          onMapCreated: _onMapCreated,
-          onStyleLoadedCallback: () => unawaited(_onStyleLoaded(puckStyle)),
-          myLocationEnabled: false,
-          compassEnabled: !lowGl,
-          rotateGesturesEnabled: !lowGl,
-          tiltGesturesEnabled: false,
-          zoomGesturesEnabled: true,
-          scrollGesturesEnabled: true,
-          trackCameraPosition: true,
-          onCameraIdle: _onCameraIdle,
-          translucentTextureSurface: lowGl,
-          annotationOrder: const [
-            AnnotationType.fill,
-            AnnotationType.circle,
-            AnnotationType.symbol,
+        ),
+        onRecenter: _recenterGroup,
+      );
+    }
+
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
+
+    // Misma composición que el HUD: MapLibre en un Stack interno y los
+    // controles como hermanos en el Stack exterior (si no, Android tapa los botones).
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Stack(
+          fit: StackFit.expand,
+          children: [
+            MapLibreMap(
+              styleString: lowGl
+                  ? NavigationMapStyleService.lowGlCompatStyle()
+                  : _activeStyle,
+              initialCameraPosition: CameraPosition(
+                target: _initialTarget,
+                zoom: 15,
+              ),
+              onMapCreated: _onMapCreated,
+              onStyleLoadedCallback: () => unawaited(_onStyleLoaded(puckStyle)),
+              myLocationEnabled: false,
+              compassEnabled: !lowGl,
+              rotateGesturesEnabled: !lowGl,
+              tiltGesturesEnabled: false,
+              zoomGesturesEnabled: true,
+              scrollGesturesEnabled: true,
+              trackCameraPosition: true,
+              onCameraIdle: _onCameraIdle,
+              translucentTextureSurface: lowGl,
+              annotationOrder: const [
+                AnnotationType.fill,
+                AnnotationType.circle,
+                AnnotationType.symbol,
+              ],
+            ),
           ],
         ),
         Positioned(
           top: 8,
           left: 8,
-          right: 56,
+          right: landscape ? 64 : 8,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const _MapLegend(
-                meColor: _meColor,
-                groupColor: _groupColor,
-                cabeceraColor: _cabeceraColor,
-                colaColor: _colaColor,
-              ),
+              if (!landscape)
+                const _MapLegend(
+                  meColor: _meColor,
+                  groupColor: _groupColor,
+                  cabeceraColor: _cabeceraColor,
+                  colaColor: _colaColor,
+                ),
               if (!hasNetwork) ...[
-                const SizedBox(height: 8),
+                if (!landscape) const SizedBox(height: 8),
                 const OfflineMapBanner(compact: true),
               ],
               if (waiting.isNotEmpty) ...[
                 const SizedBox(height: 8),
-                _WaitingBanner(names: waiting),
+                _WaitingBanner(names: waiting, compact: landscape),
               ],
               if (locationsAsync.hasError) ...[
                 const SizedBox(height: 8),
@@ -335,110 +387,83 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
                       _dismissedBannerIds.add(_bannerId(bannerIncident));
                     });
                   },
-                  canClear: bannerIncident.uid == widget.user.uid || iAmAdmin,
-                  onClear: (bannerIncident.uid == widget.user.uid || iAmAdmin)
-                      ? () => unawaited(_clearIncident(bannerIncident.uid))
+                  isOwnIncident: bannerIncident.uid == widget.user.uid,
+                  onClear: bannerIncident.uid == widget.user.uid
+                      ? () => unawaited(_clearOwnIncidentFromBanner())
                       : null,
                 ),
               ],
             ],
           ),
         ),
-        Positioned(
-          left: 8,
-          right: 8,
-          bottom: 8,
-          child: SafeArea(
-            top: false,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      if (sharedRoute != null) ...[
-                        FloatingActionButton.extended(
-                          heroTag: 'group-map-nav-route',
-                          tooltip: 'Navegar ruta del grupo',
-                          onPressed: () {
-                            Navigator.of(context).pushAndRemoveUntil(
-                              MaterialPageRoute<void>(
-                                builder: (_) => NavigationHudScreen(
-                                  route: sharedRoute,
-                                  user: widget.user,
-                                ),
-                              ),
-                              (route) => route.isFirst,
-                            );
-                          },
-                          icon: const Icon(Icons.navigation_rounded),
-                          label: const Text('Navegar ruta del grupo'),
-                        ),
-                        const SizedBox(height: 8),
-                      ],
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          FloatingActionButton.extended(
-                            heroTag: 'group-map-pack-list',
-                            tooltip: 'Lista del pelotón',
-                            onPressed: () => unawaited(
-                              showGroupPackListSheet(
-                                context: context,
-                                groupId: widget.groupId,
-                                user: widget.user,
-                              ),
-                            ),
-                            icon: const Icon(Icons.format_list_bulleted_rounded),
-                            label: const Text('Pelotón'),
-                          ),
-                          const SizedBox(width: 8),
-                          FloatingActionButton.small(
-                            heroTag: 'group-map-recenter',
-                            tooltip: 'Centrar grupo',
-                            backgroundColor: _followGroup
-                                ? Theme.of(context).colorScheme.primary
-                                : Theme.of(context).colorScheme.surface,
-                            foregroundColor: _followGroup
-                                ? Theme.of(context).colorScheme.onPrimary
-                                : Theme.of(context).colorScheme.primary,
-                            onPressed: _recenterGroup,
-                            child: const Icon(Icons.groups),
-                          ),
-                        ],
-                      ),
-                    ],
+        if (landscape) ...[
+          Positioned(
+            left: 10,
+            bottom: bottomInset + 8,
+            child: Material(
+              elevation: 10,
+              color: NavigationHudTheme.panel.withValues(alpha: 0.96),
+              borderRadius: BorderRadius.circular(14),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 260),
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                  child: GroupIncidentSessionPanel(
+                    groupId: widget.groupId,
+                    user: widget.user,
+                    compact: true,
+                    embedded: true,
+                    showBanner: false,
+                    drivingMode: true,
                   ),
                 ),
-                const SizedBox(height: 8),
-                GroupIncidentActionsBar(
-                  hasOwnAlert: ownIncident != null || _pendingIncident != null,
-                  enabled: !actionBusy,
-                  showWait: iAmAdmin ||
-                      (members?.any(
-                            (member) =>
-                                member.uid == widget.user.uid &&
-                                member.rideRole == RideRole.cabecera,
-                          ) ??
-                          false),
-                  onWait: () =>
-                      unawaited(_raiseIncident(GroupIncidentType.espera)),
-                  onEmergency: () =>
-                      unawaited(_raiseIncident(GroupIncidentType.emergencia)),
-                  onBreakdown: () =>
-                      unawaited(_raiseIncident(GroupIncidentType.averia)),
-                  onSeparated: () =>
-                      unawaited(_raiseIncident(GroupIncidentType.separado)),
-                  onClear: () => unawaited(_clearIncident(widget.user.uid)),
-                ),
-              ],
+              ),
             ),
           ),
-        ),
+          Positioned(
+            top: 8,
+            right: 12,
+            child: quickActions(embedded: false, vertical: true),
+          ),
+        ] else
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(6, 0, 6, 4),
+                child: Material(
+                  elevation: 6,
+                  color: Theme.of(context)
+                      .colorScheme
+                      .surface
+                      .withValues(alpha: 0.97),
+                  borderRadius: BorderRadius.circular(12),
+                  child: Padding(
+                    padding: const EdgeInsets.all(4),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        quickActions(embedded: true),
+                        const Divider(height: 8),
+                        GroupIncidentSessionPanel(
+                          groupId: widget.groupId,
+                          user: widget.user,
+                          compact: true,
+                          embedded: true,
+                          showBanner: false,
+                          drivingMode: true,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
       ],
     );
   }
@@ -884,13 +909,31 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
     };
   }
 
-  GroupIncident? _ownActiveIncident(List<GroupIncident> incidents) {
-    for (final incident in incidents) {
-      if (incident.active && incident.uid == widget.user.uid) {
-        return incident;
+  Future<void> _clearOwnIncidentFromBanner() async {
+    try {
+      await ref.read(groupIncidentServiceProvider).clear(
+            groupId: widget.groupId,
+            uid: widget.user.uid,
+          );
+    } catch (_) {
+      if (!mounted) {
+        return;
       }
+      unawaited(_retryClearOwnIncidentFromBanner());
     }
-    return null;
+  }
+
+  Future<void> _retryClearOwnIncidentFromBanner() async {
+    await Future<void>.delayed(const Duration(seconds: 3));
+    if (!mounted) {
+      return;
+    }
+    try {
+      await ref.read(groupIncidentServiceProvider).clear(
+            groupId: widget.groupId,
+            uid: widget.user.uid,
+          );
+    } catch (_) {}
   }
 
   String _bannerId(GroupIncident incident) =>
@@ -1006,105 +1049,6 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
     }
   }
 
-  Future<void> _raiseIncident(GroupIncidentType type) async {
-    final confirmed = await confirmGroupIncident(context, type: type);
-    if (!confirmed || !mounted) {
-      return;
-    }
-
-    GroupIncidentSeverity? severity;
-    if (type == GroupIncidentType.emergencia) {
-      severity = await pickEmergencySeverity(context);
-      if (severity == null || !mounted) {
-        return;
-      }
-    }
-
-    final own = ref.read(ownDevicePositionProvider);
-    if (own == null) {
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Sin ubicación GPS')),
-      );
-      return;
-    }
-
-    final point = GeoPoint(lat: own.lat, lng: own.lng);
-    final hasNetwork =
-        ref.read(mapNetworkAvailableProvider).asData?.value ?? true;
-    if (!hasNetwork) {
-      setState(() {
-        _pendingIncident = _PendingIncidentRaise(
-          type: type,
-          severity: severity,
-          point: point,
-        );
-      });
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Se enviará al recuperar cobertura')),
-      );
-      return;
-    }
-
-    await _publishIncident(
-      type: type,
-      severity: severity,
-      point: point,
-    );
-  }
-
-  Future<void> _publishIncident({
-    required GroupIncidentType type,
-    required GroupIncidentSeverity? severity,
-    required GeoPoint point,
-  }) async {
-    await ref.read(groupActionControllerProvider.notifier).raiseIncident(
-          groupId: widget.groupId,
-          uid: widget.user.uid,
-          displayName: widget.user.displayName,
-          type: type,
-          point: point,
-          severity: severity,
-        );
-    if (!mounted) {
-      return;
-    }
-    final error = ref.read(groupActionControllerProvider).asError?.error;
-    if (error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$error')),
-      );
-    }
-  }
-
-  Future<void> _flushPendingIncident() async {
-    final pending = _pendingIncident;
-    if (pending == null) {
-      return;
-    }
-    setState(() => _pendingIncident = null);
-    await _publishIncident(
-      type: pending.type,
-      severity: pending.severity,
-      point: pending.point,
-    );
-  }
-
-  Future<void> _clearIncident(String uid) async {
-    if (uid == widget.user.uid) {
-      setState(() => _pendingIncident = null);
-    }
-    await ref.read(groupActionControllerProvider.notifier).clearIncident(
-          groupId: widget.groupId,
-          uid: uid,
-        );
-  }
-
   void _recenterGroup() {
     setState(() {
       _followGroup = true;
@@ -1174,10 +1118,18 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
             southwest: LatLng(minLat, minLng),
             northeast: LatLng(maxLat, maxLng),
           ),
-          left: 48,
-          top: 120,
-          right: 48,
-          bottom: 160,
+          left: MediaQuery.orientationOf(context) == Orientation.landscape
+              ? 72
+              : 48,
+          top: MediaQuery.orientationOf(context) == Orientation.landscape
+              ? 72
+              : 120,
+          right: MediaQuery.orientationOf(context) == Orientation.landscape
+              ? 72
+              : 48,
+          bottom: MediaQuery.orientationOf(context) == Orientation.landscape
+              ? 72
+              : 100,
         ),
         duration: const Duration(milliseconds: 450),
       );
@@ -1188,18 +1140,6 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
       });
     }
   }
-}
-
-class _PendingIncidentRaise {
-  const _PendingIncidentRaise({
-    required this.type,
-    required this.point,
-    this.severity,
-  });
-
-  final GroupIncidentType type;
-  final GroupIncidentSeverity? severity;
-  final GeoPoint point;
 }
 
 class _MemberMapEntry {
@@ -1291,9 +1231,10 @@ class _LegendDot extends StatelessWidget {
 }
 
 class _WaitingBanner extends StatelessWidget {
-  const _WaitingBanner({required this.names});
+  const _WaitingBanner({required this.names, this.compact = false});
 
   final List<String> names;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -1302,17 +1243,158 @@ class _WaitingBanner extends StatelessWidget {
       borderRadius: BorderRadius.circular(8),
       color: Theme.of(context).colorScheme.tertiaryContainer,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        padding: EdgeInsets.symmetric(
+          horizontal: 10,
+          vertical: compact ? 4 : 8,
+        ),
         child: Text(
           names.length == 1
               ? '1 motero aún no manda GPS'
               : '${names.length} moteros aún no mandan GPS',
           style: TextStyle(
-            fontSize: 12,
+            fontSize: compact ? 11 : 12,
             color: Theme.of(context).colorScheme.onTertiaryContainer,
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Navegar, pelotón y centrar en un solo bloque.
+class _GroupMapQuickActions extends StatelessWidget {
+  const _GroupMapQuickActions({
+    this.embedded = false,
+    this.vertical = false,
+    required this.hasSharedRoute,
+    required this.followGroup,
+    required this.onNavigate,
+    required this.onPackList,
+    required this.onRecenter,
+  });
+
+  final bool embedded;
+  final bool vertical;
+  final bool hasSharedRoute;
+  final bool followGroup;
+  final VoidCallback? onNavigate;
+  final VoidCallback onPackList;
+  final VoidCallback onRecenter;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final content =
+        vertical ? _buildColumn(context, colors) : _buildRow(context, colors);
+
+    if (embedded) {
+      return content;
+    }
+
+    return Material(
+      elevation: 6,
+      borderRadius: BorderRadius.circular(16),
+      color: colors.surface.withValues(alpha: 0.96),
+      child: Padding(
+        padding: EdgeInsets.all(vertical ? 6 : 8),
+        child: content,
+      ),
+    );
+  }
+
+  Widget _buildColumn(BuildContext context, ColorScheme colors) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (hasSharedRoute) ...[
+          IconButton.filledTonal(
+            tooltip: 'Navegar ruta',
+            onPressed: onNavigate,
+            style: IconButton.styleFrom(
+              minimumSize: const Size(44, 44),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            icon: const Icon(Icons.navigation_rounded, size: 22),
+          ),
+          const SizedBox(height: 6),
+        ],
+        IconButton.outlined(
+          tooltip: 'Pelotón',
+          onPressed: onPackList,
+          style: IconButton.styleFrom(
+            minimumSize: const Size(44, 44),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+          icon: const Icon(Icons.format_list_bulleted_rounded, size: 22),
+        ),
+        const SizedBox(height: 6),
+        IconButton.filledTonal(
+          tooltip: 'Centrar grupo',
+          onPressed: onRecenter,
+          isSelected: followGroup,
+          style: IconButton.styleFrom(
+            backgroundColor: followGroup ? colors.primary : null,
+            foregroundColor: followGroup ? colors.onPrimary : null,
+            minimumSize: const Size(44, 44),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+          icon: const Icon(Icons.groups, size: 22),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRow(BuildContext context, ColorScheme colors) {
+    return Row(
+      children: [
+        if (hasSharedRoute) ...[
+          Expanded(
+            flex: 2,
+            child: FilledButton.tonalIcon(
+              onPressed: onNavigate,
+              icon: const Icon(Icons.navigation_rounded, size: 18),
+              label: Text(
+                embedded ? 'Navegar' : 'Navegar ruta',
+                style: const TextStyle(fontSize: 12),
+              ),
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                minimumSize: const Size(0, 38),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+            ),
+          ),
+          const SizedBox(width: 4),
+        ],
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed: onPackList,
+            icon: const Icon(Icons.format_list_bulleted_rounded, size: 18),
+            label: const Text(
+              'Pelotón',
+              style: TextStyle(fontSize: 12),
+            ),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              minimumSize: const Size(0, 38),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+          ),
+        ),
+        const SizedBox(width: 4),
+        IconButton.filledTonal(
+          tooltip: 'Centrar grupo',
+          onPressed: onRecenter,
+          isSelected: followGroup,
+          style: IconButton.styleFrom(
+            backgroundColor: followGroup ? colors.primary : null,
+            foregroundColor: followGroup ? colors.onPrimary : null,
+            minimumSize: const Size(38, 38),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+          icon: const Icon(Icons.groups, size: 20),
+        ),
+      ],
     );
   }
 }

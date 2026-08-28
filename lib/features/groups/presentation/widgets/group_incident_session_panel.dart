@@ -5,12 +5,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
 import 'package:loc_motos/features/groups/domain/entities/group_incident.dart';
 import 'package:loc_motos/features/groups/domain/entities/ride_role.dart';
+import 'package:loc_motos/features/groups/domain/services/group_incident_service.dart';
 import 'package:loc_motos/features/groups/domain/services/group_ride_alert_feedback.dart';
 import 'package:loc_motos/features/groups/presentation/providers/group_providers.dart';
 import 'package:loc_motos/features/groups/presentation/widgets/group_incident_widgets.dart';
 import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
 import 'package:loc_motos/features/navigation/presentation/providers/navigation_providers.dart';
-import 'package:loc_motos/features/tracking/presentation/providers/tracking_providers.dart';
+import 'package:loc_motos/features/tracking/domain/entities/device_position.dart';
+import 'package:loc_motos/features/tracking/presentation/helpers/resolve_own_device_position.dart';
 
 /// Banner + barra de incidencias (mapa de grupo / HUD).
 class GroupIncidentSessionPanel extends ConsumerStatefulWidget {
@@ -19,13 +21,27 @@ class GroupIncidentSessionPanel extends ConsumerStatefulWidget {
     required this.groupId,
     required this.user,
     this.showBanner = true,
-    this.allowAdminClear = true,
+    this.compact = false,
+    this.drivingMode = false,
+    this.embedded = false,
+    this.vertical = false,
   });
 
   final String groupId;
   final AppUser user;
   final bool showBanner;
-  final bool allowAdminClear;
+
+  /// Landscape / poco alto: barra de incidencias en una sola fila de iconos.
+  final bool compact;
+
+  /// Navegando: sin snackbars ni banners de error (menos distracción).
+  final bool drivingMode;
+
+  /// Dentro del panel inferior del mapa (menos márgenes).
+  final bool embedded;
+
+  /// Landscape: columna de iconos en el lateral del mapa.
+  final bool vertical;
 
   @override
   ConsumerState<GroupIncidentSessionPanel> createState() =>
@@ -38,12 +54,18 @@ class _GroupIncidentSessionPanelState
   final _seenIncidentKeys = <String>{};
   var _incidentAlertPrimed = false;
   _PendingIncidentRaise? _pendingIncident;
+  GroupIncident? _localOwnIncident;
+  var _incidentBusy = false;
+  String? _lastIncidentError;
+
+  bool get _silent => widget.drivingMode;
 
   @override
   Widget build(BuildContext context) {
-    final incidents =
-        ref.watch(groupIncidentsProvider(widget.groupId)).asData?.value ??
-            const <GroupIncident>[];
+    final incidentsAsync = ref.watch(groupIncidentsProvider(widget.groupId));
+    final remoteIncidents =
+        incidentsAsync.valueOrNull ?? const <GroupIncident>[];
+    final incidents = _effectiveIncidents(remoteIncidents);
     final group =
         ref.watch(rideGroupProvider(widget.groupId)).asData?.value;
     final iAmAdmin = group?.isAdmin(widget.user.uid) ?? false;
@@ -56,7 +78,6 @@ class _GroupIncidentSessionPanelState
         ) ??
         false;
     final canAskWait = iAmAdmin || iAmCabecera;
-    final actionBusy = ref.watch(groupActionControllerProvider).isLoading;
     final ownIncident = _ownActiveIncident(incidents);
     final bannerIncident =
         widget.showBanner ? _highestPriorityBanner(incidents) : null;
@@ -69,11 +90,38 @@ class _GroupIncidentSessionPanelState
       }
     });
 
+    ref.listen(groupIncidentsProvider(widget.groupId), (previous, next) {
+      next.when(
+        data: (list) {
+          if (_localOwnIncident != null &&
+              list.any(
+                (incident) =>
+                    incident.uid == widget.user.uid && incident.active,
+              )) {
+            setState(() => _localOwnIncident = null);
+          }
+          _maybeAlertNewIncidents(list);
+        },
+        error: (error, _) {
+          if (_silent || !mounted) {
+            return;
+          }
+          setState(() {
+            _lastIncidentError =
+                'No se pueden leer los avisos del grupo.';
+          });
+        },
+        loading: () {},
+      );
+    });
+
     _maybeAlertNewIncidents(incidents);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+      crossAxisAlignment: widget.vertical
+          ? CrossAxisAlignment.center
+          : CrossAxisAlignment.stretch,
       children: [
         if (bannerIncident != null) ...[
           GroupIncidentBanner(
@@ -83,17 +131,55 @@ class _GroupIncidentSessionPanelState
                 _dismissedBannerIds.add(_bannerId(bannerIncident));
               });
             },
-            canClear: bannerIncident.uid == widget.user.uid ||
-                (widget.allowAdminClear && iAmAdmin),
-            onClear: () => unawaited(
-              _clearIncident(bannerIncident.uid),
+            isOwnIncident: bannerIncident.uid == widget.user.uid,
+            onClear: bannerIncident.uid == widget.user.uid
+                ? () => unawaited(_clearOwnIncident())
+                : null,
+          ),
+          SizedBox(height: widget.compact ? 4 : 8),
+        ],
+        if (!_silent && _lastIncidentError != null) ...[
+          Material(
+            color: Theme.of(context).colorScheme.errorContainer,
+            borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: const EdgeInsets.all(8),
+              child: Text(
+                _lastIncidentError!,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onErrorContainer,
+                  fontSize: 12,
+                ),
+              ),
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: widget.compact ? 4 : 8),
+        ],
+        if (!_silent &&
+            incidentsAsync.hasError &&
+            _lastIncidentError == null) ...[
+          Material(
+            color: Theme.of(context).colorScheme.errorContainer,
+            borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: const EdgeInsets.all(8),
+              child: Text(
+                'No se pueden leer los avisos del grupo.',
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onErrorContainer,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          ),
+          SizedBox(height: widget.compact ? 4 : 8),
         ],
         GroupIncidentActionsBar(
+          compact: widget.compact,
+          embedded: widget.embedded,
+          vertical: widget.vertical,
           hasOwnAlert: ownIncident != null || _pendingIncident != null,
-          enabled: !actionBusy,
+          enabled: !_incidentBusy,
           showWait: canAskWait,
           onWait: () => unawaited(_raiseIncident(GroupIncidentType.espera)),
           onEmergency: () =>
@@ -102,9 +188,18 @@ class _GroupIncidentSessionPanelState
               unawaited(_raiseIncident(GroupIncidentType.averia)),
           onSeparated: () =>
               unawaited(_raiseIncident(GroupIncidentType.separado)),
-          onClear: () => unawaited(_clearIncident(widget.user.uid)),
+          onClear: () => unawaited(_clearOwnIncident()),
         ),
       ],
+    );
+  }
+
+  void _notifyUser(String message) {
+    if (_silent || !mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
     );
   }
 
@@ -196,14 +291,10 @@ class _GroupIncidentSessionPanelState
       }
     }
 
-    final own = ref.read(ownDevicePositionProvider);
-    if (own == null) {
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Sin ubicación GPS')),
-      );
+    OwnDevicePosition own;
+    try {
+      own = await resolveOwnDevicePosition(ref);
+    } catch (_) {
       return;
     }
 
@@ -217,21 +308,66 @@ class _GroupIncidentSessionPanelState
           severity: severity,
           point: point,
         );
+        _localOwnIncident = GroupIncident(
+          uid: widget.user.uid,
+          type: type,
+          point: point,
+          at: DateTime.now(),
+          severity: severity,
+          displayName: widget.user.displayName,
+        );
+        _lastIncidentError = null;
       });
-      if (!mounted) {
-        return;
+      if (!_silent) {
+        _notifyUser('Se enviará al recuperar cobertura');
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Se enviará al recuperar cobertura')),
-      );
       return;
     }
 
-    await _publishIncident(
-      type: type,
-      severity: severity,
-      point: point,
-    );
+    setState(() {
+      _localOwnIncident = GroupIncident(
+        uid: widget.user.uid,
+        type: type,
+        point: point,
+        at: DateTime.now(),
+        severity: severity,
+        displayName: widget.user.displayName,
+      );
+      _lastIncidentError = null;
+      _incidentBusy = true;
+    });
+
+    try {
+      await _publishIncident(
+        type: type,
+        severity: severity,
+        point: point,
+      );
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      if (_silent) {
+        setState(() {
+          _pendingIncident = _PendingIncidentRaise(
+            type: type,
+            severity: severity,
+            point: point,
+          );
+        });
+        unawaited(_flushPendingIncident());
+        return;
+      }
+      setState(() {
+        _localOwnIncident = null;
+        _lastIncidentError = 'No se pudo enviar el aviso. Inténtalo de nuevo.';
+      });
+      _notifyUser('No se pudo enviar el aviso. Inténtalo de nuevo.');
+    } finally {
+      if (mounted) {
+        setState(() => _incidentBusy = false);
+      }
+    }
   }
 
   Future<void> _publishIncident({
@@ -239,7 +375,8 @@ class _GroupIncidentSessionPanelState
     required GroupIncidentSeverity? severity,
     required GeoPoint point,
   }) async {
-    await ref.read(groupActionControllerProvider.notifier).raiseIncident(
+    await ref.read(groupIncidentServiceProvider).publish(
+          ref: ref,
           groupId: widget.groupId,
           uid: widget.user.uid,
           displayName: widget.user.displayName,
@@ -250,11 +387,8 @@ class _GroupIncidentSessionPanelState
     if (!mounted) {
       return;
     }
-    final error = ref.read(groupActionControllerProvider).asError?.error;
-    if (error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$error')),
-      );
+    if (!_silent) {
+      _notifyUser('Aviso enviado al grupo: ${type.label}');
     }
   }
 
@@ -263,22 +397,115 @@ class _GroupIncidentSessionPanelState
     if (pending == null) {
       return;
     }
-    setState(() => _pendingIncident = null);
-    await _publishIncident(
-      type: pending.type,
-      severity: pending.severity,
-      point: pending.point,
-    );
+    setState(() {
+      _localOwnIncident = GroupIncident(
+        uid: widget.user.uid,
+        type: pending.type,
+        point: pending.point,
+        at: DateTime.now(),
+        severity: pending.severity,
+        displayName: widget.user.displayName,
+      );
+      _incidentBusy = true;
+      _lastIncidentError = null;
+    });
+    try {
+      await _publishIncident(
+        type: pending.type,
+        severity: pending.severity,
+        point: pending.point,
+      );
+      if (!mounted) {
+        return;
+      }
+      setState(() => _pendingIncident = null);
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      if (_silent) {
+        return;
+      }
+      setState(() {
+        _localOwnIncident = null;
+        _lastIncidentError = 'No se pudo enviar el aviso. Inténtalo de nuevo.';
+      });
+      _notifyUser('No se pudo enviar el aviso. Inténtalo de nuevo.');
+    } finally {
+      if (mounted) {
+        setState(() => _incidentBusy = false);
+      }
+    }
   }
 
-  Future<void> _clearIncident(String uid) async {
-    if (uid == widget.user.uid) {
-      setState(() => _pendingIncident = null);
+  Future<void> _clearOwnIncident() async {
+    setState(() {
+      _lastIncidentError = null;
+      _incidentBusy = true;
+    });
+    try {
+      await ref.read(groupIncidentServiceProvider).clear(
+            groupId: widget.groupId,
+            uid: widget.user.uid,
+          );
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _pendingIncident = null;
+        _localOwnIncident = null;
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      if (_silent) {
+        unawaited(_retryClearOwnIncidentLater());
+        return;
+      }
+      setState(
+        () => _lastIncidentError =
+            'No se pudo quitar el aviso. Inténtalo de nuevo.',
+      );
+      _notifyUser('No se pudo quitar el aviso. Inténtalo de nuevo.');
+    } finally {
+      if (mounted) {
+        setState(() => _incidentBusy = false);
+      }
     }
-    await ref.read(groupActionControllerProvider.notifier).clearIncident(
-          groupId: widget.groupId,
-          uid: uid,
-        );
+  }
+
+  Future<void> _retryClearOwnIncidentLater() async {
+    await Future<void>.delayed(const Duration(seconds: 3));
+    if (!mounted || _incidentBusy) {
+      return;
+    }
+    try {
+      await ref.read(groupIncidentServiceProvider).clear(
+            groupId: widget.groupId,
+            uid: widget.user.uid,
+          );
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _pendingIncident = null;
+        _localOwnIncident = null;
+      });
+    } catch (_) {
+      // Sin mensajes al volante; el motero puede pulsar otra vez si hace falta.
+    }
+  }
+
+  List<GroupIncident> _effectiveIncidents(List<GroupIncident> remote) {
+    final local = _localOwnIncident;
+    if (local == null) {
+      return remote;
+    }
+    if (remote.any((incident) => incident.uid == local.uid && incident.active)) {
+      return remote;
+    }
+    return [...remote, local];
   }
 }
 

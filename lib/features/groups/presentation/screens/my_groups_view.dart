@@ -117,7 +117,7 @@ class MyGroupsView extends ConsumerWidget {
   Future<void> _createGroup(BuildContext context, WidgetRef ref) async {
     final name = await showDialog<String>(
       context: context,
-      builder: (_) => CreateGroupDialog(defaultName: 'Ruta de ${user.displayName}'),
+      builder: (_) => const CreateGroupDialog(),
     );
     if (name == null || !context.mounted) {
       return;

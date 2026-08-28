@@ -95,6 +95,7 @@ class NavigationMapView extends StatefulWidget {
     this.preferDarkMap = false,
     this.lowGlCompat = false,
     this.groupMates = const [],
+    this.overlay,
     this.onControllerReady,
     this.onCameraFollowChanged,
   });
@@ -141,6 +142,11 @@ class NavigationMapView extends StatefulWidget {
 
   /// Motos del grupo (excepto la tuya) visibles mientras navegas.
   final List<HudGroupMate> groupMates;
+
+  /// Controles Flutter encima del mapa (mismo Stack que MapLibre).
+  /// Fuera de este Stack, Android tapa los overlays con la platform view.
+  final Widget? overlay;
+
   final ValueChanged<MapLibreMapController>? onControllerReady;
 
   /// Aviso cuando el usuario deja de seguir la posición (arrastre) o se recentra.
@@ -2257,6 +2263,7 @@ class _NavigationMapViewState extends State<NavigationMapView> {
             child: ColoredBox(color: veilColor),
           ),
         ),
+        if (widget.overlay != null) widget.overlay!,
       ],
     );
   }

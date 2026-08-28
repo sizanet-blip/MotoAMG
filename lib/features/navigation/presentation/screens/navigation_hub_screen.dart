@@ -113,10 +113,13 @@ class _NavigationHubScreenState extends ConsumerState<NavigationHubScreen> {
     required String title,
     String? replaceStopId,
   }) async {
+    final landscape =
+        MediaQuery.orientationOf(context) == Orientation.landscape;
     final place = await showModalBottomSheet<GeocodingPlace>(
       context: context,
       isScrollControlled: true,
-      useSafeArea: true,
+      useSafeArea: !landscape,
+      backgroundColor: landscape ? Colors.transparent : null,
       builder: (context) => _PlacePickerSheet(title: title),
     );
     if (place == null || !mounted) {
@@ -432,6 +435,9 @@ class _NavigationHubScreenState extends ConsumerState<NavigationHubScreen> {
     final networkAsync = ref.watch(mapNetworkAvailableProvider);
     final hasNetwork = networkAsync.asData?.value ?? true;
     final top = MediaQuery.paddingOf(context).top;
+    final landscape =
+        MediaQuery.orientationOf(context) == Orientation.landscape;
+    final screenSize = MediaQuery.sizeOf(context);
 
     ref.listen(ownDevicePositionProvider, (previous, next) {
       if (next != null) {
@@ -615,24 +621,46 @@ class _NavigationHubScreenState extends ConsumerState<NavigationHubScreen> {
                     ),
                   ),
                 if (_itinerary.stops.length >= 2)
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    child: ItinerarySheet(
-                      itinerary: _itinerary,
-                      busy: busy,
-                      onAddStop: () => _openPlacePicker(title: 'Añadir parada'),
-                      onRemoveStop: _removeStop,
-                      onReorder: _reorder,
-                      onCloseLoop: _closeLoop,
-                      onPlanRoute: () => unawaited(_planAndPreview()),
-                      onEditStop: (id) => _openPlacePicker(
-                        title: 'Editar parada',
-                        replaceStopId: id,
-                      ),
-                    ),
-                  )
+                  landscape
+                      ? Positioned(
+                          left: 8,
+                          top: top + 64,
+                          bottom: 8,
+                          width: (screenSize.width * 0.38).clamp(300.0, 400.0),
+                          child: ItinerarySheet(
+                            itinerary: _itinerary,
+                            busy: busy,
+                            onAddStop: () =>
+                                _openPlacePicker(title: 'Añadir parada'),
+                            onRemoveStop: _removeStop,
+                            onReorder: _reorder,
+                            onCloseLoop: _closeLoop,
+                            onPlanRoute: () => unawaited(_planAndPreview()),
+                            onEditStop: (id) => _openPlacePicker(
+                              title: 'Editar parada',
+                              replaceStopId: id,
+                            ),
+                          ),
+                        )
+                      : Positioned(
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          child: ItinerarySheet(
+                            itinerary: _itinerary,
+                            busy: busy,
+                            onAddStop: () =>
+                                _openPlacePicker(title: 'Añadir parada'),
+                            onRemoveStop: _removeStop,
+                            onReorder: _reorder,
+                            onCloseLoop: _closeLoop,
+                            onPlanRoute: () => unawaited(_planAndPreview()),
+                            onEditStop: (id) => _openPlacePicker(
+                              title: 'Editar parada',
+                              replaceStopId: id,
+                            ),
+                          ),
+                        )
                 else
                   Positioned(
                     left: 16,
@@ -728,6 +756,43 @@ class _PlacePickerSheetState extends ConsumerState<_PlacePickerSheet> {
   Widget build(BuildContext context) {
     final bottom = MediaQuery.viewInsetsOf(context).bottom;
     final colors = Theme.of(context).colorScheme;
+    final landscape =
+        MediaQuery.orientationOf(context) == Orientation.landscape;
+    final screenSize = MediaQuery.sizeOf(context);
+
+    if (landscape) {
+      final panelWidth = (screenSize.width * 0.4).clamp(300.0, 420.0);
+      return Padding(
+        padding: EdgeInsets.fromLTRB(8, 8, 0, 8 + bottom),
+        child: Align(
+          alignment: Alignment.topLeft,
+          child: Material(
+            elevation: 12,
+            color: colors.surface,
+            borderRadius:
+                const BorderRadius.horizontal(right: Radius.circular(20)),
+            clipBehavior: Clip.antiAlias,
+            child: SizedBox(
+              width: panelWidth,
+              height: screenSize.height - 16 - bottom,
+              child: _PlacePickerContent(
+                title: widget.title,
+                controller: _controller,
+                focus: _focus,
+                favorites: _favorites,
+                recents: _recents,
+                isFavorite: _isFavorite,
+                onToggleFavorite: (place) => unawaited(_toggleFavorite(place)),
+                onSelect: (place) => Navigator.pop(context, place),
+                onRemoveRecent: (place) => unawaited(_removeRecent(place)),
+                onClearRecents: () => unawaited(_clearRecents()),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Padding(
       padding: EdgeInsets.only(bottom: bottom),
       child: DraggableScrollableSheet(
@@ -739,124 +804,18 @@ class _PlacePickerSheetState extends ConsumerState<_PlacePickerSheet> {
           return Material(
             color: colors.surface,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-            child: ListView(
-              controller: scrollController,
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: colors.outlineVariant,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  widget.title,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                ),
-                const SizedBox(height: 12),
-                DestinationSearchField(
-                  controller: _controller,
-                  focusNode: _focus,
-                  enabled: true,
-                  labelText: widget.title,
-                  onSelected: (place) => Navigator.pop(context, place),
-                  isFavorite: _isFavorite,
-                  onToggleFavorite: (place) => unawaited(_toggleFavorite(place)),
-                ),
-                if (_favorites.isNotEmpty) ...[
-                  const SizedBox(height: 20),
-                  Text(
-                    'Favoritos',
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
-                  const SizedBox(height: 4),
-                  for (final place in _favorites)
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: Icon(Icons.star_rounded, color: colors.primary),
-                      title: Text(place.primaryLine),
-                      subtitle: place.contextLine == null
-                          ? null
-                          : Text(place.contextLine!),
-                      trailing: IconButton(
-                        tooltip: 'Quitar de favoritos',
-                        icon: Icon(
-                          Icons.close_rounded,
-                          color: colors.onSurfaceVariant,
-                        ),
-                        onPressed: () => unawaited(_toggleFavorite(place)),
-                      ),
-                      onTap: () => Navigator.pop(context, place),
-                    ),
-                ],
-                if (_recents.isNotEmpty) ...[
-                  const SizedBox(height: 20),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          'Recientes',
-                          style: Theme.of(context).textTheme.titleSmall,
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () => unawaited(_clearRecents()),
-                        style: TextButton.styleFrom(
-                          visualDensity: VisualDensity.compact,
-                          foregroundColor: colors.error,
-                        ),
-                        child: const Text('Borrar todos'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  for (final place in _recents)
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: const Icon(Icons.history),
-                      title: Text(place.primaryLine),
-                      subtitle: place.contextLine == null
-                          ? null
-                          : Text(place.contextLine!),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            tooltip: _isFavorite(place)
-                                ? 'Quitar de favoritos'
-                                : 'Guardar en favoritos',
-                            icon: Icon(
-                              _isFavorite(place)
-                                  ? Icons.star_rounded
-                                  : Icons.star_border_rounded,
-                              color: _isFavorite(place)
-                                  ? colors.primary
-                                  : colors.onSurfaceVariant,
-                            ),
-                            onPressed: () =>
-                                unawaited(_toggleFavorite(place)),
-                          ),
-                          IconButton(
-                            tooltip: 'Quitar de recientes',
-                            icon: Icon(
-                              Icons.close_rounded,
-                              color: colors.onSurfaceVariant,
-                            ),
-                            onPressed: () => unawaited(_removeRecent(place)),
-                          ),
-                        ],
-                      ),
-                      onTap: () => Navigator.pop(context, place),
-                    ),
-                ],
-              ],
+            child: _PlacePickerContent(
+              title: widget.title,
+              controller: _controller,
+              focus: _focus,
+              favorites: _favorites,
+              recents: _recents,
+              isFavorite: _isFavorite,
+              onToggleFavorite: (place) => unawaited(_toggleFavorite(place)),
+              onSelect: (place) => Navigator.pop(context, place),
+              onRemoveRecent: (place) => unawaited(_removeRecent(place)),
+              onClearRecents: () => unawaited(_clearRecents()),
+              scrollController: scrollController,
             ),
           );
         },
@@ -908,5 +867,178 @@ class _PlacePickerSheetState extends ConsumerState<_PlacePickerSheet> {
       return;
     }
     setState(() => _recents = const []);
+  }
+}
+
+class _PlacePickerContent extends StatelessWidget {
+  const _PlacePickerContent({
+    required this.title,
+    required this.controller,
+    required this.focus,
+    required this.favorites,
+    required this.recents,
+    required this.isFavorite,
+    required this.onToggleFavorite,
+    required this.onSelect,
+    required this.onRemoveRecent,
+    required this.onClearRecents,
+    this.scrollController,
+  });
+
+  final String title;
+  final TextEditingController controller;
+  final FocusNode focus;
+  final List<GeocodingPlace> favorites;
+  final List<GeocodingPlace> recents;
+  final bool Function(GeocodingPlace place) isFavorite;
+  final ValueChanged<GeocodingPlace> onToggleFavorite;
+  final ValueChanged<GeocodingPlace> onSelect;
+  final ValueChanged<GeocodingPlace> onRemoveRecent;
+  final VoidCallback onClearRecents;
+  final ScrollController? scrollController;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final landscape =
+        MediaQuery.orientationOf(context) == Orientation.landscape;
+
+    return ListView(
+      controller: scrollController,
+      padding: EdgeInsets.fromLTRB(16, landscape ? 12 : 12, 16, 24),
+      children: [
+        if (!landscape)
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: colors.outlineVariant,
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+          ),
+        if (!landscape) const SizedBox(height: 12),
+        Text(
+          title,
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+        ),
+        const SizedBox(height: 12),
+        DestinationSearchField(
+          controller: controller,
+          focusNode: focus,
+          enabled: true,
+          labelText: title,
+          onSelected: onSelect,
+          isFavorite: isFavorite,
+          onToggleFavorite: onToggleFavorite,
+        ),
+        if (favorites.isNotEmpty) ...[
+          SizedBox(height: landscape ? 12 : 20),
+          Text(
+            'Favoritos',
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
+          const SizedBox(height: 4),
+          for (final place in favorites)
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              visualDensity: landscape ? VisualDensity.compact : null,
+              leading: Icon(Icons.star_rounded, color: colors.primary),
+              title: Text(
+                place.primaryLine,
+                maxLines: landscape ? 1 : 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              subtitle: place.contextLine == null
+                  ? null
+                  : Text(
+                      place.contextLine!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+              trailing: IconButton(
+                tooltip: 'Quitar de favoritos',
+                icon: Icon(
+                  Icons.close_rounded,
+                  color: colors.onSurfaceVariant,
+                ),
+                onPressed: () => onToggleFavorite(place),
+              ),
+              onTap: () => onSelect(place),
+            ),
+        ],
+        if (recents.isNotEmpty) ...[
+          SizedBox(height: landscape ? 12 : 20),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Recientes',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+              ),
+              TextButton(
+                onPressed: onClearRecents,
+                style: TextButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  foregroundColor: colors.error,
+                ),
+                child: const Text('Borrar todos'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          for (final place in recents)
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              visualDensity: landscape ? VisualDensity.compact : null,
+              leading: const Icon(Icons.history),
+              title: Text(
+                place.primaryLine,
+                maxLines: landscape ? 1 : 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              subtitle: place.contextLine == null
+                  ? null
+                  : Text(
+                      place.contextLine!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    tooltip: isFavorite(place)
+                        ? 'Quitar de favoritos'
+                        : 'Guardar en favoritos',
+                    icon: Icon(
+                      isFavorite(place)
+                          ? Icons.star_rounded
+                          : Icons.star_border_rounded,
+                      color: isFavorite(place)
+                          ? colors.primary
+                          : colors.onSurfaceVariant,
+                    ),
+                    onPressed: () => onToggleFavorite(place),
+                  ),
+                  IconButton(
+                    tooltip: 'Quitar de recientes',
+                    icon: Icon(
+                      Icons.close_rounded,
+                      color: colors.onSurfaceVariant,
+                    ),
+                    onPressed: () => onRemoveRecent(place),
+                  ),
+                ],
+              ),
+              onTap: () => onSelect(place),
+            ),
+        ],
+      ],
+    );
   }
 }

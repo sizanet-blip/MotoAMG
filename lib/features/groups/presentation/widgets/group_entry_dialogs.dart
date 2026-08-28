@@ -3,27 +3,33 @@ import 'package:flutter/services.dart';
 import 'package:loc_motos/core/constants/app_constants.dart';
 
 class CreateGroupDialog extends StatefulWidget {
-  const CreateGroupDialog({super.key, required this.defaultName});
-
-  final String defaultName;
+  const CreateGroupDialog({super.key});
 
   @override
   State<CreateGroupDialog> createState() => _CreateGroupDialogState();
 }
 
 class _CreateGroupDialogState extends State<CreateGroupDialog> {
-  late final TextEditingController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = TextEditingController(text: widget.defaultName);
-  }
+  final _controller = TextEditingController();
+  String? _error;
 
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
+  }
+
+  void _submit() {
+    final name = _controller.text.trim();
+    if (name.length < AppConstants.minGroupNameLength) {
+      setState(() {
+        _error = name.isEmpty
+            ? 'Escribe un nombre para el grupo'
+            : 'Mínimo ${AppConstants.minGroupNameLength} caracteres';
+      });
+      return;
+    }
+    Navigator.pop(context, name);
   }
 
   @override
@@ -34,9 +40,17 @@ class _CreateGroupDialogState extends State<CreateGroupDialog> {
         controller: _controller,
         autofocus: true,
         textCapitalization: TextCapitalization.sentences,
-        decoration: const InputDecoration(
+        textInputAction: TextInputAction.done,
+        onSubmitted: (_) => _submit(),
+        onChanged: (_) {
+          if (_error != null) {
+            setState(() => _error = null);
+          }
+        },
+        decoration: InputDecoration(
           hintText: 'Ej. Ruta del domingo',
-          border: OutlineInputBorder(),
+          border: const OutlineInputBorder(),
+          errorText: _error,
         ),
       ),
       actions: [
@@ -45,13 +59,7 @@ class _CreateGroupDialogState extends State<CreateGroupDialog> {
           child: const Text('Cancelar'),
         ),
         FilledButton(
-          onPressed: () {
-            final name = _controller.text.trim();
-            if (name.length < AppConstants.minGroupNameLength) {
-              return;
-            }
-            Navigator.pop(context, name);
-          },
+          onPressed: _submit,
           child: const Text('Crear'),
         ),
       ],

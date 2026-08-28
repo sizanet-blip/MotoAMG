@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_database/firebase_database.dart';
+import 'package:firebase_database/firebase_database.dart' hide Query;
 import 'package:loc_motos/core/constants/app_constants.dart';
 import 'package:loc_motos/core/utils/code_generator.dart';
 import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
@@ -179,6 +179,82 @@ class GroupRemoteDataSource {
     } on FirebaseException catch (error) {
       throw GroupException(
         'No se pudo unir al grupo. ${error.message ?? error.code}',
+      );
+    }
+  }
+
+  Future<void> _deleteQueryBatch(
+    Query<Map<String, dynamic>> query,
+  ) async {
+    while (true) {
+      final snap = await query.limit(450).get();
+      if (snap.docs.isEmpty) {
+        return;
+      }
+      final batch = _firestore.batch();
+      for (final doc in snap.docs) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+    }
+  }
+
+  /// Elimina el grupo, sus miembros, membresías, ruta compartida y datos RTDB.
+  Future<void> deleteGroup({
+    required AppUser user,
+    required String groupId,
+  }) async {
+    if (groupId.isEmpty) {
+      return;
+    }
+    try {
+      final groupSnap = await _groups.doc(groupId).get();
+      if (!groupSnap.exists) {
+        return;
+      }
+      final group = GroupModel.fromFirestore(groupSnap);
+      if (!group.isOwner(user.uid)) {
+        throw const GroupException(
+          'Solo el creador puede eliminar el grupo.',
+        );
+      }
+
+      final membersSnap = await _members(groupId).get();
+      final memberUids = membersSnap.docs.map((doc) => doc.id).toList();
+
+      for (final uid in memberUids) {
+        try {
+          final userSnap = await _users.doc(uid).get();
+          if (userSnap.data()?['currentGroupId'] == groupId) {
+            await _users.doc(uid).set({
+              'currentGroupId': null,
+            }, SetOptions(merge: true));
+          }
+          await _memberships(uid).doc(groupId).delete();
+        } catch (_) {}
+      }
+
+      await _deleteQueryBatch(_members(groupId));
+      try {
+        await _sharedRouteRef(groupId).delete();
+      } catch (_) {}
+      await _groups.doc(groupId).delete();
+
+      try {
+        await _database
+            .ref('${AppConstants.liveLocationsPath}/$groupId')
+            .remove();
+      } catch (_) {}
+      try {
+        await _database
+            .ref('${AppConstants.groupAlertsPath}/$groupId')
+            .remove();
+      } catch (_) {}
+    } on GroupException {
+      rethrow;
+    } on FirebaseException catch (error) {
+      throw GroupException(
+        'No se pudo eliminar el grupo. ${error.message ?? error.code}',
       );
     }
   }

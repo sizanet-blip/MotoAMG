@@ -21,6 +21,12 @@ abstract class GroupRepository {
     required String groupId,
   });
 
+  /// Borra el grupo por completo (solo el creador).
+  Future<void> deleteGroup({
+    required AppUser user,
+    required String groupId,
+  });
+
   Future<void> setActiveGroup({
     required String uid,
     required String? groupId,
