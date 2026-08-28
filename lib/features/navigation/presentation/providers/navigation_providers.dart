@@ -720,6 +720,32 @@ class NavigationSessionController extends Notifier<AsyncValue<void>> {
     }
   }
 
+  /// Ruta del rezagado hacia la cabecera (estilo de ruta del usuario).
+  Future<NavigationRoute> planCatchUpRoute({
+    required GeoPoint from,
+    required GeoPoint to,
+    required String destinationLabel,
+  }) async {
+    try {
+      final plan = await _repo.planRoute(
+        origin: from,
+        destination: to,
+        waypoints: const [],
+        preferences: ref.read(routePreferencesProvider),
+        costing: _resolveCosting(),
+        originLabel: 'Mi ubicación',
+        destinationLabel: destinationLabel,
+        includeAlternates: false,
+      );
+      ref.read(activeNavigationRouteProvider.notifier).state = plan.selected;
+      return plan.selected;
+    } on NavigationException {
+      rethrow;
+    } catch (error) {
+      throw NavigationException(navigationUserMessage(error));
+    }
+  }
+
   Future<void> stopNavigation() async {
     ref.read(activeNavigationRouteProvider.notifier).state = null;
     await _voice.stop();

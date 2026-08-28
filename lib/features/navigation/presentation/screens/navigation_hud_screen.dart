@@ -53,10 +53,18 @@ class NavigationHudScreen extends ConsumerStatefulWidget {
     super.key,
     required this.route,
     required this.user,
+    this.chaseCabecera = false,
+    this.sharedGroupRoute,
   });
 
   final NavigationRoute route;
   final AppUser user;
+
+  /// Rezagado: ir a la cabecera en vivo hasta enganchar el trazado del grupo.
+  final bool chaseCabecera;
+
+  /// Ruta compartida del pelotón (fase 2). Necesaria si [chaseCabecera].
+  final NavigationRoute? sharedGroupRoute;
 
   @override
   ConsumerState<NavigationHudScreen> createState() =>
@@ -106,6 +114,11 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
   double? _savedBrightness;
   var _hudDisplayArmed = false;
   final _bearingFilter = NavigationBearingFilter();
+  NavigationRoute? _sharedGroupRoute;
+  var _chasingCabecera = false;
+  var _joiningSharedRoute = false;
+  Timer? _cabeceraChaseTimer;
+  GeoPoint? _lastChaseTarget;
 
   bool get _showSimulatorControls =>
       ref.watch(hudSafetyProvider).showRouteSimulator && !_arrived;
@@ -114,6 +127,12 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
   void initState() {
     super.initState();
     _route = widget.route;
+    _sharedGroupRoute = widget.sharedGroupRoute;
+    _chasingCabecera =
+        widget.chaseCabecera && widget.sharedGroupRoute != null;
+    if (_chasingCabecera) {
+      _lastChaseTarget = widget.route.destination;
+    }
     // Evitar arrastrar coordenadas de una simulación anterior.
     try {
       ref.read(routeSimulationActiveProvider.notifier).state = false;
@@ -121,6 +140,12 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
           ref.read(groupPackAlertProvider).showGroupOnNavigation;
     } catch (_) {}
     _bootstrapGuidance(_route);
+    if (_chasingCabecera) {
+      _cabeceraChaseTimer = Timer.periodic(
+        NavigationConstants.cabeceraChaseRefresh,
+        (_) => unawaited(_refreshCabeceraChase()),
+      );
+    }
     if (!_route.hasAlerts) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         unawaited(_enrichActiveRouteAlerts());
@@ -128,37 +153,39 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(_armHudDisplay());
-      unawaited(_announceGuidanceForCurrentPosition());
+      unawaited(_syncGuidanceToMyGps());
     });
   }
 
-  /// Primera voz según dónde estás, no según el origen de la ruta.
-  Future<void> _announceGuidanceForCurrentPosition() async {
-    await _restoreRealGpsPosition(updateGuidance: true);
-    if (!mounted || _arrived) {
+  /// Arranca la guía desde tu GPS, no desde el origen de quien publicó la ruta.
+  Future<void> _syncGuidanceToMyGps() async {
+    await _restoreRealGpsPosition(updateGuidance: false);
+    if (!mounted || _arrived || _simulating) {
       return;
     }
     final own = ref.read(ownDevicePositionProvider);
-    final guidance = ref.read(routeGuidanceServiceProvider);
-    final position = own == null
-        ? _route.origin
-        : GeoPoint(lat: own.lat, lng: own.lng);
-    final index = guidance.resolveUpcomingManeuverIndex(
-      position: position,
-      route: _route,
+    if (own == null) {
+      return;
+    }
+    final position = GeoPoint(lat: own.lat, lng: own.lng);
+    final deviation = ref.read(routeDeviationServiceProvider);
+    final distanceToRoute = deviation.distanceToPolylineMeters(
+      position,
+      _route.polyline,
     );
-    final remaining = guidance.remainingMetersToUpcoming(
-      position: position,
-      route: _route,
-      upcomingIndex: index,
-    );
-    final maneuver = _route.maneuvers.elementAtOrNull(index);
+    if (distanceToRoute > NavigationConstants.deviationThresholdMeters &&
+        _hasNetwork()) {
+      await _rerouteIfNeeded(force: true);
+      return;
+    }
+    _updateGuidance();
+    final maneuver = _currentManeuver;
     if (maneuver == null) {
       return;
     }
     _maybeAnnounceManeuver(
       maneuver,
-      remainingMeters: remaining,
+      remainingMeters: _remainingMeters,
       force: true,
     );
   }
@@ -199,11 +226,18 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
 
   void _bootstrapGuidance(NavigationRoute route) {
     final guidance = RouteGuidanceService();
+    final own = ref.read(ownDevicePositionProvider);
+    final position = own == null
+        ? route.origin
+        : GeoPoint(lat: own.lat, lng: own.lng);
     final maneuvers = route.maneuvers;
     if (maneuvers.length > 1) {
-      _maneuverIndex = maneuvers.first.type == ManeuverType.depart ? 1 : 0;
+      _maneuverIndex = guidance.resolveUpcomingManeuverIndex(
+        position: position,
+        route: route,
+      );
       _remainingMeters = guidance.remainingMetersToUpcoming(
-        position: route.origin,
+        position: position,
         route: route,
         upcomingIndex: _maneuverIndex,
       );
@@ -213,22 +247,22 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
           maneuvers.firstOrNull?.distanceMeters ?? route.distanceMeters;
     }
     _routeRemainingMeters = guidance.remainingRouteMeters(
-      position: route.origin,
+      position: position,
       route: route,
     );
     _remainingDuration = guidance.estimateRemainingDuration(
       remainingMeters: _routeRemainingMeters,
-      speedMps: 0,
+      speedMps: own?.speedMps ?? 0,
       routeDurationSeconds: route.durationSeconds,
       routeDistanceMeters: route.distanceMeters,
     );
     _speedLimitKmh = guidance.resolveSpeedLimitKmh(
-      position: route.origin,
+      position: position,
       route: route,
     );
     if (route.hasAlerts) {
       final along = guidance.distanceAlongRouteMeters(
-        route.origin,
+        position,
         route.polyline,
       );
       final prefs = ref.read(alertPreferencesProvider);
@@ -236,7 +270,7 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
         route,
         along,
         prefs,
-        position: route.origin,
+        position: position,
       );
     }
   }
@@ -321,6 +355,8 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
     _simulationTimer = null;
     _rerouteDebounceTimer?.cancel();
     _rerouteDebounceTimer = null;
+    _cabeceraChaseTimer?.cancel();
+    _cabeceraChaseTimer = null;
     unawaited(_disarmHudDisplay());
     try {
       ref.read(routeSimulationActiveProvider.notifier).state = false;
@@ -372,7 +408,12 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
     final guidance = ref.read(routeGuidanceServiceProvider);
     final deviation = ref.read(routeDeviationServiceProvider);
 
-    if (guidance.hasArrived(position: position, route: _route)) {
+    if (_chasingCabecera || _joiningSharedRoute) {
+      if (_shouldJoinSharedGroupRoute(position)) {
+        unawaited(_joinSharedGroupRoute());
+        return;
+      }
+    } else if (_hasArrivedAtFinalDestination(position, guidance)) {
       _onArrived();
       return;
     }
@@ -647,9 +688,34 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
     );
   }
 
+  /// Tras perseguir a la cabecera, el destino válido es el del pelotón, no ella.
+  bool _hasArrivedAtFinalDestination(
+    GeoPoint position,
+    RouteGuidanceService guidance,
+  ) {
+    if (widget.chaseCabecera) {
+      final shared = _sharedGroupRoute;
+      if (shared == null) {
+        return false;
+      }
+      return guidance.hasArrived(position: position, route: shared);
+    }
+    return guidance.hasArrived(position: position, route: _route);
+  }
+
   void _onArrived() {
-    if (_arrived || !mounted) {
+    if (_arrived || !mounted || _chasingCabecera || _joiningSharedRoute) {
       return;
+    }
+    if (widget.chaseCabecera) {
+      final own = ref.read(ownDevicePositionProvider);
+      if (own != null) {
+        final position = GeoPoint(lat: own.lat, lng: own.lng);
+        final guidance = ref.read(routeGuidanceServiceProvider);
+        if (!_hasArrivedAtFinalDestination(position, guidance)) {
+          return;
+        }
+      }
     }
     _rerouteDebounceTimer?.cancel();
     _stopSimulation(keepLastPosition: true);
@@ -719,7 +785,10 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
   bool _hasNetwork() =>
       ref.read(mapNetworkAvailableProvider).asData?.value ?? true;
 
-  Future<void> _rerouteIfNeeded({bool force = false}) async {
+  Future<void> _rerouteIfNeeded({
+    bool force = false,
+    bool announce = true,
+  }) async {
     if (!mounted || _simulating || _rerouting) {
       return;
     }
@@ -753,76 +822,41 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
     _lastRerouteAt = DateTime.now();
 
     final session = ref.read(navigationSessionProvider.notifier);
-    unawaited(session.announceManeuver('Recalculando ruta'));
+    if (announce) {
+      unawaited(session.announceManeuver('Recalculando ruta'));
+    }
 
     try {
       final from = GeoPoint(lat: own.lat, lng: own.lng);
-      final newRoute = await session.recalculateRoute(
-        currentRoute: _route,
-        from: from,
-      );
+      late final NavigationRoute newRoute;
+      if (_chasingCabecera) {
+        final cabecera = _resolveLiveCabecera();
+        if (cabecera == null) {
+          if (mounted) {
+            setState(() => _rerouting = false);
+          }
+          return;
+        }
+        newRoute = await session.planCatchUpRoute(
+          from: from,
+          to: cabecera.point,
+          destinationLabel: cabecera.name,
+        );
+        _lastChaseTarget = cabecera.point;
+      } else {
+        newRoute = await session.recalculateRoute(
+          currentRoute: _route,
+          from: from,
+        );
+      }
       if (!mounted) {
         return;
       }
-
-      final guidance = ref.read(routeGuidanceServiceProvider);
-      final startIndex = guidance.resolveUpcomingManeuverIndex(
-        position: from,
-        route: newRoute,
-      );
-      final startRemaining = guidance.remainingMetersToUpcoming(
-        position: from,
-        route: newRoute,
-        upcomingIndex: startIndex,
-      );
-      final routeRemaining = guidance.remainingRouteMeters(
-        position: from,
-        route: newRoute,
-      );
-      final remainingDuration = guidance.estimateRemainingDuration(
-        remainingMeters: routeRemaining,
+      _applyActiveRoute(
+        newRoute,
+        from: from,
         speedMps: own.speedMps,
-        routeDurationSeconds: newRoute.durationSeconds,
-        routeDistanceMeters: newRoute.distanceMeters,
       );
-      final speedLimit = guidance.resolveSpeedLimitKmh(
-        position: from,
-        route: newRoute,
-      );
-
-      setState(() {
-        _route = newRoute;
-        _maneuverIndex = startIndex;
-        _remainingMeters = startRemaining;
-        _routeRemainingMeters = routeRemaining;
-        _remainingDuration = remainingDuration;
-        _speedLimitKmh = speedLimit;
-        _offRoute = false;
-        _hasJoinedRoute = true;
-        _rerouting = false;
-        _rerouteError = null;
-        _upcomingAlert = null;
-        _upcomingAlertMeters = 0;
-        _upcomingFuel = null;
-        _upcomingFuelMeters = 0;
-        _upcomingToll = null;
-        _upcomingTollMeters = 0;
-        _announcedAlertIds.clear();
-        _announcedManeuverIndices.clear();
-        _arrivalAnnounced = false;
-        _cameraFollowUser = true;
-      });
-
-      unawaited(_enrichActiveRouteAlerts());
-
-      final first = newRoute.maneuvers.elementAtOrNull(startIndex);
-      if (first != null) {
-        _maybeAnnounceManeuver(
-          first,
-          remainingMeters: startRemaining,
-          force: true,
-        );
-      }
     } on NavigationException catch (error) {
       if (!mounted) {
         return;
@@ -842,6 +876,275 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
       });
       _scheduleRerouteAfterCooldown();
     }
+  }
+
+  void _applyActiveRoute(
+    NavigationRoute newRoute, {
+    required GeoPoint from,
+    required double speedMps,
+    bool announceManeuver = true,
+  }) {
+    final guidance = ref.read(routeGuidanceServiceProvider);
+    final startIndex = guidance.resolveUpcomingManeuverIndex(
+      position: from,
+      route: newRoute,
+    );
+    final startRemaining = guidance.remainingMetersToUpcoming(
+      position: from,
+      route: newRoute,
+      upcomingIndex: startIndex,
+    );
+    final routeRemaining = guidance.remainingRouteMeters(
+      position: from,
+      route: newRoute,
+    );
+    final remainingDuration = guidance.estimateRemainingDuration(
+      remainingMeters: routeRemaining,
+      speedMps: speedMps,
+      routeDurationSeconds: newRoute.durationSeconds,
+      routeDistanceMeters: newRoute.distanceMeters,
+    );
+    final speedLimit = guidance.resolveSpeedLimitKmh(
+      position: from,
+      route: newRoute,
+    );
+
+    setState(() {
+      _route = newRoute;
+      _maneuverIndex = startIndex;
+      _remainingMeters = startRemaining;
+      _routeRemainingMeters = routeRemaining;
+      _remainingDuration = remainingDuration;
+      _speedLimitKmh = speedLimit;
+      _offRoute = false;
+      _hasJoinedRoute = true;
+      _arrived = false;
+      _rerouting = false;
+      _rerouteError = null;
+      _upcomingAlert = null;
+      _upcomingAlertMeters = 0;
+      _upcomingFuel = null;
+      _upcomingFuelMeters = 0;
+      _upcomingToll = null;
+      _upcomingTollMeters = 0;
+      _announcedAlertIds.clear();
+      _announcedManeuverIndices
+        ..clear()
+        ..addAll(
+          newRoute.maneuvers
+              .where((m) => m.index < startIndex)
+              .map((m) => m.index),
+        );
+      _arrivalAnnounced = false;
+      _cameraFollowUser = true;
+    });
+
+    unawaited(_enrichActiveRouteAlerts());
+
+    if (!announceManeuver) {
+      return;
+    }
+    final first = newRoute.maneuvers.elementAtOrNull(startIndex);
+    if (first != null) {
+      _maybeAnnounceManeuver(
+        first,
+        remainingMeters: startRemaining,
+        force: true,
+      );
+    }
+  }
+
+  ({GeoPoint point, String name})? _resolveLiveCabecera() {
+    final groupId = _resolveGroupId();
+    if (groupId == null || groupId.isEmpty) {
+      return null;
+    }
+    final members =
+        ref.read(groupMembersProvider(groupId)).asData?.value ??
+            const <GroupMember>[];
+    final locations =
+        ref.read(groupLocationsProvider(groupId)).valueOrNull ??
+            const <LiveLocation>[];
+    final now = DateTime.now();
+    for (final member in members) {
+      if (member.uid == widget.user.uid) {
+        continue;
+      }
+      if (member.rideRole != RideRole.cabecera) {
+        continue;
+      }
+      LiveLocation? loc;
+      for (final item in locations) {
+        if (item.uid == member.uid) {
+          loc = item;
+          break;
+        }
+      }
+      if (loc == null ||
+          !loc.hasSignal ||
+          isGpsStale(loc.updatedAt, now)) {
+        return null;
+      }
+      return (
+        point: GeoPoint(lat: loc.lat, lng: loc.lng),
+        name: member.displayName,
+      );
+    }
+    return null;
+  }
+
+  bool _shouldJoinSharedGroupRoute(GeoPoint position) {
+    final shared = _sharedGroupRoute;
+    if (shared == null || shared.polyline.length < 2) {
+      return false;
+    }
+    final cabecera = _resolveLiveCabecera();
+    if (cabecera != null) {
+      final toCabecera = Geolocator.distanceBetween(
+        position.lat,
+        position.lng,
+        cabecera.point.lat,
+        cabecera.point.lng,
+      );
+      if (toCabecera <= NavigationConstants.deviationThresholdMeters) {
+        return true;
+      }
+    }
+    final toPolyline = ref.read(routeDeviationServiceProvider).distanceToPolylineMeters(
+          position,
+          shared.polyline,
+        );
+    if (toPolyline > NavigationConstants.deviationThresholdMeters) {
+      return false;
+    }
+    final along = ref.read(routeGuidanceServiceProvider).distanceAlongRouteMeters(
+          position,
+          shared.polyline,
+        );
+    // Cerca del origen del pelotón: seguir a la cabecera, no reiniciar la ruta.
+    return along >= NavigationConstants.cabeceraChaseJoinMinAlongMeters;
+  }
+
+  GeoPoint _guidancePositionHint() {
+    final own = ref.read(ownDevicePositionProvider);
+    if (own != null) {
+      return GeoPoint(lat: own.lat, lng: own.lng);
+    }
+    return _simulator?.sample().position ?? _route.origin;
+  }
+
+  /// La simulación debe seguir el trazado nuevo desde el punto de fusión, no desde el km 0.
+  void _retargetSimulatorToRoute(NavigationRoute route, GeoPoint from) {
+    if (!_simulating && _simulator == null) {
+      return;
+    }
+    if (route.polyline.length < 2) {
+      return;
+    }
+    _simulator = RouteProgressSimulator(
+      polyline: route.polyline,
+      speedMps: _simulationSpeedKmh / 3.6,
+      initialDistanceAlongMeters: RouteProgressSimulator.distanceAlongNearest(
+        from,
+        route.polyline,
+      ),
+    );
+  }
+
+  Future<void> _joinSharedGroupRoute() async {
+    if (!mounted || !_chasingCabecera || _joiningSharedRoute) {
+      return;
+    }
+    _joiningSharedRoute = true;
+
+    final groupId = _resolveGroupId();
+    NavigationRoute? shared;
+    if (groupId != null && groupId.isNotEmpty) {
+      shared = ref.read(groupSharedRouteProvider(groupId)).asData?.value;
+    }
+    shared ??= _sharedGroupRoute ?? widget.sharedGroupRoute;
+    if (shared == null) {
+      _joiningSharedRoute = false;
+      return;
+    }
+    _sharedGroupRoute = shared;
+
+    final from = _guidancePositionHint();
+    _applyActiveRoute(
+      shared,
+      from: from,
+      speedMps: _simulating
+          ? _simulationSpeedKmh / 3.6
+          : (ref.read(ownDevicePositionProvider)?.speedMps ?? 0),
+      announceManeuver: false,
+    );
+    _retargetSimulatorToRoute(shared, from);
+    _chasingCabecera = false;
+    _cabeceraChaseTimer?.cancel();
+    _cabeceraChaseTimer = null;
+    _joiningSharedRoute = false;
+    unawaited(
+      ref
+          .read(navigationSessionProvider.notifier)
+          .announceManeuver('Ya estás en la ruta del grupo'),
+    );
+  }
+
+  Future<void> _refreshCabeceraChase() async {
+    if (!mounted || !_chasingCabecera || _arrived || _simulating) {
+      return;
+    }
+    final own = ref.read(ownDevicePositionProvider);
+    if (own != null) {
+      final position = GeoPoint(lat: own.lat, lng: own.lng);
+      if (_shouldJoinSharedGroupRoute(position)) {
+        await _joinSharedGroupRoute();
+        return;
+      }
+    }
+    final cabecera = _resolveLiveCabecera();
+    if (cabecera == null) {
+      return;
+    }
+    final last = _lastChaseTarget;
+    if (last != null) {
+      final moved = Geolocator.distanceBetween(
+        last.lat,
+        last.lng,
+        cabecera.point.lat,
+        cabecera.point.lng,
+      );
+      if (moved < NavigationConstants.arrivalThresholdMeters) {
+        return;
+      }
+    }
+    await _rerouteIfNeeded(force: true, announce: false);
+  }
+
+  Future<void> _onCabeceraMoved() async {
+    if (!_chasingCabecera || _arrived || _simulating || _rerouting) {
+      return;
+    }
+    final cabecera = _resolveLiveCabecera();
+    if (cabecera == null) {
+      return;
+    }
+    final last = _lastChaseTarget;
+    if (last != null) {
+      final moved = Geolocator.distanceBetween(
+        last.lat,
+        last.lng,
+        cabecera.point.lat,
+        cabecera.point.lng,
+      );
+      if (moved < NavigationConstants.cabeceraChaseRetargetMeters) {
+        return;
+      }
+    }
+    if (!_canRerouteNow) {
+      return;
+    }
+    await _rerouteIfNeeded(force: true, announce: false);
   }
 
   void _toggleSimulation() {
@@ -984,8 +1287,12 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
     final sample = simulator.advance(NavigationConstants.simulationTickInterval);
     _applySimulatedSample(sample);
     if (sample.finished) {
-      _stopSimulation(keepLastPosition: true);
-      _onArrived();
+      if (_chasingCabecera) {
+        unawaited(_joinSharedGroupRoute());
+      } else {
+        _stopSimulation(keepLastPosition: true);
+        _onArrived();
+      }
     }
   }
 
@@ -1147,6 +1454,7 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
       }
       final fingerprint =
           '${shared.id}|${shared.polyline.length}|${shared.durationSeconds}';
+      _sharedGroupRoute = shared;
       if (_lastSharedRouteFingerprint == null) {
         _lastSharedRouteFingerprint = fingerprint;
         return;
@@ -1155,6 +1463,9 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
         return;
       }
       _lastSharedRouteFingerprint = fingerprint;
+      if (_chasingCabecera) {
+        return;
+      }
       setState(() {
         _route = shared;
         _maneuverIndex = 0;
@@ -1163,6 +1474,12 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
         _hasJoinedRoute = false;
       });
       _updateGuidance();
+    });
+    ref.listen(groupLocationsProvider(sharedRouteGroupId), (previous, next) {
+      if (sharedRouteGroupId.isEmpty || !_chasingCabecera) {
+        return;
+      }
+      unawaited(_onCabeceraMoved());
     });
 
     final own = ref.watch(ownDevicePositionProvider);

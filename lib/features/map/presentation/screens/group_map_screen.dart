@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:loc_motos/core/constants/navigation_constants.dart';
 import 'package:loc_motos/core/utils/distance_format.dart';
 import 'package:loc_motos/core/utils/gps_status.dart';
 import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
@@ -18,6 +19,7 @@ import 'package:loc_motos/features/groups/domain/services/group_pack_proximity_t
 import 'package:loc_motos/features/groups/domain/services/group_ride_alert_feedback.dart';
 import 'package:loc_motos/features/groups/domain/services/group_incident_service.dart';
 import 'package:loc_motos/features/groups/presentation/providers/group_providers.dart';
+import 'package:loc_motos/features/groups/presentation/widgets/catch_up_cabecera_sheet.dart';
 import 'package:loc_motos/features/groups/presentation/widgets/group_incident_session_panel.dart';
 import 'package:loc_motos/features/groups/presentation/widgets/group_incident_widgets.dart';
 import 'package:loc_motos/features/groups/presentation/widgets/group_pack_list_sheet.dart';
@@ -337,17 +339,7 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
         followGroup: _followGroup,
         onNavigate: sharedRoute == null
             ? null
-            : () {
-                Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute<void>(
-                    builder: (_) => NavigationHudScreen(
-                      route: sharedRoute,
-                      user: widget.user,
-                    ),
-                  ),
-                  (route) => route.isFirst,
-                );
-              },
+            : () => unawaited(_openGroupNavigation(sharedRoute)),
         onOpenWaze: sharedRoute == null
             ? null
             : () => unawaited(
@@ -585,17 +577,9 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
                                           ),
                                         ),
                                       )
-                                  : () {
-                                      Navigator.of(context).pushAndRemoveUntil(
-                                        MaterialPageRoute<void>(
-                                          builder: (_) => NavigationHudScreen(
-                                            route: sharedRoute,
-                                            user: widget.user,
-                                          ),
-                                        ),
-                                        (route) => route.isFirst,
-                                      );
-                                    },
+                                  : () => unawaited(
+                                        _openGroupNavigation(sharedRoute),
+                                      ),
                             ),
                           ],
                         ],
@@ -1081,6 +1065,102 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
             point: GeoPoint(lat: point.latitude, lng: point.longitude),
           );
     } catch (_) {}
+  }
+
+  Future<void> _openGroupNavigation(NavigationRoute sharedRoute) async {
+    final own = ref.read(ownDevicePositionProvider);
+    final members =
+        ref.read(groupMembersProvider(widget.groupId)).asData?.value ??
+            const <GroupMember>[];
+    final locations =
+        ref.read(groupLocationsProvider(widget.groupId)).valueOrNull ??
+            const <LiveLocation>[];
+    final now = DateTime.now();
+
+    GroupMember? cabecera;
+    for (final member in members) {
+      if (member.uid == widget.user.uid) {
+        continue;
+      }
+      if (member.rideRole == RideRole.cabecera) {
+        cabecera = member;
+        break;
+      }
+    }
+    LiveLocation? cabeceraLoc;
+    if (cabecera != null) {
+      for (final location in locations) {
+        if (location.uid != cabecera.uid) {
+          continue;
+        }
+        if (location.hasSignal && !isGpsStale(location.updatedAt, now)) {
+          cabeceraLoc = location;
+        }
+        break;
+      }
+    }
+
+    CatchUpCabeceraChoice? choice;
+    if (own != null && cabecera != null && cabeceraLoc != null) {
+      final distanceToRoute =
+          ref.read(routeDeviationServiceProvider).distanceToPolylineMeters(
+                GeoPoint(lat: own.lat, lng: own.lng),
+                sharedRoute.polyline,
+              );
+      if (distanceToRoute > NavigationConstants.deviationThresholdMeters) {
+        choice = await showCatchUpCabeceraSheet(
+          context: context,
+          cabeceraName: cabecera.displayName,
+        );
+        if (!mounted || choice == null) {
+          return;
+        }
+      }
+    }
+
+    var hudRoute = sharedRoute;
+    final chase = choice == CatchUpCabeceraChoice.chase;
+    if (chase && own != null && cabecera != null && cabeceraLoc != null) {
+      final chaseFrom = own;
+      final chaseMember = cabecera;
+      final chaseLocation = cabeceraLoc;
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const PopScope(
+          canPop: false,
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      );
+      try {
+        hudRoute = await ref.read(navigationSessionProvider.notifier).planCatchUpRoute(
+              from: GeoPoint(lat: chaseFrom.lat, lng: chaseFrom.lng),
+              to: GeoPoint(lat: chaseLocation.lat, lng: chaseLocation.lng),
+              destinationLabel: chaseMember.displayName,
+            );
+      } catch (_) {
+        hudRoute = sharedRoute;
+      } finally {
+        if (mounted) {
+          Navigator.of(context, rootNavigator: true).pop();
+        }
+      }
+    }
+
+    if (!mounted) {
+      return;
+    }
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute<void>(
+        builder: (_) => NavigationHudScreen(
+          route: hudRoute,
+          user: widget.user,
+          chaseCabecera: chase,
+          sharedGroupRoute: chase ? sharedRoute : null,
+        ),
+      ),
+      (route) => route.isFirst,
+    );
   }
 
   Future<void> _openStopsSheet({required bool canManageStops}) async {

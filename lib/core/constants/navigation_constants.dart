@@ -127,6 +127,16 @@ abstract final class NavigationConstants {
   /// Distancia al destino para considerar llegada (metros).
   static const double arrivalThresholdMeters = 40;
 
+  /// Recálculo hacia la cabecera si el rezagado sale más tarde.
+  static const Duration cabeceraChaseRefresh = Duration(seconds: 25);
+
+  /// Si la cabecera se ha movido más que esto, adelantar el recálculo.
+  static const double cabeceraChaseRetargetMeters = 180;
+
+  /// No enganchar el trazado del grupo si el punto más cercano es el origen
+  /// (en simulación parece que la ruta “empieza de nuevo”).
+  static const double cabeceraChaseJoinMinAlongMeters = 150;
+
   /// No dar por llegada si aún queda más que esto a lo largo de la ruta
   /// (evita falsos positivos si el trazado pasa cerca del destino antes).
   static const double arrivalMaxAlongRemainingMeters = 120;
