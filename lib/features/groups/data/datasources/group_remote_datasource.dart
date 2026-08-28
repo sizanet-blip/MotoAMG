@@ -21,7 +21,7 @@ class GroupRemoteDataSource {
            database ??
            FirebaseDatabase.instanceFor(
              app: Firebase.app(),
-             databaseURL: DefaultFirebaseOptions.android.databaseURL,
+             databaseURL: DefaultFirebaseOptions.realtimeDatabaseUrl,
            );
 
   final FirebaseFirestore _firestore;

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>128161523972-vg8amrsabjr0l2anj7jimop61p1uue61.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.128161523972-vg8amrsabjr0l2anj7jimop61p1uue61</string>
+	<key>ANDROID_CLIENT_ID</key>
+	<string>128161523972-o149r7fcls53tiamsll9090u6prkajak.apps.googleusercontent.com</string>
+	<key>API_KEY</key>
+	<string>AIzaSyB4iV5BZY98Ux1vnWAB56jr8nNGRa-8LIE</string>
+	<key>GCM_SENDER_ID</key>
+	<string>128161523972</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.locmotos.locmotos</string>
+	<key>PROJECT_ID</key>
+	<string>locmotos-project</string>
+	<key>STORAGE_BUCKET</key>
+	<string>locmotos-project.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:128161523972:ios:096cefb459ae77dcedc851</string>
+	<key>DATABASE_URL</key>
+	<string>https://locmotos-project-default-rtdb.europe-west1.firebasedatabase.app</string>
+</dict>
+</plist>

@@ -44,6 +44,10 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
+# Firebase CLI debug dump
+firebase-debug.log
+firebase-debug.*.log
+
 # Mapas offline locales (PMTiles pesados) y CLI de extracción
 /maps/offline/
 /tools/pmtiles/

@@ -50,11 +50,12 @@ dev_dependencies:
 
 flutter_launcher_icons:
   android: true
-  ios: false
+  ios: true
   image_path: assets/branding/locmotos-app-icon.png
   adaptive_icon_background: "#1A1D21"
   adaptive_icon_foreground: assets/branding/locmotos-app-icon.png
   adaptive_icon_foreground_inset: 16
+  remove_alpha_ios: true
 
 flutter:
   uses-material-design: true

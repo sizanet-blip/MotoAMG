@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:loc_motos/core/constants/app_constants.dart';
 import 'package:loc_motos/features/auth/data/models/user_model.dart';
@@ -25,12 +26,15 @@ class AuthRemoteDataSource {
            database ??
            FirebaseDatabase.instanceFor(
              app: Firebase.app(),
-             databaseURL: DefaultFirebaseOptions.android.databaseURL,
+             databaseURL: DefaultFirebaseOptions.realtimeDatabaseUrl,
            ),
        _googleSignIn =
            googleSignIn ??
            GoogleSignIn(
              scopes: const ['email'],
+             clientId: defaultTargetPlatform == TargetPlatform.iOS
+                 ? DefaultFirebaseOptions.ios.iosClientId
+                 : null,
              serverClientId:
                  '128161523972-povb28ju9fbrcq0jsg7ljlcj7sbef1an.apps.googleusercontent.com',
            );
@@ -75,7 +79,8 @@ class AuthRemoteDataSource {
       if (error.code == 'invalid-credential') {
         throw const AuthException(
           'No se pudo validar la cuenta de Google. '
-          'Añade el SHA-1 de debug en Firebase.',
+          'En Android añade el SHA-1 de debug en Firebase; '
+          'en iPhone comprueba el URL scheme de Google Sign-In.',
         );
       }
       throw AuthException(_mapFirebaseError(error));

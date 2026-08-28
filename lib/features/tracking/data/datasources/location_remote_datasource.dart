@@ -12,7 +12,7 @@ class LocationRemoteDataSource {
           database ??
           FirebaseDatabase.instanceFor(
             app: Firebase.app(),
-            databaseURL: DefaultFirebaseOptions.android.databaseURL,
+            databaseURL: DefaultFirebaseOptions.realtimeDatabaseUrl,
           );
 
   final FirebaseDatabase _database;

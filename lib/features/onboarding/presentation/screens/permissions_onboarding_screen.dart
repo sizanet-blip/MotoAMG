@@ -96,6 +96,16 @@ class _PermissionsOnboardingScreenState
     if (status.isDenied) {
       status = await Permission.locationWhenInUse.request();
     }
+    if (status.isGranted &&
+        defaultTargetPlatform == TargetPlatform.iOS) {
+      var always = await Permission.locationAlways.status;
+      if (always.isDenied) {
+        always = await Permission.locationAlways.request();
+      }
+      if (always.isPermanentlyDenied && mounted) {
+        await openAppSettings();
+      }
+    }
     if (status.isPermanentlyDenied && mounted) {
       await openAppSettings();
     }
@@ -178,8 +188,12 @@ class _PermissionsOnboardingScreenState
                 icon: Icons.location_on_outlined,
                 title: 'Ubicación',
                 description:
-                    'Muestra dónde estás en el mapa y comparte tu posición '
-                    'con el pelotón mientras circulas.',
+                    defaultTargetPlatform == TargetPlatform.iOS
+                        ? 'Muestra dónde estás en el mapa y comparte tu '
+                            'posición con el pelotón, también con la pantalla '
+                            'bloqueada (elige «Siempre» cuando iOS lo pida).'
+                        : 'Muestra dónde estás en el mapa y comparte tu posición '
+                            'con el pelotón mientras circulas.',
                 granted: _locationGranted,
                 checking: _checking,
                 actionLabel: _locationGranted

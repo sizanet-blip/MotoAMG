@@ -15,7 +15,19 @@ import 'package:flutter/foundation.dart'
 /// );
 /// ```
 class DefaultFirebaseOptions {
-  static bool get isConfigured => android.apiKey.isNotEmpty;
+  static bool get isConfigured {
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.android:
+        return android.apiKey.isNotEmpty;
+      case TargetPlatform.iOS:
+        return ios.apiKey.isNotEmpty;
+      default:
+        return false;
+    }
+  }
+
+  static const realtimeDatabaseUrl =
+      'https://locmotos-project-default-rtdb.europe-west1.firebasedatabase.app';
 
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
@@ -27,6 +39,8 @@ class DefaultFirebaseOptions {
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
         return android;
+      case TargetPlatform.iOS:
+        return ios;
       default:
         throw UnsupportedError(
           'DefaultFirebaseOptions are not supported for this platform.',
@@ -40,7 +54,18 @@ class DefaultFirebaseOptions {
     messagingSenderId: '128161523972',
     projectId: 'locmotos-project',
     storageBucket: 'locmotos-project.firebasestorage.app',
-    databaseURL:
-        'https://locmotos-project-default-rtdb.europe-west1.firebasedatabase.app',
+    databaseURL: realtimeDatabaseUrl,
+  );
+
+  static const FirebaseOptions ios = FirebaseOptions(
+    apiKey: 'AIzaSyB4iV5BZY98Ux1vnWAB56jr8nNGRa-8LIE',
+    appId: '1:128161523972:ios:096cefb459ae77dcedc851',
+    messagingSenderId: '128161523972',
+    projectId: 'locmotos-project',
+    storageBucket: 'locmotos-project.firebasestorage.app',
+    databaseURL: realtimeDatabaseUrl,
+    iosBundleId: 'com.locmotos.locmotos',
+    iosClientId:
+        '128161523972-vg8amrsabjr0l2anj7jimop61p1uue61.apps.googleusercontent.com',
   );
 }

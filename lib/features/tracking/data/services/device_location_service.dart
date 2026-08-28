@@ -28,10 +28,19 @@ class DeviceLocationService {
       );
     }
 
-    // Android 13+: sin notificación el sistema puede parar el servicio en segundo plano.
-    final notification = await Permission.notification.status;
-    if (notification.isDenied) {
-      await Permission.notification.request();
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      var always = await Permission.locationAlways.status;
+      if (always.isDenied) {
+        always = await Permission.locationAlways.request();
+      }
+    }
+
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      // Android 13+: sin notificación el sistema puede parar el servicio en segundo plano.
+      final notification = await Permission.notification.status;
+      if (notification.isDenied) {
+        await Permission.notification.request();
+      }
     }
     return true;
   }
@@ -67,6 +76,16 @@ class DeviceLocationService {
           enableWakeLock: true,
           enableWifiLock: true,
         ),
+      );
+    }
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      return AppleSettings(
+        accuracy: LocationAccuracy.bestForNavigation,
+        activityType: ActivityType.automotiveNavigation,
+        distanceFilter: 5,
+        pauseLocationUpdatesAutomatically: false,
+        showBackgroundLocationIndicator: true,
+        allowBackgroundLocationUpdates: true,
       );
     }
     return const LocationSettings(
@@ -126,6 +145,16 @@ class DeviceLocationService {
           enableWakeLock: true,
           enableWifiLock: true,
         ),
+      );
+    }
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      return AppleSettings(
+        accuracy: LocationAccuracy.bestForNavigation,
+        activityType: ActivityType.automotiveNavigation,
+        distanceFilter: AppConstants.locationDistanceFilterMeters,
+        pauseLocationUpdatesAutomatically: false,
+        showBackgroundLocationIndicator: true,
+        allowBackgroundLocationUpdates: true,
       );
     }
     return const LocationSettings(
