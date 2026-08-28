@@ -4,6 +4,9 @@ abstract final class AppConstants {
   static const String appIconAsset = 'assets/branding/locmotos-app-icon.png';
   static const String appWordmarkAsset = 'assets/branding/locmotos-wordmark.png';
 
+  static const String colorThemeBox = 'app_color_theme';
+  static const String colorThemeKey = 'palette_v1';
+
   /// Intervalo de envío de GPS al nodo RTDB `live_locations`.
   static const Duration locationUpdateInterval = Duration(seconds: 3);
 

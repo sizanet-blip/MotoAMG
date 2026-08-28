@@ -5,7 +5,10 @@ import 'package:loc_motos/features/navigation/data/datasources/spain_fuel_dataso
 import 'package:loc_motos/features/navigation/data/datasources/spain_radar_datasource.dart';
 import 'package:loc_motos/features/navigation/data/repositories/map_appearance_repository.dart';
 import 'package:loc_motos/features/navigation/presentation/providers/navigation_providers.dart';
+import 'package:loc_motos/core/theme/app_color_theme.dart';
+import 'package:loc_motos/core/theme/app_color_theme_provider.dart';
 import 'package:loc_motos/features/settings/presentation/screens/alert_preferences_screen.dart';
+import 'package:loc_motos/features/settings/presentation/screens/app_theme_settings_screen.dart';
 import 'package:loc_motos/features/settings/presentation/screens/fuel_cache_settings_screen.dart';
 import 'package:loc_motos/features/settings/presentation/screens/group_ride_settings_screen.dart';
 import 'package:loc_motos/features/settings/presentation/screens/hud_safety_settings_screen.dart';
@@ -20,6 +23,7 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final appearance = ref.watch(mapAppearanceProvider);
+    final colorTheme = ref.watch(appColorThemeProvider);
     final fuelStatus = ref.watch(spainFuelCacheStatusProvider).asData?.value;
     final radarStatus = ref.watch(spainRadarCacheStatusProvider).asData?.value;
     return Scaffold(
@@ -27,6 +31,19 @@ class SettingsScreen extends ConsumerWidget {
       body: ListView(
         children: [
           const SizedBox(height: 8),
+          ListTile(
+            leading: const Icon(Icons.palette_outlined),
+            title: const Text('Tema de la app'),
+            subtitle: Text(colorTheme.label),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const AppThemeSettingsScreen(),
+                ),
+              );
+            },
+          ),
           ListTile(
             leading: const Icon(Icons.notifications_active_outlined),
             title: const Text('Avisos de navegación'),

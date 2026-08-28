@@ -3,6 +3,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:loc_motos/core/constants/app_constants.dart';
 import 'package:loc_motos/core/theme/app_theme.dart';
+import 'package:loc_motos/core/theme/app_color_theme_provider.dart';
 import 'package:loc_motos/features/auth/presentation/widgets/auth_gate.dart';
 import 'package:loc_motos/features/navigation/presentation/providers/navigation_providers.dart';
 
@@ -26,6 +27,7 @@ class _LocMotosRoot extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     ref.watch(androidGraphicsCompatProvider);
+    final palette = ref.watch(appColorThemeProvider);
     return MaterialApp(
       title: AppConstants.appName,
       debugShowCheckedModeBanner: false,
@@ -36,8 +38,9 @@ class _LocMotosRoot extends ConsumerWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      theme: AppTheme.light,
-      darkTheme: AppTheme.dark,
+      theme: AppTheme.light(palette),
+      darkTheme: AppTheme.dark(palette),
+      themeMode: ThemeMode.system,
       home: const AuthGate(),
     );
   }
