@@ -25,6 +25,7 @@ class GroupIncidentSessionPanel extends ConsumerStatefulWidget {
     this.drivingMode = false,
     this.embedded = false,
     this.vertical = false,
+    this.showActions = true,
   });
 
   final String groupId;
@@ -42,6 +43,9 @@ class GroupIncidentSessionPanel extends ConsumerStatefulWidget {
 
   /// Landscape: columna de iconos en el lateral del mapa.
   final bool vertical;
+
+  /// Barra de botones de aviso. False = solo el mensaje/confirmación.
+  final bool showActions;
 
   @override
   ConsumerState<GroupIncidentSessionPanel> createState() =>
@@ -126,6 +130,7 @@ class _GroupIncidentSessionPanelState
         if (bannerIncident != null) ...[
           GroupIncidentBanner(
             incident: bannerIncident,
+            compact: widget.compact || widget.vertical,
             onDismiss: () {
               setState(() {
                 _dismissedBannerIds.add(_bannerId(bannerIncident));
@@ -174,7 +179,8 @@ class _GroupIncidentSessionPanelState
           ),
           SizedBox(height: widget.compact ? 4 : 8),
         ],
-        GroupIncidentActionsBar(
+        if (widget.showActions)
+          GroupIncidentActionsBar(
           compact: widget.compact,
           embedded: widget.embedded,
           vertical: widget.vertical,

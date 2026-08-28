@@ -22,7 +22,19 @@ class NavigationVoiceService {
       await _tts.setAudioAttributesForNavigation();
       await _tts.setQueueMode(1);
     } else if (defaultTargetPlatform == TargetPlatform.iOS) {
-      await _tts.setSharedInstance(true);
+      // Igual que Android: baja la música/radio solo mientras habla.
+      await _tts.setIosAudioCategory(
+        IosTextToSpeechAudioCategory.playback,
+        [
+          IosTextToSpeechAudioCategoryOptions.duckOthers,
+          IosTextToSpeechAudioCategoryOptions
+              .interruptSpokenAudioAndMixWithOthers,
+          IosTextToSpeechAudioCategoryOptions.allowBluetooth,
+          IosTextToSpeechAudioCategoryOptions.allowBluetoothA2DP,
+        ],
+        IosTextToSpeechAudioMode.voicePrompt,
+      );
+      await _tts.autoStopSharedSession(true);
     }
     _ready = true;
   }
@@ -54,6 +66,9 @@ class NavigationVoiceService {
     await _tts.stop();
     if (defaultTargetPlatform == TargetPlatform.android) {
       await _tts.speak(text, focus: true);
+    } else if (defaultTargetPlatform == TargetPlatform.iOS) {
+      await _tts.setSharedInstance(true);
+      await _tts.speak(text);
     } else {
       await _tts.speak(text);
     }

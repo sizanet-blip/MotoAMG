@@ -359,6 +359,7 @@ class GroupIncidentBanner extends StatelessWidget {
     this.onDismiss,
     this.isOwnIncident = false,
     this.onClear,
+    this.compact = false,
   });
 
   final GroupIncident incident;
@@ -369,6 +370,7 @@ class GroupIncidentBanner extends StatelessWidget {
   /// El aviso es tuyo → botón «Ya estoy OK» (quita el aviso para todo el grupo).
   final bool isOwnIncident;
   final VoidCallback? onClear;
+  final bool compact;
 
   Color get _color {
     if (incident.type != GroupIncidentType.emergencia) {
@@ -402,28 +404,41 @@ class GroupIncidentBanner extends StatelessWidget {
       color: _color,
       borderRadius: BorderRadius.circular(12),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
+        padding: EdgeInsets.fromLTRB(
+          compact ? 8 : 12,
+          compact ? 6 : 8,
+          compact ? 2 : 4,
+          compact ? 6 : 8,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
               children: [
-                const Icon(Icons.warning_amber_rounded, color: Colors.white),
+                Icon(
+                  Icons.warning_amber_rounded,
+                  color: Colors.white,
+                  size: compact ? 18 : 24,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     '$name · $title',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w800,
-                      fontSize: 13,
+                      fontSize: compact ? 12 : 13,
                     ),
+                    maxLines: compact ? 2 : 3,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 if (onDismiss != null)
                   IconButton(
                     tooltip: 'Ocultar en mi pantalla (el aviso sigue activo)',
                     onPressed: onDismiss,
+                    visualDensity: VisualDensity.compact,
+                    iconSize: compact ? 18 : 24,
                     icon: const Icon(Icons.close, color: Colors.white),
                   ),
               ],
@@ -464,17 +479,22 @@ class GroupIncidentBanner extends StatelessWidget {
               ),
             ],
             if (isOwnIncident && onClear != null) ...[
-              const SizedBox(height: 8),
+              SizedBox(height: compact ? 6 : 8),
               FilledButton(
                 style: FilledButton.styleFrom(
                   backgroundColor: Colors.white,
                   foregroundColor: _color,
-                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  padding: EdgeInsets.symmetric(vertical: compact ? 6 : 10),
+                  minimumSize: Size(0, compact ? 32 : 40),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
                 onPressed: onClear,
-                child: const Text(
-                  'Ya estoy OK · quitar aviso',
-                  style: TextStyle(fontWeight: FontWeight.w800),
+                child: Text(
+                  compact ? 'Ya estoy OK' : 'Ya estoy OK · quitar aviso',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: compact ? 12 : 14,
+                  ),
                   textAlign: TextAlign.center,
                 ),
               ),

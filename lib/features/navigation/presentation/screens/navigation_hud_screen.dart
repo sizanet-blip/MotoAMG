@@ -1400,47 +1400,67 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
               if (landscape && !_arrived) ...[
                 Positioned(
                   left: 10,
+                  right: 12,
                   bottom: bottomInset + 8,
-                  width: 268,
-                  child: Material(
-                    elevation: 6,
-                    color: (_speedLimitKmh != null &&
-                            _speedLimitKmh! > 0 &&
-                            speedKmh > _speedLimitKmh! + 1)
-                        ? const Color(0xFF3B1010).withValues(alpha: 0.96)
-                        : NavigationHudTheme.panel.withValues(alpha: 0.96),
-                    borderRadius: BorderRadius.circular(14),
-                    child: NavigationStatusBar(
-                        compact: true,
-                        embedded: true,
-                        speedKmh: speedKmh,
-                        speedLimitKmh: _speedLimitKmh,
-                        eta: eta,
-                        remaining: remaining,
-                        distanceLabel:
-                            formatRideDistance(_routeRemainingMeters),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      SizedBox(
+                        width: 268,
+                        child: Material(
+                          elevation: 6,
+                          color: (_speedLimitKmh != null &&
+                                  _speedLimitKmh! > 0 &&
+                                  speedKmh > _speedLimitKmh! + 1)
+                              ? const Color(0xFF3B1010).withValues(alpha: 0.96)
+                              : NavigationHudTheme.panel.withValues(alpha: 0.96),
+                          borderRadius: BorderRadius.circular(14),
+                          child: NavigationStatusBar(
+                            compact: true,
+                            embedded: true,
+                            speedKmh: speedKmh,
+                            speedLimitKmh: _speedLimitKmh,
+                            eta: eta,
+                            remaining: remaining,
+                            distanceLabel:
+                                formatRideDistance(_routeRemainingMeters),
+                          ),
+                        ),
                       ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: (groupId ?? '').isNotEmpty
+                            ? GroupIncidentSessionPanel(
+                                compact: true,
+                                embedded: true,
+                                drivingMode: true,
+                                showBanner: true,
+                                showActions: false,
+                                groupId: groupId!,
+                                user: widget.user,
+                              )
+                            : const SizedBox.shrink(),
+                      ),
+                      if (_showSimulatorControls) ...[
+                        const SizedBox(width: 8),
+                        _LandscapeSimBar(
+                          simulating: _simulating,
+                          hasSimulator: _simulator != null,
+                          speedKmh: _simulationSpeedKmh,
+                          onBack: _stop,
+                          onToggle: _toggleSimulation,
+                          onSpeedChanged: (value) {
+                            setState(() => _simulationSpeedKmh = value);
+                            final simulator = _simulator;
+                            if (simulator != null) {
+                              simulator.speedMps = value / 3.6;
+                            }
+                          },
+                        ),
+                      ],
+                    ],
                   ),
                 ),
-                if (_showSimulatorControls)
-                  Positioned(
-                    right: 12,
-                    bottom: bottomInset + 8,
-                    child: _LandscapeSimBar(
-                      simulating: _simulating,
-                      hasSimulator: _simulator != null,
-                      speedKmh: _simulationSpeedKmh,
-                      onBack: _stop,
-                      onToggle: _toggleSimulation,
-                      onSpeedChanged: (value) {
-                        setState(() => _simulationSpeedKmh = value);
-                        final simulator = _simulator;
-                        if (simulator != null) {
-                          simulator.speedMps = value / 3.6;
-                        }
-                      },
-                    ),
-                  ),
               ] else if (!landscape)
                 Positioned(
                   left: 0,
