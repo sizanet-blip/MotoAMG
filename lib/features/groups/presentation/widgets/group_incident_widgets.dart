@@ -18,6 +18,7 @@ class GroupIncidentActionsBar extends StatelessWidget {
     this.compact = false,
     this.embedded = false,
     this.vertical = false,
+    this.tight = false,
   });
 
   final bool hasOwnAlert;
@@ -38,13 +39,18 @@ class GroupIncidentActionsBar extends StatelessWidget {
   /// Landscape: columna de iconos en el lateral.
   final bool vertical;
 
+  /// Iconos pequeños, sin Expanded (una fila junto a otros botones).
+  final bool tight;
+
   @override
   Widget build(BuildContext context) {
     final content = vertical
         ? _buildVertical(context)
-        : compact
-            ? _buildCompact(context)
-            : _buildExpanded(context);
+        : tight
+            ? _buildTight(context)
+            : compact
+                ? _buildCompact(context)
+                : _buildExpanded(context);
     if (embedded) {
       return content;
     }
@@ -175,6 +181,73 @@ class GroupIncidentActionsBar extends StatelessWidget {
             ),
           ],
         ),
+    );
+  }
+
+  Widget _buildTight(BuildContext context) {
+    Widget btn({
+      required Color color,
+      required IconData icon,
+      required String tooltip,
+      required VoidCallback? onPressed,
+    }) {
+      return IconButton.filled(
+        tooltip: tooltip,
+        onPressed: onPressed,
+        style: IconButton.styleFrom(
+          backgroundColor: color,
+          foregroundColor: Colors.white,
+          visualDensity: VisualDensity.compact,
+          minimumSize: const Size(32, 32),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          padding: EdgeInsets.zero,
+        ),
+        icon: Icon(icon, size: 18),
+      );
+    }
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (hasOwnAlert) ...[
+          btn(
+            color: const Color(0xFF2E7D32),
+            icon: Icons.check_circle_rounded,
+            tooltip: 'Ya estoy OK',
+            onPressed: enabled ? onClear : null,
+          ),
+          const SizedBox(width: 4),
+        ],
+        if (showWait && onWait != null) ...[
+          btn(
+            color: const Color(0xFF8E24AA),
+            icon: Icons.groups_rounded,
+            tooltip: 'Esperar / reunir',
+            onPressed: enabled ? onWait : null,
+          ),
+          const SizedBox(width: 4),
+        ],
+        btn(
+          color: const Color(0xFFC62828),
+          icon: Icons.emergency_rounded,
+          tooltip: 'Emergencia',
+          onPressed: enabled ? onEmergency : null,
+        ),
+        const SizedBox(width: 4),
+        btn(
+          color: const Color(0xFFEF6C00),
+          icon: Icons.car_crash_outlined,
+          tooltip: 'Avería',
+          onPressed: enabled ? onBreakdown : null,
+        ),
+        const SizedBox(width: 4),
+        btn(
+          color: const Color(0xFF1565C0),
+          icon: Icons.person_search_rounded,
+          tooltip: 'Separado',
+          onPressed: enabled ? onSeparated : null,
+        ),
+      ],
     );
   }
 

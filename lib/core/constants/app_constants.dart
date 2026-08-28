@@ -7,6 +7,9 @@ abstract final class AppConstants {
   static const String colorThemeBox = 'app_color_theme';
   static const String colorThemeKey = 'palette_v1';
 
+  static const String onboardingBox = 'app_onboarding';
+  static const String onboardingCompleteKey = 'permissions_v1';
+
   /// Intervalo de envío de GPS al nodo RTDB `live_locations`.
   static const Duration locationUpdateInterval = Duration(seconds: 3);
 
@@ -79,4 +82,5 @@ abstract final class AppConstants {
   // --- Realtime Database ---
   static const String liveLocationsPath = 'live_locations';
   static const String groupAlertsPath = 'group_alerts';
+  static const String groupStopsPath = 'group_stops';
 }

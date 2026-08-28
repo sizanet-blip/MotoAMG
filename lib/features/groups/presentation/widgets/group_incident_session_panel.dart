@@ -25,6 +25,7 @@ class GroupIncidentSessionPanel extends ConsumerStatefulWidget {
     this.drivingMode = false,
     this.embedded = false,
     this.vertical = false,
+    this.tight = false,
     this.showActions = true,
   });
 
@@ -43,6 +44,9 @@ class GroupIncidentSessionPanel extends ConsumerStatefulWidget {
 
   /// Landscape: columna de iconos en el lateral del mapa.
   final bool vertical;
+
+  /// Landscape: iconos pequeños en una fila, sin estirar.
+  final bool tight;
 
   /// Barra de botones de aviso. False = solo el mensaje/confirmación.
   final bool showActions;
@@ -123,7 +127,7 @@ class _GroupIncidentSessionPanelState
 
     return Column(
       mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: widget.vertical
+      crossAxisAlignment: widget.vertical || widget.tight
           ? CrossAxisAlignment.center
           : CrossAxisAlignment.stretch,
       children: [
@@ -184,6 +188,7 @@ class _GroupIncidentSessionPanelState
           compact: widget.compact,
           embedded: widget.embedded,
           vertical: widget.vertical,
+          tight: widget.tight,
           hasOwnAlert: ownIncident != null || _pendingIncident != null,
           enabled: !_incidentBusy,
           showWait: canAskWait,

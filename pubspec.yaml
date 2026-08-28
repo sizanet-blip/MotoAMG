@@ -37,6 +37,7 @@ dependencies:
   wakelock_plus: ^1.7.0
   screen_brightness: ^2.1.11
   url_launcher: ^6.3.2
+  firebase_crashlytics: ^4.3.10
 
 dev_dependencies:
   flutter_test:

@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:loc_motos/core/constants/app_constants.dart';
 import 'package:loc_motos/core/theme/app_theme.dart';
 import 'package:loc_motos/core/theme/app_color_theme_provider.dart';
-import 'package:loc_motos/features/auth/presentation/widgets/auth_gate.dart';
+import 'package:loc_motos/features/onboarding/presentation/widgets/app_bootstrap.dart';
 import 'package:loc_motos/features/navigation/presentation/providers/navigation_providers.dart';
 
 class LocMotosApp extends StatelessWidget {
@@ -41,7 +41,7 @@ class _LocMotosRoot extends ConsumerWidget {
       theme: AppTheme.light(palette),
       darkTheme: AppTheme.dark(palette),
       themeMode: ThemeMode.system,
-      home: const AuthGate(),
+      home: const AppBootstrap(),
     );
   }
 }

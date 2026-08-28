@@ -45,6 +45,7 @@ class GroupPackAlertPreferences extends Equatable {
     this.farMeters = AppConstants.groupFarAlertMeters,
     this.mateDisplayMode = GroupMateDisplayMode.all,
     this.showGroupOnNavigation = true,
+    this.preferExternalNavigation = false,
     this.packAlertsMutedUntil,
   });
 
@@ -69,6 +70,9 @@ class GroupPackAlertPreferences extends Equatable {
   /// Si al abrir la navegación del grupo se muestran las motos por defecto.
   final bool showGroupOnNavigation;
 
+  /// Navegar con Waze/Maps en lugar del HUD de LocMotos.
+  final bool preferExternalNavigation;
+
   /// Hasta cuándo están silenciados los avisos de distancia (no emergencias).
   final DateTime? packAlertsMutedUntil;
 
@@ -89,6 +93,7 @@ class GroupPackAlertPreferences extends Equatable {
     double? farMeters,
     GroupMateDisplayMode? mateDisplayMode,
     bool? showGroupOnNavigation,
+    bool? preferExternalNavigation,
     DateTime? packAlertsMutedUntil,
     bool clearPackAlertsMute = false,
   }) {
@@ -107,6 +112,8 @@ class GroupPackAlertPreferences extends Equatable {
       mateDisplayMode: mateDisplayMode ?? this.mateDisplayMode,
       showGroupOnNavigation:
           showGroupOnNavigation ?? this.showGroupOnNavigation,
+      preferExternalNavigation:
+          preferExternalNavigation ?? this.preferExternalNavigation,
       packAlertsMutedUntil: clearPackAlertsMute
           ? null
           : (packAlertsMutedUntil ?? this.packAlertsMutedUntil),
@@ -119,6 +126,7 @@ class GroupPackAlertPreferences extends Equatable {
         'farMeters': farMeters,
         'mateDisplayMode': mateDisplayMode.storageValue,
         'showGroupOnNavigation': showGroupOnNavigation,
+        'preferExternalNavigation': preferExternalNavigation,
         if (packAlertsMutedUntil != null)
           'packAlertsMutedUntil': packAlertsMutedUntil!.toIso8601String(),
       };
@@ -137,6 +145,8 @@ class GroupPackAlertPreferences extends Equatable {
         json['mateDisplayMode']?.toString(),
       ),
       showGroupOnNavigation: json['showGroupOnNavigation'] as bool? ?? true,
+      preferExternalNavigation:
+          json['preferExternalNavigation'] as bool? ?? false,
       packAlertsMutedUntil: mutedRaw == null || mutedRaw.isEmpty
           ? null
           : DateTime.tryParse(mutedRaw),
@@ -150,6 +160,7 @@ class GroupPackAlertPreferences extends Equatable {
         farMeters,
         mateDisplayMode,
         showGroupOnNavigation,
+        preferExternalNavigation,
         packAlertsMutedUntil,
       ];
 }

@@ -42,6 +42,17 @@ class GroupRideSettingsScreen extends ConsumerWidget {
             onChanged: (value) =>
                 unawaited(controller.setShowGroupOnNavigation(value)),
           ),
+          SwitchListTile(
+            secondary: const Icon(Icons.navigation_outlined),
+            title: const Text('Navegar con Waze o Google Maps'),
+            subtitle: const Text(
+              'En el mapa de grupo verás Waze/Maps como opción principal '
+              'y LocMotos solo para seguir al pelotón.',
+            ),
+            value: prefs.preferExternalNavigation,
+            onChanged: (value) =>
+                unawaited(controller.setPreferExternalNavigation(value)),
+          ),
           const Divider(height: 24),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),

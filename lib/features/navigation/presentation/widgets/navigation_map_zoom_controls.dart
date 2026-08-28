@@ -6,11 +6,14 @@ class NavigationMapZoomControls extends StatelessWidget {
   const NavigationMapZoomControls({
     super.key,
     required this.controller,
+    this.onZoom,
   });
 
   final MapLibreMapController controller;
+  final VoidCallback? onZoom;
 
   Future<void> _zoomBy(double delta) async {
+    onZoom?.call();
     await controller.animateCamera(
       CameraUpdate.zoomBy(delta),
       duration: const Duration(milliseconds: 200),

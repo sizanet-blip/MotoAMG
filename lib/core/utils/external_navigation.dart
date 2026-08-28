@@ -1,0 +1,17 @@
+import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
+
+/// Enlaces para abrir Waze o Google Maps con un destino.
+abstract final class ExternalNavigation {
+  static Uri wazeTo(GeoPoint point) => Uri.parse(
+        'https://waze.com/ul?ll=${point.lat},${point.lng}&navigate=yes',
+      );
+
+  static Uri googleMapsNavigationTo(GeoPoint point) => Uri.parse(
+        'google.navigation:q=${point.lat},${point.lng}',
+      );
+
+  static Uri googleMapsWebTo(GeoPoint point) => Uri.parse(
+        'https://www.google.com/maps/dir/?api=1'
+        '&destination=${point.lat},${point.lng}&travelmode=driving',
+      );
+}

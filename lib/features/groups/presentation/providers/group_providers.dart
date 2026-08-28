@@ -2,11 +2,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
 import 'package:loc_motos/features/auth/presentation/providers/auth_providers.dart';
 import 'package:loc_motos/features/groups/data/datasources/group_incident_remote_datasource.dart';
+import 'package:loc_motos/features/groups/data/datasources/group_stop_remote_datasource.dart';
 import 'package:loc_motos/features/groups/data/datasources/group_remote_datasource.dart';
 import 'package:loc_motos/features/groups/data/repositories/group_pack_alert_repository.dart';
 import 'package:loc_motos/features/groups/data/repositories/group_repository_impl.dart';
 import 'package:loc_motos/features/groups/domain/entities/group_incident.dart';
 import 'package:loc_motos/features/groups/domain/entities/group_member.dart';
+import 'package:loc_motos/features/groups/domain/entities/group_stop.dart';
 import 'package:loc_motos/features/groups/domain/entities/group_membership.dart';
 import 'package:loc_motos/features/groups/domain/entities/ride_group.dart';
 import 'package:loc_motos/features/groups/domain/entities/ride_role.dart';
@@ -68,6 +70,10 @@ class GroupPackAlertController extends Notifier<GroupPackAlertPreferences> {
     return _persist(state.copyWith(showGroupOnNavigation: value));
   }
 
+  Future<void> setPreferExternalNavigation(bool value) {
+    return _persist(state.copyWith(preferExternalNavigation: value));
+  }
+
   Future<void> mutePackAlertsFor(Duration duration) {
     final until = DateTime.now().add(duration);
     return _persist(state.copyWith(packAlertsMutedUntil: until));
@@ -88,6 +94,16 @@ final groupIncidentDatasourceProvider =
 final groupIncidentsProvider =
     StreamProvider.family<List<GroupIncident>, String>((ref, groupId) {
   return ref.watch(groupIncidentDatasourceProvider).watchGroup(groupId);
+});
+
+final groupStopDatasourceProvider =
+    Provider<GroupStopRemoteDataSource>((ref) {
+  return GroupStopRemoteDataSource();
+});
+
+final groupStopsProvider =
+    StreamProvider.family<List<GroupStop>, String>((ref, groupId) {
+  return ref.watch(groupStopDatasourceProvider).watchGroup(groupId);
 });
 
 final liveUserProvider = StreamProvider.family<AppUser?, String>((ref, uid) {

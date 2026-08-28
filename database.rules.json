@@ -15,6 +15,14 @@
           ".write": "auth != null && auth.uid === $uid && (!newData.exists() || newData.hasChildren())"
         }
       }
+    },
+    "group_stops": {
+      "$groupId": {
+        ".read": "auth != null",
+        "$stopId": {
+          ".write": "auth != null"
+        }
+      }
     }
   }
 }

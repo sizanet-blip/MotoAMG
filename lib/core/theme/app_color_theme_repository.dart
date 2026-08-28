@@ -14,11 +14,11 @@ class AppColorThemeRepository {
     final box = await _open();
     final raw = box.get(AppConstants.colorThemeKey);
     if (raw == null || raw.isEmpty) {
-      return AppColorTheme.classic;
+      return AppColorTheme.cyan;
     }
     return AppColorTheme.values.firstWhere(
       (theme) => theme.name == raw,
-      orElse: () => AppColorTheme.classic,
+      orElse: () => AppColorTheme.cyan,
     );
   }
 

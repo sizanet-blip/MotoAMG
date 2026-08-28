@@ -15,7 +15,7 @@ class AppColorThemeController extends Notifier<AppColorTheme> {
   @override
   AppColorTheme build() {
     Future.microtask(_hydrate);
-    return AppColorTheme.classic;
+    return AppColorTheme.cyan;
   }
 
   Future<void> _hydrate() async {

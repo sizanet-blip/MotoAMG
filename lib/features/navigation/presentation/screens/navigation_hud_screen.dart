@@ -890,9 +890,6 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
 
   void _startSimulation() {
     if (_route.polyline.length < 2) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Esta ruta no tiene trazado para simular.')),
-      );
       return;
     }
 
@@ -1166,12 +1163,6 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
         _hasJoinedRoute = false;
       });
       _updateGuidance();
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ruta del grupo actualizada')),
-      );
     });
 
     final own = ref.watch(ownDevicePositionProvider);

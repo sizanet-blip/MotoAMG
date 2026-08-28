@@ -453,9 +453,6 @@ class _RoutePreviewMapLayerState extends ConsumerState<_RoutePreviewMapLayer> {
   void _recenterOnMe() {
     final own = ref.read(ownDevicePositionProvider);
     if (own == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Esperando GPS…')),
-      );
       return;
     }
     setState(() {
