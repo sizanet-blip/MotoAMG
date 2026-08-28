@@ -73,10 +73,9 @@ class GroupIncidentActionsBar extends StatelessWidget {
           ],
           if (showWait && onWait != null) ...[
             _SideIncidentIcon(
-              color: const Color(0xFF6A1B9A),
+              color: const Color(0xFF8E24AA),
               icon: Icons.groups_rounded,
               tooltip: 'Esperar / reunir',
-              outlined: true,
               onPressed: enabled ? onWait : null,
             ),
             const SizedBox(height: 4),
@@ -131,13 +130,13 @@ class GroupIncidentActionsBar extends StatelessWidget {
               const SizedBox(height: 6),
             ],
             if (showWait && onWait != null) ...[
-              OutlinedButton.icon(
+              FilledButton.icon(
                 onPressed: enabled ? onWait : null,
                 icon: const Icon(Icons.groups_rounded, size: 18),
                 label: const Text('Esperar / reunir'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFF6A1B9A),
-                  side: const BorderSide(color: Color(0xFF6A1B9A)),
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF8E24AA),
+                  foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 8),
                   minimumSize: const Size(0, 36),
                 ),
@@ -202,11 +201,11 @@ class GroupIncidentActionsBar extends StatelessWidget {
           ],
           if (showWait && onWait != null) ...[
             Expanded(
-              child: OutlinedButton(
+              child: FilledButton(
                 onPressed: enabled ? onWait : null,
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFF6A1B9A),
-                  side: const BorderSide(color: Color(0xFF6A1B9A)),
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF8E24AA),
+                  foregroundColor: Colors.white,
                   padding: EdgeInsets.zero,
                   minimumSize: const Size(0, 38),
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -278,41 +277,26 @@ class _SideIncidentIcon extends StatelessWidget {
     required this.icon,
     required this.tooltip,
     required this.onPressed,
-    this.outlined = false,
   });
 
   final Color color;
   final IconData icon;
   final String tooltip;
   final VoidCallback? onPressed;
-  final bool outlined;
 
   @override
   Widget build(BuildContext context) {
-    final child = outlined
-        ? IconButton(
-            tooltip: tooltip,
-            onPressed: onPressed,
-            style: IconButton.styleFrom(
-              foregroundColor: color,
-              side: BorderSide(color: color),
-              minimumSize: const Size(40, 40),
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-            icon: Icon(icon, size: 20),
-          )
-        : IconButton.filled(
-            tooltip: tooltip,
-            onPressed: onPressed,
-            style: IconButton.styleFrom(
-              backgroundColor: color,
-              foregroundColor: Colors.white,
-              minimumSize: const Size(40, 40),
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-            icon: Icon(icon, size: 20),
-          );
-    return child;
+    return IconButton.filled(
+      tooltip: tooltip,
+      onPressed: onPressed,
+      style: IconButton.styleFrom(
+        backgroundColor: color,
+        foregroundColor: Colors.white,
+        minimumSize: const Size(40, 40),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      icon: Icon(icon, size: 20),
+    );
   }
 }
 
