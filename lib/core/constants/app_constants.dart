@@ -3,6 +3,17 @@ abstract final class AppConstants {
   static const String appName = 'LocMotos';
   static const String appIconAsset = 'assets/branding/locmotos-app-icon.png';
   static const String appWordmarkAsset = 'assets/branding/locmotos-wordmark.png';
+  static const String appTagline = 'Rastreo en grupo para moteros';
+  static const String developerName = 'Alberto Maestre Gutierrez';
+  static const String copyrightNotice = '© 2026 Alberto Maestre Gutierrez';
+  static const String supportEmail = 'info@albertomaestre.es';
+
+  /// Si está vacío, se muestra el texto integrado en la app.
+  static const String privacyPolicyUrl = '';
+  static const String termsOfUseUrl = '';
+
+  static const String mapAttributionPlain =
+      'Mapas: Protomaps · Datos © OpenStreetMap contributors';
 
   static const String colorThemeBox = 'app_color_theme';
   static const String colorThemeKey = 'palette_v1';

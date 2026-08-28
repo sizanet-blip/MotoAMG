@@ -7,7 +7,9 @@ import 'package:loc_motos/features/navigation/data/repositories/map_appearance_r
 import 'package:loc_motos/features/navigation/presentation/providers/navigation_providers.dart';
 import 'package:loc_motos/core/theme/app_color_theme.dart';
 import 'package:loc_motos/core/theme/app_color_theme_provider.dart';
+import 'package:loc_motos/features/settings/presentation/screens/about_app_screen.dart';
 import 'package:loc_motos/features/settings/presentation/screens/alert_preferences_screen.dart';
+import 'package:loc_motos/features/settings/presentation/screens/app_help_screen.dart';
 import 'package:loc_motos/features/settings/presentation/screens/app_theme_settings_screen.dart';
 import 'package:loc_motos/features/settings/presentation/screens/fuel_cache_settings_screen.dart';
 import 'package:loc_motos/features/settings/presentation/screens/group_ride_settings_screen.dart';
@@ -147,6 +149,34 @@ class SettingsScreen extends ConsumerWidget {
               );
             },
           ),
+          const Divider(height: 32),
+          ListTile(
+            leading: const Icon(Icons.help_outline),
+            title: const Text('Ayuda'),
+            subtitle: const Text('Guía rápida de uso'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const AppHelpScreen(),
+                ),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.info_outline),
+            title: const Text('Acerca de LocMotos'),
+            subtitle: const Text('Versión, contacto y legal'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const AboutAppScreen(),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 16),
         ],
       ),
     );
