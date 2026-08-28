@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
 import 'package:loc_motos/features/groups/domain/entities/group_incident.dart';
 import 'package:loc_motos/features/groups/domain/entities/ride_role.dart';
+import 'package:loc_motos/features/groups/domain/services/critical_emergency_actions.dart';
 import 'package:loc_motos/features/groups/domain/services/group_incident_service.dart';
 import 'package:loc_motos/features/groups/domain/services/group_ride_alert_feedback.dart';
 import 'package:loc_motos/features/groups/presentation/providers/group_providers.dart';
@@ -310,6 +311,7 @@ class _GroupIncidentSessionPanelState
     }
 
     final point = GeoPoint(lat: own.lat, lng: own.lng);
+    final isCritical112 = severity == GroupIncidentSeverity.critica;
     final hasNetwork =
         ref.read(mapNetworkAvailableProvider).asData?.value ?? true;
     if (!hasNetwork) {
@@ -329,7 +331,9 @@ class _GroupIncidentSessionPanelState
         );
         _lastIncidentError = null;
       });
-      if (!_silent) {
+      if (isCritical112) {
+        await _runCritical112Actions(point: point, groupQueued: true);
+      } else if (!_silent) {
         _notifyUser('Se enviará al recuperar cobertura');
       }
       return;
@@ -353,7 +357,11 @@ class _GroupIncidentSessionPanelState
         type: type,
         severity: severity,
         point: point,
+        skipSnackBar: isCritical112,
       );
+      if (isCritical112 && mounted) {
+        await _runCritical112Actions(point: point, groupQueued: false);
+      }
     } catch (_) {
       if (!mounted) {
         return;
@@ -367,6 +375,9 @@ class _GroupIncidentSessionPanelState
           );
         });
         unawaited(_flushPendingIncident());
+        if (isCritical112) {
+          await _runCritical112Actions(point: point, groupQueued: true);
+        }
         return;
       }
       setState(() {
@@ -374,6 +385,10 @@ class _GroupIncidentSessionPanelState
         _lastIncidentError = 'No se pudo enviar el aviso. Inténtalo de nuevo.';
       });
       _notifyUser('No se pudo enviar el aviso. Inténtalo de nuevo.');
+      // Aunque falle el aviso al grupo, en Urgente · 112 abrimos el marcador.
+      if (isCritical112) {
+        await _runCritical112Actions(point: point, groupQueued: true);
+      }
     } finally {
       if (mounted) {
         setState(() => _incidentBusy = false);
@@ -381,10 +396,25 @@ class _GroupIncidentSessionPanelState
     }
   }
 
+  Future<void> _runCritical112Actions({
+    required GeoPoint point,
+    required bool groupQueued,
+  }) async {
+    final result = await CriticalEmergencyActions.copyAndOpen112(
+      displayName: widget.user.displayName,
+      point: point,
+    );
+    if (!mounted || _silent) {
+      return;
+    }
+    _notifyUser(result.snackBarMessage(groupQueued: groupQueued));
+  }
+
   Future<void> _publishIncident({
     required GroupIncidentType type,
     required GroupIncidentSeverity? severity,
     required GeoPoint point,
+    bool skipSnackBar = false,
   }) async {
     await ref.read(groupIncidentServiceProvider).publish(
           ref: ref,
@@ -398,7 +428,7 @@ class _GroupIncidentSessionPanelState
     if (!mounted) {
       return;
     }
-    if (!_silent) {
+    if (!_silent && !skipSnackBar) {
       _notifyUser('Aviso enviado al grupo: ${type.label}');
     }
   }

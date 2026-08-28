@@ -1,6 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:loc_motos/features/groups/domain/entities/group_incident.dart';
+import 'package:loc_motos/features/groups/domain/services/critical_emergency_actions.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Barra inferior de incidencias del grupo.
@@ -455,6 +457,7 @@ class GroupIncidentBanner extends StatelessWidget {
         : incident.type.label;
     final coords =
         '${incident.point.lat.toStringAsFixed(5)}, ${incident.point.lng.toStringAsFixed(5)}';
+    final personName = name.isEmpty ? 'Motero' : name;
 
     return Material(
       elevation: 3,
@@ -515,21 +518,32 @@ class GroupIncidentBanner extends StatelessWidget {
                   if (incident.isCriticalEmergency)
                     _BannerAction(
                       label: 'Llamar 112',
-                      onTap: () => launchUrl(Uri.parse('tel:112')),
+                      onTap: () => unawaited(
+                        CriticalEmergencyActions.open112Dialer(),
+                      ),
                     ),
                   _BannerAction(
                     label: 'Copiar ubicación',
                     onTap: () async {
-                      await Clipboard.setData(ClipboardData(text: coords));
+                      await CriticalEmergencyActions.copyLocation(
+                        displayName: personName,
+                        point: incident.point,
+                      );
+                      if (!context.mounted) {
+                        return;
+                      }
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Ubicación copiada')),
+                      );
                     },
                   ),
                   _BannerAction(
                     label: 'Abrir mapas',
                     onTap: () {
-                      final uri = Uri.parse(
-                        'https://www.google.com/maps/search/?api=1&query=${incident.point.lat},${incident.point.lng}',
+                      launchUrl(
+                        CriticalEmergencyActions.mapsSearchUri(incident.point),
+                        mode: LaunchMode.externalApplication,
                       );
-                      launchUrl(uri, mode: LaunchMode.externalApplication);
                     },
                   ),
                 ],
@@ -635,7 +649,14 @@ Future<GroupIncidentSeverity?> pickEmergencySeverity(
                 'Gravedad de la emergencia',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
+              Text(
+                'Si eliges Urgente · 112 se avisará al grupo y se abrirá el marcador del 112.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+              ),
+              const SizedBox(height: 12),
               for (final s in GroupIncidentSeverity.values)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8),
