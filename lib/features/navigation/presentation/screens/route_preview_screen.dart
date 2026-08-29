@@ -289,6 +289,7 @@ class _RoutePreviewScreenState extends ConsumerState<RoutePreviewScreen> {
     return OwnPositionWatcher(
       child: MapNetworkResumeBinder(
         child: Scaffold(
+          resizeToAvoidBottomInset: false,
           body: mapStyleAsync.when(
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (_, _) =>

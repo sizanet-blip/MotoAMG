@@ -48,7 +48,7 @@ class _EmergencyContactsSettingsScreenState
           if (contacts.length < EmergencyContactsPreferences.maxContacts)
             OutlinedButton.icon(
               onPressed: () async {
-                final created = await _editContactDialog(
+                final created = await _editContact(
                   context,
                   title: 'Nuevo contacto',
                 );
@@ -99,7 +99,7 @@ class _ContactCard extends StatelessWidget {
             IconButton(
               tooltip: 'Editar',
               onPressed: () async {
-                final edited = await _editContactDialog(
+                final edited = await _editContact(
                   context,
                   title: 'Editar contacto',
                   initial: contact,
@@ -122,70 +122,114 @@ class _ContactCard extends StatelessWidget {
   }
 }
 
-Future<EmergencyContact?> _editContactDialog(
+Future<EmergencyContact?> _editContact(
   BuildContext context, {
   required String title,
   EmergencyContact? initial,
 }) {
-  final nameCtrl = TextEditingController(text: initial?.name ?? '');
-  final phoneCtrl = TextEditingController(text: initial?.phone ?? '');
-  return showDialog<EmergencyContact>(
-    context: context,
-    builder: (context) {
-      return AlertDialog(
-        title: Text(title),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameCtrl,
-              textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(
-                labelText: 'Nombre',
-                hintText: 'Ej. María',
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: phoneCtrl,
-              keyboardType: TextInputType.phone,
-              decoration: const InputDecoration(
-                labelText: 'Teléfono',
-                hintText: 'Ej. 600123456 o +34600123456',
-              ),
-            ),
-          ],
+  return Navigator.of(context).push<EmergencyContact>(
+    MaterialPageRoute(
+      fullscreenDialog: true,
+      builder: (_) => _EditContactPage(title: title, initial: initial),
+    ),
+  );
+}
+
+class _EditContactPage extends StatefulWidget {
+  const _EditContactPage({required this.title, this.initial});
+
+  final String title;
+  final EmergencyContact? initial;
+
+  @override
+  State<_EditContactPage> createState() => _EditContactPageState();
+}
+
+class _EditContactPageState extends State<_EditContactPage> {
+  late final TextEditingController _name;
+  late final TextEditingController _phone;
+
+  @override
+  void initState() {
+    super.initState();
+    _name = TextEditingController(text: widget.initial?.name ?? '');
+    _phone = TextEditingController(text: widget.initial?.phone ?? '');
+  }
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _phone.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final contact = EmergencyContact(
+      name: _name.text.trim(),
+      phone: _phone.text.trim(),
+    );
+    if (!contact.isValid) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Pon un nombre y un teléfono válido (mín. 9 dígitos).',
+          ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () {
-              final contact = EmergencyContact(
-                name: nameCtrl.text.trim(),
-                phone: phoneCtrl.text.trim(),
-              );
-              if (!contact.isValid) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                      'Pon un nombre y un teléfono válido (mín. 9 dígitos).',
-                    ),
-                  ),
-                );
-                return;
-              }
-              Navigator.pop(context, contact);
-            },
-            child: const Text('Guardar'),
-          ),
-        ],
       );
-    },
-  ).whenComplete(() {
-    nameCtrl.dispose();
-    phoneCtrl.dispose();
-  });
+      return;
+    }
+    Navigator.pop(context, contact);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.title),
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextField(
+                controller: _name,
+                autofocus: true,
+                textCapitalization: TextCapitalization.words,
+                textInputAction: TextInputAction.next,
+                decoration: const InputDecoration(
+                  labelText: 'Nombre',
+                  hintText: 'Ej. María',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _phone,
+                keyboardType: TextInputType.phone,
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => _submit(),
+                decoration: const InputDecoration(
+                  labelText: 'Teléfono',
+                  hintText: 'Ej. 600123456 o +34600123456',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 24),
+              FilledButton(
+                onPressed: _submit,
+                child: const Text('Guardar'),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancelar'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

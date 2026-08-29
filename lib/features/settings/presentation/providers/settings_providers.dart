@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:loc_motos/features/settings/data/repositories/emergency_contacts_repository.dart';
+import 'package:loc_motos/features/settings/data/repositories/radar_update_reminder_repository.dart';
 
 final emergencyContactsRepositoryProvider =
     Provider<EmergencyContactsRepository>((ref) {
@@ -54,5 +55,51 @@ class EmergencyContactsController
     }
     list.removeAt(index);
     return setContacts(list);
+  }
+}
+
+final radarUpdateReminderRepositoryProvider =
+    Provider<RadarUpdateReminderRepository>((ref) {
+  return RadarUpdateReminderRepository();
+});
+
+final radarUpdateReminderProvider = NotifierProvider<
+    RadarUpdateReminderController, RadarUpdateReminderPreferences>(
+  RadarUpdateReminderController.new,
+);
+
+/// Evita repetir el aviso en la misma sesión de la app.
+final radarUpdateReminderShownThisSessionProvider =
+    StateProvider<bool>((ref) => false);
+
+class RadarUpdateReminderController
+    extends Notifier<RadarUpdateReminderPreferences> {
+  @override
+  RadarUpdateReminderPreferences build() {
+    Future.microtask(_hydrate);
+    return RadarUpdateReminderPreferences.defaults;
+  }
+
+  Future<void> _hydrate() async {
+    final loaded =
+        await ref.read(radarUpdateReminderRepositoryProvider).load();
+    state = loaded;
+  }
+
+  Future<void> _persist(RadarUpdateReminderPreferences next) async {
+    state = next;
+    await ref.read(radarUpdateReminderRepositoryProvider).save(next);
+  }
+
+  Future<void> setEnabled(bool enabled) {
+    return _persist(state.copyWith(enabled: enabled));
+  }
+
+  Future<void> setIntervalDays(int days) {
+    final clamped = days.clamp(
+      RadarUpdateReminderPreferences.minIntervalDays,
+      RadarUpdateReminderPreferences.maxIntervalDays,
+    );
+    return _persist(state.copyWith(intervalDays: clamped));
   }
 }

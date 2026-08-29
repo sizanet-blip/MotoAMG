@@ -1,19 +1,69 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:loc_motos/core/utils/spain_data_freshness.dart';
 import 'package:loc_motos/features/navigation/data/datasources/spain_radar_datasource.dart';
 import 'package:loc_motos/features/navigation/presentation/providers/navigation_providers.dart';
+import 'package:loc_motos/features/settings/data/repositories/radar_update_reminder_repository.dart';
+import 'package:loc_motos/features/settings/presentation/providers/settings_providers.dart';
 
 /// Descarga manual del inventario de radares (DGT/SCT + OSM España).
-class RadarCacheSettingsScreen extends ConsumerWidget {
+class RadarCacheSettingsScreen extends ConsumerStatefulWidget {
   const RadarCacheSettingsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<RadarCacheSettingsScreen> createState() =>
+      _RadarCacheSettingsScreenState();
+}
+
+class _RadarCacheSettingsScreenState
+    extends ConsumerState<RadarCacheSettingsScreen> {
+  late final TextEditingController _daysController;
+
+  @override
+  void initState() {
+    super.initState();
+    final days = ref.read(radarUpdateReminderProvider).intervalDays;
+    _daysController = TextEditingController(text: '$days');
+  }
+
+  @override
+  void dispose() {
+    _daysController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _commitDays() async {
+    final parsed = int.tryParse(_daysController.text.trim());
+    if (parsed == null) {
+      _daysController.text =
+          '${ref.read(radarUpdateReminderProvider).intervalDays}';
+      return;
+    }
+    await ref
+        .read(radarUpdateReminderProvider.notifier)
+        .setIntervalDays(parsed);
+    if (!mounted) {
+      return;
+    }
+    _daysController.text =
+        '${ref.read(radarUpdateReminderProvider).intervalDays}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final statusAsync = ref.watch(spainRadarCacheStatusProvider);
     final download = ref.watch(radarCacheDownloadProvider);
+    final reminder = ref.watch(radarUpdateReminderProvider);
     final busy = download.downloading;
     final colors = Theme.of(context).colorScheme;
+
+    ref.listen(radarUpdateReminderProvider, (previous, next) {
+      if (previous?.intervalDays != next.intervalDays &&
+          _daysController.text != '${next.intervalDays}') {
+        _daysController.text = '${next.intervalDays}';
+      }
+    });
 
     ref.listen(radarCacheDownloadProvider, (previous, next) {
       final message = next.snackMessage;
@@ -113,6 +163,55 @@ class RadarCacheSettingsScreen extends ConsumerWidget {
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: colors.onSurfaceVariant,
                     ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Aviso al abrir la app',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Si los radares llevan varios días sin actualizar, te lo '
+                'recordamos al entrar (una vez por sesión).',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: colors.onSurfaceVariant,
+                    ),
+              ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Mostrar aviso'),
+                subtitle: Text(reminder.enabled ? 'Sí' : 'No'),
+                value: reminder.enabled,
+                onChanged: (value) => ref
+                    .read(radarUpdateReminderProvider.notifier)
+                    .setEnabled(value),
+              ),
+              TextField(
+                controller: _daysController,
+                enabled: reminder.enabled,
+                keyboardType: TextInputType.number,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(3),
+                ],
+                decoration: InputDecoration(
+                  labelText: 'Avisar cada (días)',
+                  hintText: 'Ej. 14',
+                  border: const OutlineInputBorder(),
+                  helperText:
+                      'Entre ${RadarUpdateReminderPreferences.minIntervalDays} y '
+                      '${RadarUpdateReminderPreferences.maxIntervalDays}',
+                ),
+                onEditingComplete: () => _commitDays(),
+                onSubmitted: (_) => _commitDays(),
+              ),
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: reminder.enabled ? _commitDays : null,
+                  child: const Text('Aplicar días'),
+                ),
               ),
             ],
           );

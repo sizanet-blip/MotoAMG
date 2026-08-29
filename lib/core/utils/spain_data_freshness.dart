@@ -75,6 +75,32 @@ bool isSpainRadarCacheStale({
   return false;
 }
 
+/// True si no hay caché o la más antigua supera [intervalDays].
+bool shouldRemindRadarUpdate({
+  required bool hasOfficial,
+  DateTime? officialFetchedAt,
+  required bool hasOsm,
+  DateTime? osmFetchedAt,
+  required int intervalDays,
+  DateTime? now,
+}) {
+  final days = intervalDays.clamp(1, 365);
+  if (!hasOfficial && !hasOsm) {
+    return true;
+  }
+  final reference = now ?? DateTime.now();
+  final dates = <DateTime>[
+    if (hasOfficial && officialFetchedAt != null) officialFetchedAt,
+    if (hasOsm && osmFetchedAt != null) osmFetchedAt,
+  ];
+  if (dates.isEmpty) {
+    return true;
+  }
+  dates.sort();
+  final oldest = dates.first;
+  return reference.difference(oldest) >= Duration(days: days);
+}
+
 String spainRadarCacheStaleMessage({
   required bool hasOfficial,
   DateTime? officialFetchedAt,

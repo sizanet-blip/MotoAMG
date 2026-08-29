@@ -151,15 +151,16 @@ class _GroupIncidentSessionPanelState
           GroupIncidentBanner(
             incident: bannerIncident,
             compact: widget.compact || widget.vertical,
+            landscape: MediaQuery.orientationOf(context) == Orientation.landscape ||
+                (widget.compact && widget.drivingMode),
             onDismiss: () {
               setState(() {
                 _dismissedBannerIds.add(_bannerId(bannerIncident));
               });
             },
-            isOwnIncident: bannerIncident.uid == widget.user.uid,
-            onClear: bannerIncident.uid == widget.user.uid
-                ? () => unawaited(_clearOwnIncident())
-                : null,
+            // Solo avisos de otros; el propio se limpia con la barra de acciones.
+            isOwnIncident: false,
+            onClear: null,
           ),
           SizedBox(height: widget.compact ? 4 : 8),
         ],
@@ -206,6 +207,10 @@ class _GroupIncidentSessionPanelState
           vertical: widget.vertical,
           tight: widget.tight,
           hasOwnAlert: ownIncident != null || _pendingIncident != null,
+          ownAlertColor: groupIncidentColor(
+            type: ownIncident?.type ?? _pendingIncident?.type,
+            severity: ownIncident?.severity ?? _pendingIncident?.severity,
+          ),
           enabled: !_incidentBusy,
           showWait: canAskWait,
           onWait: () => unawaited(_raiseIncident(GroupIncidentType.espera)),
@@ -243,10 +248,12 @@ class _GroupIncidentSessionPanelState
       '${incident.uid}|${incident.at.toIso8601String()}|${incident.type.name}';
 
   GroupIncident? _highestPriorityBanner(List<GroupIncident> incidents) {
+    // Quien avisa ya tiene «Ya estoy OK» en la barra; el banner es solo para el resto.
     final candidates = incidents
         .where(
           (incident) =>
               incident.active &&
+              incident.uid != widget.user.uid &&
               !_dismissedBannerIds.contains(_bannerId(incident)),
         )
         .toList();

@@ -75,6 +75,7 @@ class _RevealRecoveryKeyDialogState
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
+      scrollable: true,
       title: const Text('Ver clave de recuperación'),
       content: Form(
         key: _formKey,

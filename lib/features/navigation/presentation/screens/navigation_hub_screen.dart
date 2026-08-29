@@ -456,6 +456,9 @@ class _NavigationHubScreenState extends ConsumerState<NavigationHubScreen> {
     return OwnPositionWatcher(
       child: MapNetworkResumeBinder(
         child: Scaffold(
+          // El teclado lo gestiona el place picker; si el body se encoge,
+          // el panel Itinerario desborda en landscape.
+          resizeToAvoidBottomInset: false,
           body: mapStylesAsync.when(
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (_, _) => const Center(
@@ -766,28 +769,36 @@ class _PlacePickerSheetState extends ConsumerState<_PlacePickerSheet> {
         padding: EdgeInsets.fromLTRB(8, 8, 0, 8 + bottom),
         child: Align(
           alignment: Alignment.topLeft,
-          child: Material(
-            elevation: 12,
-            color: colors.surface,
-            borderRadius:
-                const BorderRadius.horizontal(right: Radius.circular(20)),
-            clipBehavior: Clip.antiAlias,
-            child: SizedBox(
-              width: panelWidth,
-              height: screenSize.height - 16 - bottom,
-              child: _PlacePickerContent(
-                title: widget.title,
-                controller: _controller,
-                focus: _focus,
-                favorites: _favorites,
-                recents: _recents,
-                isFavorite: _isFavorite,
-                onToggleFavorite: (place) => unawaited(_toggleFavorite(place)),
-                onSelect: (place) => Navigator.pop(context, place),
-                onRemoveRecent: (place) => unawaited(_removeRecent(place)),
-                onClearRecents: () => unawaited(_clearRecents()),
-              ),
-            ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final maxH = constraints.maxHeight.isFinite
+                  ? constraints.maxHeight
+                  : (screenSize.height - bottom - 16).clamp(120.0, screenSize.height);
+              return Material(
+                elevation: 12,
+                color: colors.surface,
+                borderRadius:
+                    const BorderRadius.horizontal(right: Radius.circular(20)),
+                clipBehavior: Clip.antiAlias,
+                child: SizedBox(
+                  width: panelWidth,
+                  height: maxH,
+                  child: _PlacePickerContent(
+                    title: widget.title,
+                    controller: _controller,
+                    focus: _focus,
+                    favorites: _favorites,
+                    recents: _recents,
+                    isFavorite: _isFavorite,
+                    onToggleFavorite: (place) =>
+                        unawaited(_toggleFavorite(place)),
+                    onSelect: (place) => Navigator.pop(context, place),
+                    onRemoveRecent: (place) => unawaited(_removeRecent(place)),
+                    onClearRecents: () => unawaited(_clearRecents()),
+                  ),
+                ),
+              );
+            },
           ),
         ),
       );

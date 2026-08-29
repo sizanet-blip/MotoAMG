@@ -25,71 +25,87 @@ class _RecoveryKeyScreenState extends ConsumerState<RecoveryKeyScreen> {
           title: const Text('Guarda tu clave'),
         ),
         body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  'Esta clave es la única forma de recuperar la cuenta si '
-                  'olvidas la contraseña (no hay correo).',
-                  style: Theme.of(context).textTheme.bodyLarge,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Apúntala en papel o en un gestor de contraseñas. '
-                  'No la enseñes a nadie. Solo se muestra ahora.',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                const SizedBox(height: 24),
-                SelectableText(
-                  widget.recoveryKey,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1.2,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: ConstrainedBox(
+                  constraints:
+                      BoxConstraints(minHeight: constraints.maxHeight - 48),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        'Esta clave es la única forma de recuperar la cuenta si '
+                        'olvidas la contraseña (no hay correo).',
+                        style: Theme.of(context).textTheme.bodyLarge,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Apúntala en papel o en un gestor de contraseñas. '
+                        'No la enseñes a nadie. Solo se muestra ahora.',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                      const SizedBox(height: 24),
+                      SelectableText(
+                        widget.recoveryKey,
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context)
+                            .textTheme
+                            .headlineSmall
+                            ?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1.2,
+                            ),
+                      ),
+                      const SizedBox(height: 16),
+                      OutlinedButton.icon(
+                        onPressed: () async {
+                          await Clipboard.setData(
+                            ClipboardData(text: widget.recoveryKey),
+                          );
+                          if (!context.mounted) {
+                            return;
+                          }
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Clave copiada.')),
+                          );
+                        },
+                        icon: const Icon(Icons.copy),
+                        label: const Text('Copiar clave'),
+                      ),
+                      const SizedBox(height: 32),
+                      CheckboxListTile(
+                        value: _saved,
+                        onChanged: (value) =>
+                            setState(() => _saved = value ?? false),
+                        contentPadding: EdgeInsets.zero,
+                        controlAffinity: ListTileControlAffinity.leading,
+                        title: const Text(
+                          'He guardado la clave en un sitio seguro',
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      FilledButton(
+                        onPressed: _saved
+                            ? () {
+                                ref
+                                    .read(pendingRecoveryKeyProvider.notifier)
+                                    .state = null;
+                                final navigator = Navigator.of(context);
+                                if (navigator.canPop()) {
+                                  navigator
+                                      .popUntil((route) => route.isFirst);
+                                }
+                              }
+                            : null,
+                        child: const Text('Continuar'),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 16),
-                OutlinedButton.icon(
-                  onPressed: () async {
-                    await Clipboard.setData(
-                      ClipboardData(text: widget.recoveryKey),
-                    );
-                    if (!context.mounted) {
-                      return;
-                    }
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Clave copiada.')),
-                    );
-                  },
-                  icon: const Icon(Icons.copy),
-                  label: const Text('Copiar clave'),
-                ),
-                const Spacer(),
-                CheckboxListTile(
-                  value: _saved,
-                  onChanged: (value) => setState(() => _saved = value ?? false),
-                  contentPadding: EdgeInsets.zero,
-                  controlAffinity: ListTileControlAffinity.leading,
-                  title: const Text('He guardado la clave en un sitio seguro'),
-                ),
-                const SizedBox(height: 8),
-                FilledButton(
-                  onPressed: _saved
-                      ? () {
-                          ref.read(pendingRecoveryKeyProvider.notifier).state =
-                              null;
-                          final navigator = Navigator.of(context);
-                          if (navigator.canPop()) {
-                            navigator.popUntil((route) => route.isFirst);
-                          }
-                        }
-                      : null,
-                  child: const Text('Continuar'),
-                ),
-              ],
-            ),
+              );
+            },
           ),
         ),
       ),

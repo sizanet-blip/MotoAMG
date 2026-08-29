@@ -18,7 +18,6 @@ import 'package:loc_motos/features/groups/domain/entities/group_voice_announceme
 import 'package:loc_motos/features/groups/domain/entities/ride_role.dart';
 import 'package:loc_motos/features/groups/domain/services/group_pack_proximity_tracker.dart';
 import 'package:loc_motos/features/groups/domain/services/group_ride_alert_feedback.dart';
-import 'package:loc_motos/features/groups/domain/services/group_incident_service.dart';
 import 'package:loc_motos/features/groups/presentation/providers/group_providers.dart';
 import 'package:loc_motos/features/groups/presentation/widgets/catch_up_cabecera_sheet.dart';
 import 'package:loc_motos/features/groups/presentation/widgets/group_incident_session_panel.dart';
@@ -462,8 +461,9 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
         ),
         Positioned(
           top: mapTop,
-          left: (landscape ? leftSafe : 0) + 8,
-          right: landscape ? 120 : 72,
+          // En horizontal dejar hueco al panel de incidencias (izq.) y a zoom (der.).
+          left: landscape ? leftSafe + 56 : 8,
+          right: landscape ? rightSafe + 112 : 72,
           child: landscape
               ? _buildLandscapeTopAlerts(
                   context,
@@ -517,12 +517,8 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
                                 .add(_bannerId(bannerIncident));
                           });
                         },
-                        isOwnIncident:
-                            bannerIncident.uid == widget.user.uid,
-                        onClear: bannerIncident.uid == widget.user.uid
-                            ? () =>
-                                unawaited(_clearOwnIncidentFromBanner())
-                            : null,
+                        isOwnIncident: false,
+                        onClear: null,
                       ),
                     ],
                   ],
@@ -543,79 +539,80 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
           Positioned(
             top: mapTop,
             right: (landscape ? rightSafe : 0) + 8,
-            child: landscape
-                ? Row(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _GroupMapRoundButton(
-                            tooltip: 'Pelotón',
-                            icon: Icons.format_list_bulleted_rounded,
-                            onTap: () => unawaited(
-                              showGroupPackListSheet(
-                                context: context,
-                                groupId: widget.groupId,
-                                user: widget.user,
-                              ),
-                            ),
-                          ),
-                          if (canManageStops || stops.isNotEmpty) ...[
-                            const SizedBox(height: 4),
-                            _GroupMapRoundButton(
-                              tooltip: stops.isNotEmpty
-                                  ? 'Paradas (${stops.length})'
-                                  : 'Paradas',
-                              icon: Icons.place_outlined,
-                              emphasized: stops.isNotEmpty,
-                              onTap: () => unawaited(
-                                _openStopsSheet(
-                                  canManageStops: canManageStops,
-                                ),
-                              ),
-                            ),
-                          ],
-                          const SizedBox(height: 4),
-                          _GroupMapRoundButton(
-                            tooltip: 'Centrar grupo',
-                            icon: Icons.groups,
-                            emphasized: _followGroup,
-                            onTap: _recenterGroup,
-                          ),
-                          if (sharedRoute != null) ...[
-                            const SizedBox(height: 4),
-                            _GroupMapRoundButton(
-                              tooltip: packPrefs.preferExternalNavigation
-                                  ? 'Waze'
-                                  : 'Navegar',
-                              icon: Icons.navigation_rounded,
-                              onTap: packPrefs.preferExternalNavigation
-                                  ? () => unawaited(
-                                        _openExternalNavigation(
-                                          ExternalNavigation.wazeTo(
-                                            sharedRoute.destination,
-                                          ),
-                                        ),
-                                      )
-                                  : () => unawaited(
-                                        _openGroupNavigation(sharedRoute),
-                                      ),
-                            ),
-                          ],
-                        ],
+            child: mapMapControls(),
+          ),
+        if (landscape && _controller != null)
+          Positioned(
+            right: rightSafe + 8,
+            bottom: padding.bottom + 8,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onLongPress: () {},
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _GroupMapRoundButton(
+                    tooltip: 'Pelotón',
+                    icon: Icons.format_list_bulleted_rounded,
+                    onTap: () => unawaited(
+                      showGroupPackListSheet(
+                        context: context,
+                        groupId: widget.groupId,
+                        user: widget.user,
                       ),
-                      const SizedBox(width: 6),
-                      mapMapControls(),
-                    ],
-                  )
-                : mapMapControls(),
+                    ),
+                  ),
+                  if (canManageStops || stops.isNotEmpty) ...[
+                    const SizedBox(width: 8),
+                    _GroupMapRoundButton(
+                      tooltip: stops.isNotEmpty
+                          ? 'Paradas (${stops.length})'
+                          : 'Paradas',
+                      icon: Icons.place_outlined,
+                      emphasized: stops.isNotEmpty,
+                      onTap: () => unawaited(
+                        _openStopsSheet(
+                          canManageStops: canManageStops,
+                        ),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(width: 8),
+                  _GroupMapRoundButton(
+                    tooltip: 'Centrar grupo',
+                    icon: Icons.groups,
+                    emphasized: _followGroup,
+                    onTap: _recenterGroup,
+                  ),
+                  if (sharedRoute != null) ...[
+                    const SizedBox(width: 8),
+                    _GroupMapRoundButton(
+                      tooltip: packPrefs.preferExternalNavigation
+                          ? 'Waze'
+                          : 'Navegar',
+                      icon: Icons.navigation_rounded,
+                      onTap: packPrefs.preferExternalNavigation
+                          ? () => unawaited(
+                                _openExternalNavigation(
+                                  ExternalNavigation.wazeTo(
+                                    sharedRoute.destination,
+                                  ),
+                                ),
+                              )
+                          : () => unawaited(
+                                _openGroupNavigation(sharedRoute),
+                              ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
           ),
         if (landscape)
           Positioned(
             left: leftSafe + 60,
-            right: rightSafe + 120,
+            // Hueco a la derecha para la fila de acciones (~4×44 + gaps).
+            right: rightSafe + 220,
             bottom: padding.bottom + 8,
             child: IntercomControlsBar(
               groupId: widget.groupId,
@@ -627,21 +624,29 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
           Positioned(
             left: leftSafe + 8,
             bottom: padding.bottom + 8,
-            child: SizedBox(
-              width: 48,
+            // Solo left+bottom daba maxHeight = pantalla y el botón rojo se
+            // estiraba. Intrinsic height + absorber long-press del mapa.
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onLongPress: () {},
               child: Material(
-                color: NavigationHudTheme.panel.withValues(alpha: 0.9),
+                color: NavigationHudTheme.panel.withValues(alpha: 0.92),
                 elevation: 4,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(14),
                 clipBehavior: Clip.antiAlias,
-                child: GroupIncidentSessionPanel(
-                  groupId: widget.groupId,
-                  user: widget.user,
-                  compact: true,
-                  vertical: true,
-                  embedded: true,
-                  showBanner: false,
-                  drivingMode: true,
+                child: IntrinsicHeight(
+                  child: SizedBox(
+                    width: 48,
+                    child: GroupIncidentSessionPanel(
+                      groupId: widget.groupId,
+                      user: widget.user,
+                      compact: true,
+                      vertical: true,
+                      embedded: true,
+                      showBanner: false,
+                      drivingMode: true,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -1586,15 +1591,14 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
       return GroupIncidentBanner(
         incident: bannerIncident,
         compact: true,
+        landscape: true,
         onDismiss: () {
           setState(() {
             _dismissedBannerIds.add(_bannerId(bannerIncident));
           });
         },
-        isOwnIncident: bannerIncident.uid == widget.user.uid,
-        onClear: bannerIncident.uid == widget.user.uid
-            ? () => unawaited(_clearOwnIncidentFromBanner())
-            : null,
+        isOwnIncident: false,
+        onClear: null,
       );
     }
 
@@ -1668,41 +1672,17 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
     );
   }
 
-  Future<void> _clearOwnIncidentFromBanner() async {
-    try {
-      await ref.read(groupIncidentServiceProvider).clear(
-            groupId: widget.groupId,
-            uid: widget.user.uid,
-          );
-    } catch (_) {
-      if (!mounted) {
-        return;
-      }
-      unawaited(_retryClearOwnIncidentFromBanner());
-    }
-  }
-
-  Future<void> _retryClearOwnIncidentFromBanner() async {
-    await Future<void>.delayed(const Duration(seconds: 3));
-    if (!mounted) {
-      return;
-    }
-    try {
-      await ref.read(groupIncidentServiceProvider).clear(
-            groupId: widget.groupId,
-            uid: widget.user.uid,
-          );
-    } catch (_) {}
-  }
-
   String _bannerId(GroupIncident incident) =>
       '${incident.uid}|${incident.at.toIso8601String()}|${incident.type.name}';
 
   GroupIncident? _highestPriorityBanner(List<GroupIncident> incidents) {
+    // Quien avisa ya tiene el botón verde; el banner es para el resto del grupo.
     final candidates = incidents
         .where(
           (incident) =>
-              incident.active && !_dismissedBannerIds.contains(_bannerId(incident)),
+              incident.active &&
+              incident.uid != widget.user.uid &&
+              !_dismissedBannerIds.contains(_bannerId(incident)),
         )
         .toList();
     if (candidates.isEmpty) {
@@ -2064,31 +2044,74 @@ class _GroupMapQuickActions extends StatelessWidget {
   final VoidCallback onPackList;
   final VoidCallback onRecenter;
 
-  double get _btnH => compact ? 32 : 38;
-
-  ButtonStyle get _filledStyle => FilledButton.styleFrom(
-        minimumSize: Size(0, _btnH),
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        visualDensity: compact ? VisualDensity.compact : VisualDensity.standard,
-      );
-
-  ButtonStyle get _outlinedStyle => OutlinedButton.styleFrom(
-        minimumSize: Size(0, _btnH),
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        visualDensity: compact ? VisualDensity.compact : VisualDensity.standard,
-      );
-
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final content = compact
-        ? _buildCompactRow(context, colors)
-        : _buildStackedRows(context, colors);
+    final tiles = <Widget>[
+      if (hasSharedRoute)
+        _QuickActionTile(
+          icon: preferExternalNav
+              ? Icons.navigation_outlined
+              : Icons.navigation_rounded,
+          label: preferExternalNav ? 'Waze' : 'Navegar',
+          emphasized: true,
+          onTap: preferExternalNav ? onOpenWaze : onNavigate,
+          menuItems: [
+            if (!preferExternalNav && onOpenWaze != null)
+              (
+                icon: Icons.navigation_outlined,
+                label: 'Abrir en Waze',
+                onTap: onOpenWaze!,
+              ),
+            if (onOpenGoogleMaps != null)
+              (
+                icon: Icons.map_outlined,
+                label: 'Abrir en Maps',
+                onTap: onOpenGoogleMaps!,
+              ),
+            if (preferExternalNav && onNavigate != null)
+              (
+                icon: Icons.sports_motorsports_outlined,
+                label: 'Navegar en LocMotos',
+                onTap: onNavigate!,
+              ),
+          ],
+        ),
+      _QuickActionTile(
+        icon: Icons.format_list_bulleted_rounded,
+        label: 'Pelotón',
+        onTap: onPackList,
+      ),
+      if (onShowStops != null)
+        _QuickActionTile(
+          icon: Icons.place_outlined,
+          label: stopCount > 0 ? 'Paradas' : 'Paradas',
+          badge: stopCount > 0 ? '$stopCount' : null,
+          emphasized: stopCount > 0,
+          onTap: onShowStops,
+        ),
+      _QuickActionTile(
+        icon: Icons.groups,
+        label: 'Centrar',
+        emphasized: followGroup,
+        onTap: onRecenter,
+      ),
+    ];
+
+    final row = Row(
+      children: [
+        for (var i = 0; i < tiles.length; i++) ...[
+          if (i > 0) const SizedBox(width: 4),
+          Expanded(child: tiles[i]),
+        ],
+      ],
+    );
 
     if (embedded) {
-      return content;
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: row,
+      );
     }
 
     return Material(
@@ -2096,251 +2119,100 @@ class _GroupMapQuickActions extends StatelessWidget {
       borderRadius: BorderRadius.circular(16),
       color: colors.surface.withValues(alpha: 0.96),
       child: Padding(
-        padding: const EdgeInsets.all(8),
-        child: content,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+        child: row,
       ),
     );
   }
+}
 
-  Widget _navButtons() {
-    if (!hasSharedRoute) {
-      return const SizedBox.shrink();
-    }
-    if (preferExternalNav) {
-      return Row(
-        children: [
-          Expanded(
-            child: FilledButton.tonalIcon(
-              onPressed: onOpenWaze,
-              icon: const Icon(Icons.navigation_outlined, size: 16),
-              label: const Text('Waze', style: TextStyle(fontSize: 12)),
-              style: _filledStyle,
-            ),
-          ),
-          const SizedBox(width: 4),
-          Expanded(
-            child: FilledButton.tonalIcon(
-              onPressed: onOpenGoogleMaps,
-              icon: const Icon(Icons.map_outlined, size: 16),
-              label: const Text('Maps', style: TextStyle(fontSize: 12)),
-              style: _filledStyle,
-            ),
-          ),
-          const SizedBox(width: 4),
-          OutlinedButton(
-            onPressed: onNavigate,
-            style: _outlinedStyle,
-            child: const Icon(Icons.sports_motorsports_outlined, size: 16),
-          ),
-        ],
+class _QuickActionTile extends StatelessWidget {
+  const _QuickActionTile({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.emphasized = false,
+    this.badge,
+    this.menuItems = const [],
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback? onTap;
+  final bool emphasized;
+  final String? badge;
+  final List<({IconData icon, String label, VoidCallback onTap})> menuItems;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final bg = emphasized
+        ? colors.primaryContainer
+        : colors.surfaceContainerHighest;
+    final fg = emphasized ? colors.onPrimaryContainer : colors.onSurfaceVariant;
+
+    Widget circle = Material(
+      color: bg,
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        onLongPress: menuItems.isEmpty
+            ? null
+            : () async {
+                final selected = await showModalBottomSheet<int>(
+                  context: context,
+                  showDragHandle: true,
+                  builder: (context) {
+                    return SafeArea(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          for (var i = 0; i < menuItems.length; i++)
+                            ListTile(
+                              leading: Icon(menuItems[i].icon),
+                              title: Text(menuItems[i].label),
+                              onTap: () => Navigator.pop(context, i),
+                            ),
+                        ],
+                      ),
+                    );
+                  },
+                );
+                if (selected != null) {
+                  menuItems[selected].onTap();
+                }
+              },
+        child: SizedBox(
+          width: 44,
+          height: 44,
+          child: Icon(icon, size: 22, color: fg),
+        ),
+      ),
+    );
+
+    if (badge != null) {
+      circle = Badge(
+        label: Text(badge!),
+        child: circle,
       );
     }
-    return Row(
-      children: [
-        Expanded(
-          flex: 2,
-          child: FilledButton.tonalIcon(
-            onPressed: onNavigate,
-            icon: const Icon(Icons.navigation_rounded, size: 16),
-            label: Text(
-              embedded ? 'Navegar' : 'Navegar ruta',
-              style: const TextStyle(fontSize: 12),
-            ),
-            style: _filledStyle,
-          ),
-        ),
-        const SizedBox(width: 4),
-        IconButton.outlined(
-          tooltip: 'Waze',
-          onPressed: onOpenWaze,
-          style: IconButton.styleFrom(
-            minimumSize: Size(_btnH, _btnH),
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            visualDensity: compact ? VisualDensity.compact : null,
-          ),
-          icon: const Icon(Icons.navigation_outlined, size: 18),
-        ),
-        IconButton.outlined(
-          tooltip: 'Google Maps',
-          onPressed: onOpenGoogleMaps,
-          style: IconButton.styleFrom(
-            minimumSize: Size(_btnH, _btnH),
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            visualDensity: compact ? VisualDensity.compact : null,
-          ),
-          icon: const Icon(Icons.map_outlined, size: 18),
-        ),
-      ],
-    );
-  }
 
-  Widget _compactBtn({
-    required VoidCallback? onPressed,
-    required Widget icon,
-    required String label,
-    required ButtonStyle style,
-    bool outlined = false,
-    int flex = 1,
-  }) {
-    final child = outlined
-        ? OutlinedButton.icon(
-            onPressed: onPressed,
-            icon: icon,
-            label: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 12),
-            ),
-            style: style,
-          )
-        : FilledButton.tonalIcon(
-            onPressed: onPressed,
-            icon: icon,
-            label: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 12),
-            ),
-            style: style,
-          );
-    return Flexible(flex: flex, child: child);
-  }
-
-  Widget _buildCompactRow(BuildContext context, ColorScheme colors) {
-    return Row(
-      children: [
-        if (hasSharedRoute) ...[
-          if (preferExternalNav) ...[
-            _compactBtn(
-              onPressed: onOpenWaze,
-              icon: const Icon(Icons.navigation_outlined, size: 16),
-              label: 'Waze',
-              style: _filledStyle,
-            ),
-            const SizedBox(width: 4),
-            _compactBtn(
-              onPressed: onOpenGoogleMaps,
-              icon: const Icon(Icons.map_outlined, size: 16),
-              label: 'Maps',
-              style: _filledStyle,
-            ),
-            const SizedBox(width: 4),
-            OutlinedButton(
-              onPressed: onNavigate,
-              style: _outlinedStyle,
-              child: const Icon(Icons.sports_motorsports_outlined, size: 16),
-            ),
-          ] else ...[
-            _compactBtn(
-              onPressed: onNavigate,
-              icon: const Icon(Icons.navigation_rounded, size: 16),
-              label: embedded ? 'Navegar' : 'Navegar ruta',
-              style: _filledStyle,
-              flex: 2,
-            ),
-            IconButton.outlined(
-              tooltip: 'Waze',
-              onPressed: onOpenWaze,
-              style: IconButton.styleFrom(
-                minimumSize: Size(_btnH, _btnH),
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                visualDensity: VisualDensity.compact,
-              ),
-              icon: const Icon(Icons.navigation_outlined, size: 18),
-            ),
-            IconButton.outlined(
-              tooltip: 'Google Maps',
-              onPressed: onOpenGoogleMaps,
-              style: IconButton.styleFrom(
-                minimumSize: Size(_btnH, _btnH),
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                visualDensity: VisualDensity.compact,
-              ),
-              icon: const Icon(Icons.map_outlined, size: 18),
-            ),
-          ],
-          const SizedBox(width: 6),
-        ],
-        _compactBtn(
-          onPressed: onPackList,
-          icon: const Icon(Icons.format_list_bulleted_rounded, size: 16),
-          label: 'Pelotón',
-          style: _outlinedStyle,
-          outlined: true,
-        ),
-        if (onShowStops != null) ...[
-          const SizedBox(width: 4),
-          _compactBtn(
-            onPressed: onShowStops,
-            icon: const Icon(Icons.place_outlined, size: 16),
-            label: stopCount > 0 ? 'Paradas ($stopCount)' : 'Paradas',
-            style: _filledStyle,
-          ),
-        ],
-        const SizedBox(width: 4),
-        IconButton.filledTonal(
-          tooltip: 'Centrar grupo',
-          onPressed: onRecenter,
-          isSelected: followGroup,
-          style: IconButton.styleFrom(
-            backgroundColor: followGroup ? colors.primary : null,
-            foregroundColor: followGroup ? colors.onPrimary : null,
-            minimumSize: Size(_btnH, _btnH),
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            visualDensity: VisualDensity.compact,
-          ),
-          icon: const Icon(Icons.groups, size: 18),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStackedRows(BuildContext context, ColorScheme colors) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (hasSharedRoute) _navButtons(),
-        if (hasSharedRoute) const SizedBox(height: 4),
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: onPackList,
-                icon: const Icon(Icons.format_list_bulleted_rounded, size: 16),
-                label: const Text('Pelotón', style: TextStyle(fontSize: 12)),
-                style: _outlinedStyle,
+        circle,
+        const SizedBox(height: 4),
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: colors.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+                fontSize: 11,
               ),
-            ),
-            if (onShowStops != null) ...[
-              const SizedBox(width: 4),
-              Expanded(
-                child: FilledButton.tonalIcon(
-                  onPressed: onShowStops,
-                  icon: const Icon(Icons.place_outlined, size: 16),
-                  label: Text(
-                    stopCount > 0 ? 'Paradas ($stopCount)' : 'Paradas',
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                  style: _filledStyle,
-                ),
-              ),
-            ],
-            const SizedBox(width: 4),
-            IconButton.filledTonal(
-              tooltip: 'Centrar grupo',
-              onPressed: onRecenter,
-              isSelected: followGroup,
-              style: IconButton.styleFrom(
-                backgroundColor: followGroup ? colors.primary : null,
-                foregroundColor: followGroup ? colors.onPrimary : null,
-                minimumSize: Size(_btnH, _btnH),
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-              icon: const Icon(Icons.groups, size: 18),
-            ),
-          ],
         ),
       ],
     );
@@ -2368,6 +2240,7 @@ class _GroupMapRoundButton extends StatelessWidget {
           : NavigationHudTheme.panel.withValues(alpha: 0.92),
       shape: const CircleBorder(),
       elevation: 3,
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
         customBorder: const CircleBorder(),
         onTap: onTap,
@@ -2385,6 +2258,9 @@ class _GroupMapRoundButton extends StatelessWidget {
     if (tooltip == null) {
       return button;
     }
-    return Tooltip(message: tooltip!, child: button);
+    return Tooltip(
+      message: tooltip!,
+      child: button,
+    );
   }
 }

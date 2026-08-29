@@ -11,6 +11,7 @@ import 'package:loc_motos/features/groups/presentation/widgets/group_entry_dialo
 import 'package:loc_motos/features/intercom/presentation/widgets/intercom_session_binder.dart';
 import 'package:loc_motos/features/map/presentation/screens/group_map_screen.dart';
 import 'package:loc_motos/features/navigation/presentation/screens/navigation_hub_screen.dart';
+import 'package:loc_motos/features/settings/presentation/widgets/radar_update_reminder_binder.dart';
 import 'package:loc_motos/features/tracking/presentation/widgets/location_binder.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -41,9 +42,10 @@ class HomeScreen extends ConsumerWidget {
 
     final mapOpen = ref.watch(groupMapSessionOpenProvider);
 
+    final Widget body;
     if (effective.isInGroup && mapOpen) {
       final groupId = effective.currentGroupId!;
-      return LocationBinder(
+      body = LocationBinder(
         user: effective,
         groupId: groupId,
         child: IntercomSessionBinder(
@@ -54,11 +56,13 @@ class HomeScreen extends ConsumerWidget {
           ),
         ),
       );
+    } else if (effective.isAnonymous) {
+      body = _GuestJoinView(user: effective);
+    } else {
+      body = MyGroupsView(user: effective);
     }
-    if (effective.isAnonymous) {
-      return _GuestJoinView(user: effective);
-    }
-    return MyGroupsView(user: effective);
+
+    return RadarUpdateReminderBinder(child: body);
   }
 }
 
@@ -76,50 +80,56 @@ class _GuestJoinView extends ConsumerWidget {
         title: const AppBrandTitle(),
         actions: const [AccountMenuButton()],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              'Hola, ${user.displayName}',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const SizedBox(height: 12),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Chip(
-                avatar: const Icon(Icons.badge_outlined, size: 18),
-                label: const Text('Cuenta de invitado'),
+      body: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight - 48),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      'Hola, ${user.displayName}',
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                    const SizedBox(height: 12),
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Chip(
+                        avatar: Icon(Icons.badge_outlined, size: 18),
+                        label: Text('Cuenta de invitado'),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Pide el código al que organiza la ruta. Al cerrar sesión se '
+                      'borra todo y no se puede recuperar. Si quieres guardar grupos, '
+                      'crea una cuenta con usuario o con correo.',
+                    ),
+                    const SizedBox(height: 32),
+                    FilledButton.icon(
+                      onPressed: busy ? null : () => _joinGroup(context, ref),
+                      icon: const Icon(Icons.vpn_key_outlined),
+                      label: const Text('Unirme con un código'),
+                    ),
+                    if (busy) ...[
+                      const SizedBox(height: 16),
+                      const Center(child: CircularProgressIndicator()),
+                    ],
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'Pide el código al que organiza la ruta. Al cerrar sesión se '
-              'borra todo y no se puede recuperar. Si quieres guardar grupos, '
-              'crea una cuenta con usuario o con correo.',
-            ),
-            const Spacer(),
-            FilledButton.icon(
-              onPressed: busy ? null : () => _joinGroup(context, ref),
-              icon: const Icon(Icons.vpn_key_outlined),
-              label: const Text('Unirme con un código'),
-            ),
-            if (busy) ...[
-              const SizedBox(height: 16),
-              const Center(child: CircularProgressIndicator()),
-            ],
-          ],
+            );
+          },
         ),
       ),
     );
   }
 
   Future<void> _joinGroup(BuildContext context, WidgetRef ref) async {
-    final code = await showDialog<String>(
-      context: context,
-      builder: (_) => const JoinGroupDialog(),
-    );
+    final code = await showJoinGroupDialog(context);
     if (code == null || !context.mounted) {
       return;
     }

@@ -195,12 +195,30 @@ class _CollapsibleMapBottomPanelState extends State<CollapsibleMapBottomPanel> {
         left: widget.sidePanel,
         right: false,
         child: widget.sidePanel
-            ? Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _buildHeader(context, colors),
-                  if (_expanded) _buildExpandedBody(),
-                ],
+            ? LayoutBuilder(
+                builder: (context, constraints) {
+                  // Si el alto es muy justo (teclado), todo el panel hace scroll.
+                  final tight = constraints.maxHeight < 120;
+                  if (tight) {
+                    return SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _buildHeader(context, colors),
+                          if (_expanded) widget.child,
+                        ],
+                      ),
+                    );
+                  }
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _buildHeader(context, colors),
+                      if (_expanded) _buildExpandedBody(),
+                    ],
+                  );
+                },
               )
             : Column(
                 mainAxisSize: MainAxisSize.min,

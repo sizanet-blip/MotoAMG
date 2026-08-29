@@ -2,12 +2,38 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:loc_motos/core/widgets/keyboard_safe_sheet_body.dart';
 import 'package:loc_motos/features/groups/domain/entities/group_incident.dart';
 import 'package:loc_motos/features/groups/domain/services/critical_emergency_actions.dart';
 import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
 import 'package:loc_motos/features/settings/data/repositories/emergency_contacts_repository.dart';
 import 'package:loc_motos/features/settings/presentation/providers/settings_providers.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+/// Color de la advertencia (mismo que el banner).
+Color groupIncidentColor({
+  GroupIncidentType? type,
+  GroupIncidentSeverity? severity,
+}) {
+  if (type == null) {
+    return const Color(0xFF2E7D32);
+  }
+  if (type != GroupIncidentType.emergencia) {
+    return switch (type) {
+      GroupIncidentType.averia => const Color(0xFFEF6C00),
+      GroupIncidentType.separado => const Color(0xFF1565C0),
+      GroupIncidentType.espera => const Color(0xFF6A1B9A),
+      GroupIncidentType.emergencia => const Color(0xFFC62828),
+    };
+  }
+  return switch (severity) {
+    GroupIncidentSeverity.critica => const Color(0xFFB71C1C),
+    GroupIncidentSeverity.alta => const Color(0xFFC62828),
+    GroupIncidentSeverity.moderada => const Color(0xFFE53935),
+    GroupIncidentSeverity.leve => const Color(0xFFEF5350),
+    null => const Color(0xFFC62828),
+  };
+}
 
 /// Barra inferior de incidencias del grupo.
 class GroupIncidentActionsBar extends StatelessWidget {
@@ -25,6 +51,7 @@ class GroupIncidentActionsBar extends StatelessWidget {
     this.embedded = false,
     this.vertical = false,
     this.tight = false,
+    this.ownAlertColor,
   });
 
   final bool hasOwnAlert;
@@ -47,6 +74,11 @@ class GroupIncidentActionsBar extends StatelessWidget {
 
   /// Iconos pequeños, sin Expanded (una fila junto a otros botones).
   final bool tight;
+
+  /// Color del aviso propio (fondo del botón OK / check blanco).
+  final Color? ownAlertColor;
+
+  Color get _okColor => ownAlertColor ?? const Color(0xFF2E7D32);
 
   @override
   Widget build(BuildContext context) {
@@ -76,21 +108,21 @@ class GroupIncidentActionsBar extends StatelessWidget {
         children: [
           if (hasOwnAlert) ...[
             _SideIncidentIcon(
-              color: const Color(0xFF2E7D32),
-              icon: Icons.check_circle_rounded,
+              color: _okColor,
+              icon: Icons.check_rounded,
               tooltip: 'Ya estoy OK',
               onPressed: enabled ? onClear : null,
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 6),
           ],
           if (showWait && onWait != null) ...[
             _SideIncidentIcon(
               color: const Color(0xFF8E24AA),
-              icon: Icons.groups_rounded,
+              icon: Icons.front_hand_rounded,
               tooltip: 'Esperar / reunir',
               onPressed: enabled ? onWait : null,
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 6),
           ],
           _SideIncidentIcon(
             color: const Color(0xFFC62828),
@@ -98,14 +130,14 @@ class GroupIncidentActionsBar extends StatelessWidget {
             tooltip: 'Emergencia',
             onPressed: enabled ? onEmergency : null,
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           _SideIncidentIcon(
             color: const Color(0xFFEF6C00),
             icon: Icons.car_crash_outlined,
             tooltip: 'Avería',
             onPressed: enabled ? onBreakdown : null,
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           _SideIncidentIcon(
             color: const Color(0xFF1565C0),
             icon: Icons.person_search_rounded,
@@ -121,72 +153,65 @@ class GroupIncidentActionsBar extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(6, 6, 6, 6),
       child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (hasOwnAlert) ...[
-              FilledButton.icon(
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF2E7D32),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  minimumSize: const Size(0, 36),
-                ),
-                onPressed: enabled ? onClear : null,
-                icon: const Icon(Icons.check_circle_rounded, size: 18),
-                label: const Text(
-                  'Ya estoy OK',
-                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
-                ),
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (showWait && onWait != null) ...[
+            FilledButton.icon(
+              onPressed: enabled ? onWait : null,
+              icon: const Icon(Icons.front_hand_rounded, size: 18),
+              label: const Text('Esperar / reunir'),
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF8E24AA),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                minimumSize: const Size(0, 36),
               ),
-              const SizedBox(height: 6),
-            ],
-            if (showWait && onWait != null) ...[
-              FilledButton.icon(
-                onPressed: enabled ? onWait : null,
-                icon: const Icon(Icons.groups_rounded, size: 18),
-                label: const Text('Esperar / reunir'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF8E24AA),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  minimumSize: const Size(0, 36),
-                ),
-              ),
-              const SizedBox(height: 6),
-            ],
-            Row(
-              children: [
-                Expanded(
-                  child: _IncidentButton(
-                    label: 'Emergencia',
-                    color: const Color(0xFFC62828),
-                    icon: Icons.emergency_rounded,
-                    onPressed: enabled ? onEmergency : null,
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: _IncidentButton(
-                    label: 'Avería',
-                    color: const Color(0xFFEF6C00),
-                    icon: Icons.car_crash_outlined,
-                    onPressed: enabled ? onBreakdown : null,
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: _IncidentButton(
-                    label: 'Separado',
-                    color: const Color(0xFF1565C0),
-                    icon: Icons.person_search_rounded,
-                    onPressed: enabled ? onSeparated : null,
-                  ),
-                ),
-              ],
             ),
+            const SizedBox(height: 6),
           ],
-        ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (hasOwnAlert) ...[
+                _SideIncidentIcon(
+                  color: _okColor,
+                  icon: Icons.check_rounded,
+                  tooltip: 'Ya estoy OK',
+                  onPressed: enabled ? onClear : null,
+                ),
+                const SizedBox(width: 6),
+              ],
+              Expanded(
+                child: _IncidentButton(
+                  label: 'Emergencia',
+                  color: const Color(0xFFC62828),
+                  icon: Icons.emergency_rounded,
+                  onPressed: enabled ? onEmergency : null,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: _IncidentButton(
+                  label: 'Avería',
+                  color: const Color(0xFFEF6C00),
+                  icon: Icons.car_crash_outlined,
+                  onPressed: enabled ? onBreakdown : null,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: _IncidentButton(
+                  label: 'Separado',
+                  color: const Color(0xFF1565C0),
+                  icon: Icons.person_search_rounded,
+                  onPressed: enabled ? onSeparated : null,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -217,8 +242,8 @@ class GroupIncidentActionsBar extends StatelessWidget {
       children: [
         if (hasOwnAlert) ...[
           btn(
-            color: const Color(0xFF2E7D32),
-            icon: Icons.check_circle_rounded,
+            color: _okColor,
+            icon: Icons.check_rounded,
             tooltip: 'Ya estoy OK',
             onPressed: enabled ? onClear : null,
           ),
@@ -263,18 +288,11 @@ class GroupIncidentActionsBar extends StatelessWidget {
       child: Row(
         children: [
           if (hasOwnAlert) ...[
-            Expanded(
-              child: FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF2E7D32),
-                  foregroundColor: Colors.white,
-                  padding: EdgeInsets.zero,
-                  minimumSize: const Size(0, 38),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-                onPressed: enabled ? onClear : null,
-                child: const Icon(Icons.check_circle_rounded, size: 20),
-              ),
+            _SideIncidentIcon(
+              color: _okColor,
+              icon: Icons.check_rounded,
+              tooltip: 'Ya estoy OK',
+              onPressed: enabled ? onClear : null,
             ),
             const SizedBox(width: 4),
           ],
@@ -289,7 +307,7 @@ class GroupIncidentActionsBar extends StatelessWidget {
                   minimumSize: const Size(0, 38),
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
-                child: const Icon(Icons.groups_rounded, size: 18),
+                child: const Icon(Icons.front_hand_rounded, size: 18),
               ),
             ),
             const SizedBox(width: 4),
@@ -363,18 +381,29 @@ class _SideIncidentIcon extends StatelessWidget {
   final String tooltip;
   final VoidCallback? onPressed;
 
+  static const _size = 44.0;
+
   @override
   Widget build(BuildContext context) {
-    return IconButton.filled(
-      tooltip: tooltip,
-      onPressed: onPressed,
-      style: IconButton.styleFrom(
-        backgroundColor: color,
-        foregroundColor: Colors.white,
-        minimumSize: const Size(40, 40),
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    // IconButton.filled se estira con constraints altos (landscape) y pinta
+    // una franja de color; usamos un botón de tamaño fijo como el mapa.
+    final button = Material(
+      color: onPressed == null ? color.withValues(alpha: 0.45) : color,
+      shape: const CircleBorder(),
+      elevation: 2,
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onPressed,
+        child: SizedBox(
+          width: _size,
+          height: _size,
+          child: Icon(icon, color: Colors.white, size: 22),
+        ),
       ),
-      icon: Icon(icon, size: 20),
+    );
+    return Tooltip(
+      message: tooltip,
+      child: button,
     );
   }
 }
@@ -423,6 +452,7 @@ class GroupIncidentBanner extends ConsumerWidget {
     this.isOwnIncident = false,
     this.onClear,
     this.compact = false,
+    this.landscape = false,
   });
 
   final GroupIncident incident;
@@ -435,23 +465,13 @@ class GroupIncidentBanner extends ConsumerWidget {
   final VoidCallback? onClear;
   final bool compact;
 
-  Color get _color {
-    if (incident.type != GroupIncidentType.emergencia) {
-      return switch (incident.type) {
-        GroupIncidentType.averia => const Color(0xFFEF6C00),
-        GroupIncidentType.separado => const Color(0xFF1565C0),
-        GroupIncidentType.espera => const Color(0xFF6A1B9A),
-        GroupIncidentType.emergencia => const Color(0xFFC62828),
-      };
-    }
-    return switch (incident.severity) {
-      GroupIncidentSeverity.critica => const Color(0xFFB71C1C),
-      GroupIncidentSeverity.alta => const Color(0xFFC62828),
-      GroupIncidentSeverity.moderada => const Color(0xFFE53935),
-      GroupIncidentSeverity.leve => const Color(0xFFEF5350),
-      null => const Color(0xFFC62828),
-    };
-  }
+  /// Horizontal: una sola fila baja que no tapa los botones laterales.
+  final bool landscape;
+
+  Color get _color => groupIncidentColor(
+        type: incident.type,
+        severity: incident.severity,
+      );
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -465,6 +485,20 @@ class GroupIncidentBanner extends ConsumerWidget {
     final ownContacts = isOwnIncident && incident.isCriticalEmergency
         ? ref.watch(emergencyContactsProvider).validContacts
         : const <EmergencyContact>[];
+    final showEmergencyActions = incident.type == GroupIncidentType.emergencia &&
+        (incident.severity == GroupIncidentSeverity.critica ||
+            incident.severity == GroupIncidentSeverity.alta);
+
+    if (landscape) {
+      return _buildLandscape(
+        context,
+        name: name,
+        title: title,
+        personName: personName,
+        ownContacts: ownContacts,
+        showEmergencyActions: showEmergencyActions,
+      );
+    }
 
     return Material(
       elevation: 3,
@@ -510,9 +544,7 @@ class GroupIncidentBanner extends ConsumerWidget {
                   ),
               ],
             ),
-            if (incident.type == GroupIncidentType.emergencia &&
-                (incident.severity == GroupIncidentSeverity.critica ||
-                    incident.severity == GroupIncidentSeverity.alta)) ...[
+            if (showEmergencyActions) ...[
               Text(
                 coords,
                 style: const TextStyle(color: Colors.white70, fontSize: 11),
@@ -521,51 +553,11 @@ class GroupIncidentBanner extends ConsumerWidget {
               Wrap(
                 spacing: 6,
                 runSpacing: 4,
-                children: [
-                  if (incident.isCriticalEmergency)
-                    _BannerAction(
-                      label: 'Llamar 112',
-                      onTap: () => unawaited(
-                        CriticalEmergencyActions.open112Dialer(),
-                      ),
-                    ),
-                  _BannerAction(
-                    label: 'Copiar ubicación',
-                    onTap: () async {
-                      await CriticalEmergencyActions.copyLocation(
-                        displayName: personName,
-                        point: incident.point,
-                      );
-                      if (!context.mounted) {
-                        return;
-                      }
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Ubicación copiada')),
-                      );
-                    },
-                  ),
-                  _BannerAction(
-                    label: 'Abrir mapas',
-                    onTap: () {
-                      launchUrl(
-                        CriticalEmergencyActions.mapsSearchUri(incident.point),
-                        mode: LaunchMode.externalApplication,
-                      );
-                    },
-                  ),
-                  if (ownContacts.isNotEmpty)
-                    _BannerAction(
-                      label: 'Avisar contacto',
-                      onTap: () => unawaited(
-                        _notifyEmergencyContact(
-                          context,
-                          contacts: ownContacts,
-                          displayName: personName,
-                          point: incident.point,
-                        ),
-                      ),
-                    ),
-                ],
+                children: _emergencyActionChips(
+                  context,
+                  personName: personName,
+                  ownContacts: ownContacts,
+                ),
               ),
             ],
             if (isOwnIncident && onClear != null) ...[
@@ -593,6 +585,165 @@ class GroupIncidentBanner extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Widget _buildLandscape(
+    BuildContext context, {
+    required String name,
+    required String title,
+    required String personName,
+    required List<EmergencyContact> ownContacts,
+    required bool showEmergencyActions,
+  }) {
+    return Material(
+      elevation: 3,
+      color: _color,
+      borderRadius: BorderRadius.circular(10),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(8, 4, 4, 4),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                const Icon(
+                  Icons.warning_amber_rounded,
+                  color: Colors.white,
+                  size: 16,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    '$name · $title',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 12,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                if (isOwnIncident && onClear != null) ...[
+                  const SizedBox(width: 6),
+                  FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: _color,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    onPressed: onClear,
+                    child: const Text(
+                      'OK',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
+                if (onDismiss != null)
+                  IconButton(
+                    tooltip: 'Ocultar en mi pantalla',
+                    onPressed: onDismiss,
+                    visualDensity: VisualDensity.compact,
+                    iconSize: 18,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(
+                      minWidth: 32,
+                      minHeight: 32,
+                    ),
+                    icon: const Icon(Icons.close, color: Colors.white),
+                  ),
+              ],
+            ),
+            if (showEmergencyActions) ...[
+              const SizedBox(height: 2),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    for (final chip in _emergencyActionChips(
+                      context,
+                      personName: personName,
+                      ownContacts: ownContacts,
+                      dense: true,
+                    )) ...[
+                      chip,
+                      const SizedBox(width: 4),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _emergencyActionChips(
+    BuildContext context, {
+    required String personName,
+    required List<EmergencyContact> ownContacts,
+    bool dense = false,
+  }) {
+    return [
+      if (incident.isCriticalEmergency)
+        _BannerAction(
+          label: '112',
+          dense: dense,
+          onTap: () => unawaited(
+            CriticalEmergencyActions.open112Dialer(),
+          ),
+        ),
+      _BannerAction(
+        label: dense ? 'Copiar' : 'Copiar ubicación',
+        dense: dense,
+        onTap: () async {
+          await CriticalEmergencyActions.copyLocation(
+            displayName: personName,
+            point: incident.point,
+          );
+          if (!context.mounted) {
+            return;
+          }
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Ubicación copiada')),
+          );
+        },
+      ),
+      _BannerAction(
+        label: dense ? 'Mapas' : 'Abrir mapas',
+        dense: dense,
+        onTap: () {
+          launchUrl(
+            CriticalEmergencyActions.mapsSearchUri(incident.point),
+            mode: LaunchMode.externalApplication,
+          );
+        },
+      ),
+      if (ownContacts.isNotEmpty)
+        _BannerAction(
+          label: dense ? 'Avisar' : 'Avisar contacto',
+          dense: dense,
+          onTap: () => unawaited(
+            _notifyEmergencyContact(
+              context,
+              contacts: ownContacts,
+              displayName: personName,
+              point: incident.point,
+            ),
+          ),
+        ),
+    ];
   }
 }
 
@@ -692,10 +843,15 @@ Future<void> _notifyEmergencyContact(
 }
 
 class _BannerAction extends StatelessWidget {
-  const _BannerAction({required this.label, required this.onTap});
+  const _BannerAction({
+    required this.label,
+    required this.onTap,
+    this.dense = false,
+  });
 
   final String label;
   final VoidCallback onTap;
+  final bool dense;
 
   @override
   Widget build(BuildContext context) {
@@ -703,12 +859,19 @@ class _BannerAction extends StatelessWidget {
       style: TextButton.styleFrom(
         foregroundColor: Colors.white,
         backgroundColor: Colors.white24,
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        padding: EdgeInsets.symmetric(
+          horizontal: dense ? 8 : 10,
+          vertical: dense ? 2 : 4,
+        ),
         minimumSize: Size.zero,
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        visualDensity: dense ? VisualDensity.compact : null,
       ),
       onPressed: onTap,
-      child: Text(label, style: const TextStyle(fontSize: 12)),
+      child: Text(
+        label,
+        style: TextStyle(fontSize: dense ? 11 : 12),
+      ),
     );
   }
 }
@@ -752,41 +915,38 @@ Future<GroupIncidentSeverity?> pickEmergencySeverity(
     isScrollControlled: true,
     showDragHandle: true,
     builder: (context) {
-      return SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'Gravedad de la emergencia',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Si eliges Urgente · 112 se avisará al grupo y se abrirá el marcador del 112.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-              ),
-              const SizedBox(height: 12),
-              for (final s in GroupIncidentSeverity.values)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: FilledButton(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: s == GroupIncidentSeverity.critica
-                          ? const Color(0xFFB71C1C)
-                          : const Color(0xFFC62828),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                    ),
-                    onPressed: () => Navigator.pop(context, s),
-                    child: Text(s.label),
+      return KeyboardSafeSheetBody(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Gravedad de la emergencia',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Si eliges Urgente · 112 se avisará al grupo y se abrirá el marcador del 112.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
+            ),
+            const SizedBox(height: 12),
+            for (final s in GroupIncidentSeverity.values)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: s == GroupIncidentSeverity.critica
+                        ? const Color(0xFFB71C1C)
+                        : const Color(0xFFC62828),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  onPressed: () => Navigator.pop(context, s),
+                  child: Text(s.label),
                 ),
-            ],
-          ),
+              ),
+          ],
         ),
       );
     },

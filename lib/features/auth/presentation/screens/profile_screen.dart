@@ -85,6 +85,35 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
+  /// Persiste solo vehículos (sin exigir «Guardar perfil»).
+  Future<bool> _persistVehicles({String? successMessage}) async {
+    final user = _user;
+    await ref.read(authActionControllerProvider.notifier).updateProfile(
+          displayName: user.displayName,
+          phoneNumber: user.phoneNumber,
+          vehicles: _vehicles,
+          activeVehicleId: _activeVehicleId,
+          clearActiveVehicleId: _activeVehicleId == null,
+        );
+    if (!mounted) {
+      return false;
+    }
+    if (ref.read(authActionControllerProvider).hasError) {
+      final fresh = _user;
+      setState(() {
+        _vehicles = List<UserVehicle>.from(fresh.resolvedVehicles);
+        _activeVehicleId = fresh.activeVehicle?.id;
+      });
+      return false;
+    }
+    if (successMessage != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(successMessage)),
+      );
+    }
+    return true;
+  }
+
   Future<void> _savePassword() async {
     if (!_passwordKey.currentState!.validate()) {
       return;
@@ -116,6 +145,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     if (result == null || !mounted) {
       return;
     }
+    final wasNew = _vehicles.every((v) => v.id != result.id);
     setState(() {
       final index = _vehicles.indexWhere((v) => v.id == result.id);
       if (index >= 0) {
@@ -125,16 +155,31 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         _activeVehicleId ??= result.id;
       }
     });
+    await _persistVehicles(
+      successMessage: wasNew ? 'Vehículo añadido.' : 'Vehículo guardado.',
+    );
   }
 
-  void _deleteVehicle(String id) {
+  Future<void> _deleteVehicle(String id) async {
     setState(() {
       _vehicles = _vehicles.where((v) => v.id != id).toList();
       if (_activeVehicleId == id) {
-        _activeVehicleId =
-            _vehicles.isEmpty ? null : _vehicles.first.id;
+        _activeVehicleId = _vehicles.isEmpty ? null : _vehicles.first.id;
       }
     });
+    await _persistVehicles(successMessage: 'Vehículo eliminado.');
+  }
+
+  Future<void> _setActiveVehicle(String? id) async {
+    if (_activeVehicleId == id) {
+      return;
+    }
+    setState(() => _activeVehicleId = id);
+    await _persistVehicles(
+      successMessage: id == null
+          ? 'Sin vehículo activo.'
+          : 'Vehículo activo actualizado.',
+    );
   }
 
   @override
@@ -226,9 +271,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           groupValue: _activeVehicleId,
                           onChanged: isLoading
                               ? null
-                              : (value) {
-                                  setState(() => _activeVehicleId = value);
-                                },
+                              : (value) => unawaited(_setActiveVehicle(value)),
                         ),
                         title: Text(vehicle.displayLabel),
                         subtitle: Text(
@@ -260,7 +303,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                 if (action == 'edit') {
                                   unawaited(_editVehicle(existing: vehicle));
                                 } else if (action == 'delete') {
-                                  _deleteVehicle(vehicle.id);
+                                  unawaited(_deleteVehicle(vehicle.id));
                                 }
                               },
                               itemBuilder: (context) => [
@@ -285,9 +328,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         ),
                         onTap: isLoading
                             ? null
-                            : () => setState(
-                                  () => _activeVehicleId = vehicle.id,
-                                ),
+                            : () => unawaited(_setActiveVehicle(vehicle.id)),
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -296,7 +337,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   TextButton(
                     onPressed: isLoading
                         ? null
-                        : () => setState(() => _activeVehicleId = null),
+                        : () => unawaited(_setActiveVehicle(null)),
                     child: const Text('Ningún vehículo activo'),
                   ),
                 const SizedBox(height: 8),
@@ -486,10 +527,15 @@ class _VehicleEditorSheetState extends State<_VehicleEditorSheet> {
 
     return Padding(
       padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + bottom),
-      child: Form(
-        key: _formKey,
-        child: SingleChildScrollView(
-          child: Column(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: (MediaQuery.sizeOf(context).height - bottom - 24)
+              .clamp(160.0, MediaQuery.sizeOf(context).height),
+        ),
+        child: Form(
+          key: _formKey,
+          child: SingleChildScrollView(
+            child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -714,6 +760,7 @@ class _VehicleEditorSheetState extends State<_VehicleEditorSheet> {
               ),
             ],
           ),
+        ),
         ),
       ),
     );

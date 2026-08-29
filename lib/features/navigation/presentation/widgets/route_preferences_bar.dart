@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:loc_motos/core/widgets/keyboard_safe_sheet_body.dart';
 import 'package:loc_motos/features/navigation/domain/entities/route_preferences.dart';
 import 'package:loc_motos/features/navigation/presentation/providers/navigation_providers.dart';
 
@@ -101,9 +102,11 @@ class RoutePreferencesBar extends ConsumerWidget {
   ) async {
     await showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
       showDragHandle: true,
       builder: (context) {
-        return SafeArea(
+        return KeyboardSafeSheetBody(
+          padding: EdgeInsets.zero,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -161,13 +164,15 @@ class RoutePreferencesBar extends ConsumerWidget {
   ) async {
     await showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
       showDragHandle: true,
       builder: (context) {
         return Consumer(
           builder: (context, ref, _) {
             final current = ref.watch(routePreferencesProvider);
             final notifier = ref.read(routePreferencesProvider.notifier);
-            return SafeArea(
+            return KeyboardSafeSheetBody(
+              padding: EdgeInsets.zero,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
