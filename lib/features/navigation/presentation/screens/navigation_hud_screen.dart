@@ -1498,9 +1498,11 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
             speedMps: own.speedMps,
           );
     final speedKmh = own == null ? 0.0 : own.speedMps * 3.6;
-    final weakGps = !_simulating &&
-        own?.accuracyMeters != null &&
-        own!.accuracyMeters! >= NavigationConstants.weakGpsAccuracyMeters;
+    final gpsLost = !_simulating && ref.watch(ownGpsLostProvider);
+    final weakGps = gpsLost ||
+        (!_simulating &&
+            own?.accuracyMeters != null &&
+            own!.accuracyMeters! >= NavigationConstants.weakGpsAccuracyMeters);
     final secondaryAlert = _upcomingAlert != null
         ? _HudSecondarySlot.radar
         : _upcomingToll != null
@@ -1612,7 +1614,7 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const _WeakGpsBanner(),
+                      _WeakGpsBanner(lost: gpsLost),
                       if (landscape &&
                           (groupId ?? '').isNotEmpty &&
                           !_arrived) ...[
@@ -1654,7 +1656,7 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
                       ],
                       if (weakGps) ...[
                         const SizedBox(height: 6),
-                        const _WeakGpsBanner(),
+                        _WeakGpsBanner(lost: gpsLost),
                       ],
                       if (!landscape &&
                           secondaryAlert == _HudSecondarySlot.radar &&
@@ -2086,14 +2088,14 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
               location.lng,
             );
 
-      final kind = stale
-          ? HudGroupMateKind.stale
-          : incident != null
-              ? HudGroupMateKind.incident
-              : role == RideRole.cabecera
-                  ? HudGroupMateKind.cabecera
-                  : role == RideRole.cola
-                      ? HudGroupMateKind.cola
+      final kind = incident != null
+          ? HudGroupMateKind.incident
+          : role == RideRole.cabecera
+              ? HudGroupMateKind.cabecera
+              : role == RideRole.cola
+                  ? HudGroupMateKind.cola
+                  : stale
+                      ? HudGroupMateKind.stale
                       : HudGroupMateKind.mate;
 
       final lines = <String>[name];
@@ -2471,7 +2473,9 @@ class _HelmetModeBar extends StatelessWidget {
 enum _HudSecondarySlot { radar, toll, fuel }
 
 class _WeakGpsBanner extends StatelessWidget {
-  const _WeakGpsBanner();
+  const _WeakGpsBanner({this.lost = false});
+
+  final bool lost;
 
   @override
   Widget build(BuildContext context) {
@@ -2483,20 +2487,20 @@ class _WeakGpsBanner extends StatelessWidget {
           color: NavigationHudTheme.warning.withValues(alpha: 0.65),
         ),
       ),
-      child: const Padding(
-        padding: EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              Icons.gps_off_rounded,
+              lost ? Icons.gps_off_rounded : Icons.gps_not_fixed_rounded,
               size: 18,
               color: NavigationHudTheme.warning,
             ),
-            SizedBox(width: 8),
+            const SizedBox(width: 8),
             Text(
-              'Señal GPS baja',
-              style: TextStyle(
+              lost ? 'Sin señal GPS' : 'Señal GPS baja',
+              style: const TextStyle(
                 color: NavigationHudTheme.textPrimary,
                 fontSize: 13,
                 fontWeight: FontWeight.w700,

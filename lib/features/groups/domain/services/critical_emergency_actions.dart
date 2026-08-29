@@ -1,5 +1,6 @@
 import 'package:flutter/services.dart';
 import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
+import 'package:loc_motos/features/settings/data/repositories/emergency_contacts_repository.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Acciones al marcar emergencia crítica (Urgente · 112): texto de ubicación y marcador.
@@ -47,7 +48,7 @@ abstract final class CriticalEmergencyActions {
     }
   }
 
-  /// Copia ubicación y abre el 112. [groupQueued] = aviso pendiente sin red.
+  /// Copia ubicación y abre el 112.
   static Future<Critical112Result> copyAndOpen112({
     required String displayName,
     required GeoPoint point,
@@ -61,6 +62,44 @@ abstract final class CriticalEmergencyActions {
       copied: hasCoords,
       dialerOpened: opened,
     );
+  }
+
+  static Future<bool> openSms({
+    required EmergencyContact contact,
+    required String body,
+  }) async {
+    final uri = Uri(
+      scheme: 'sms',
+      path: contact.phoneDigits,
+      queryParameters: {'body': body},
+    );
+    try {
+      return await launchUrl(uri);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<bool> openWhatsApp({
+    required EmergencyContact contact,
+    required String body,
+  }) async {
+    final phone = contact.phoneDigits;
+    final encoded = Uri.encodeComponent(body);
+    final native = Uri.parse('whatsapp://send?phone=$phone&text=$encoded');
+    final web = Uri.parse('https://wa.me/$phone?text=$encoded');
+    try {
+      if (await canLaunchUrl(native)) {
+        return await launchUrl(native, mode: LaunchMode.externalApplication);
+      }
+      return await launchUrl(web, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      try {
+        return await launchUrl(web, mode: LaunchMode.externalApplication);
+      } catch (_) {
+        return false;
+      }
+    }
   }
 }
 

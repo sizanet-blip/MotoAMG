@@ -11,6 +11,7 @@ import 'package:loc_motos/features/settings/presentation/screens/about_app_scree
 import 'package:loc_motos/features/settings/presentation/screens/alert_preferences_screen.dart';
 import 'package:loc_motos/features/settings/presentation/screens/app_help_screen.dart';
 import 'package:loc_motos/features/settings/presentation/screens/app_theme_settings_screen.dart';
+import 'package:loc_motos/features/settings/presentation/screens/emergency_contacts_settings_screen.dart';
 import 'package:loc_motos/features/settings/presentation/screens/fuel_cache_settings_screen.dart';
 import 'package:loc_motos/features/settings/presentation/screens/group_ride_settings_screen.dart';
 import 'package:loc_motos/features/settings/presentation/screens/hud_safety_settings_screen.dart';
@@ -87,6 +88,21 @@ class SettingsScreen extends ConsumerWidget {
               Navigator.of(context).push(
                 MaterialPageRoute<void>(
                   builder: (_) => const GroupRideSettingsScreen(),
+                ),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.contact_emergency_outlined),
+            title: const Text('Contacto de emergencia'),
+            subtitle: const Text(
+              'Aviso manual por SMS o WhatsApp tras Urgente · 112',
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const EmergencyContactsSettingsScreen(),
                 ),
               );
             },

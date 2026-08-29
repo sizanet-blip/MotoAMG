@@ -1906,22 +1906,16 @@ class _NavigationMapViewState extends State<NavigationMapView> {
     }
     try {
       await _enableOverlappingSymbols(controller);
+      // Mates normales / sin señal: punto (menos ruido visual).
       await controller.addImage(
         _groupMateIconId,
-        await VehicleNavigationMarker.toPng(
-          icon: VehicleMapIcon.motorcycle,
-          color: _groupMateColor,
-          logicalSize: 110,
-        ),
+        await _buildMateDotPng(_groupMateColor),
       );
       await controller.addImage(
         _groupMateStaleIconId,
-        await VehicleNavigationMarker.toPng(
-          icon: VehicleMapIcon.motorcycle,
-          color: _groupMateStaleColor,
-          logicalSize: 110,
-        ),
+        await _buildMateDotPng(_groupMateStaleColor),
       );
+      // Cabecera, cola e incidencia: moto.
       await controller.addImage(
         _groupMateCabeceraIconId,
         await VehicleNavigationMarker.toPng(
@@ -1950,6 +1944,33 @@ class _NavigationMapViewState extends State<NavigationMapView> {
     } catch (_) {
       _groupMateIconsReady = false;
     }
+  }
+
+  Future<Uint8List> _buildMateDotPng(Color color) async {
+    const size = 72.0;
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+    final center = const Offset(size / 2, size / 2);
+    canvas.drawCircle(
+      center,
+      size / 2 - 2,
+      Paint()
+        ..color = Colors.black.withValues(alpha: 0.2)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2),
+    );
+    canvas.drawCircle(center, size / 2 - 8, Paint()..color = color);
+    canvas.drawCircle(
+      center,
+      size / 2 - 8,
+      Paint()
+        ..color = Colors.white
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3.5,
+    );
+    final picture = recorder.endRecording();
+    final image = await picture.toImage(size.toInt(), size.toInt());
+    final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+    return bytes!.buffer.asUint8List();
   }
 
   Future<void> _enableOverlappingSymbols(MapLibreMapController controller) async {
@@ -2032,11 +2053,15 @@ class _NavigationMapViewState extends State<NavigationMapView> {
         HudGroupMateKind.cola => '#EF6C00',
         HudGroupMateKind.mate => '#E65100',
       };
+      final isDot = mate.kind == HudGroupMateKind.mate ||
+          mate.kind == HudGroupMateKind.stale;
       final options = SymbolOptions(
         geometry: LatLng(mate.lat, mate.lng),
         iconImage: icon,
-        iconSize: mate.kind == HudGroupMateKind.stale ? 0.75 : 0.9,
-        iconRotate: iconRotate,
+        iconSize: isDot
+            ? (mate.kind == HudGroupMateKind.stale ? 0.55 : 0.65)
+            : 0.9,
+        iconRotate: isDot ? 0.0 : iconRotate,
         iconAnchor: 'center',
         iconOffset: Offset(0, -1.15 * stackIndex),
         textField: mate.label,

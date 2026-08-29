@@ -11,6 +11,8 @@ import 'package:loc_motos/features/groups/presentation/providers/group_providers
 import 'package:loc_motos/features/tracking/domain/entities/device_position.dart';
 import 'package:loc_motos/features/tracking/domain/entities/live_location.dart';
 import 'package:loc_motos/features/tracking/presentation/providers/tracking_providers.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+import 'package:share_plus/share_plus.dart';
 
 class GroupOptionsScreen extends ConsumerWidget {
   const GroupOptionsScreen({
@@ -198,41 +200,80 @@ class _InviteCodeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final shareText =
+        'Únete a mi grupo en LocMotos.\nCódigo: $code';
     return Card(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
-        child: Row(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Código de invitación',
-                    style: Theme.of(context).textTheme.labelMedium,
+            Text(
+              'Código de invitación',
+              style: Theme.of(context).textTheme.labelMedium,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              code,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    letterSpacing: 4,
+                    fontWeight: FontWeight.bold,
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    code,
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          letterSpacing: 4,
-                          fontWeight: FontWeight.bold,
-                        ),
-                  ),
-                ],
+            ),
+            const SizedBox(height: 16),
+            Center(
+              child: QrImageView(
+                data: code,
+                version: QrVersions.auto,
+                size: 160,
+                backgroundColor: Colors.white,
+                eyeStyle: const QrEyeStyle(
+                  eyeShape: QrEyeShape.square,
+                  color: Colors.black,
+                ),
+                dataModuleStyle: const QrDataModuleStyle(
+                  dataModuleShape: QrDataModuleShape.square,
+                  color: Colors.black,
+                ),
               ),
             ),
-            IconButton(
-              tooltip: 'Copiar código',
-              onPressed: () async {
-                await Clipboard.setData(ClipboardData(text: code));
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Código copiado')),
-                  );
-                }
-              },
-              icon: const Icon(Icons.copy),
+            const SizedBox(height: 8),
+            Text(
+              'Enséñalo en el parking o bar. El otro motero escribe el código en la app.',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      await Clipboard.setData(ClipboardData(text: code));
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Código copiado')),
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.copy),
+                    label: const Text('Copiar'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: () => SharePlus.instance.share(
+                      ShareParams(text: shareText),
+                    ),
+                    icon: const Icon(Icons.share_outlined),
+                    label: const Text('Compartir'),
+                  ),
+                ),
+              ],
             ),
           ],
         ),

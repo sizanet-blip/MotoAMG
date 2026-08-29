@@ -39,6 +39,7 @@ class _LocationBinderState extends ConsumerState<LocationBinder>
   var _started = false;
   var _checkingGps = false;
   var _notifiedPublishError = false;
+  var _notifiedGpsLost = false;
 
   @override
   void initState() {
@@ -190,6 +191,18 @@ class _LocationBinderState extends ConsumerState<LocationBinder>
       return;
     }
     ref.read(ownGpsLostProvider.notifier).state = lost;
+    if (lost && !_notifiedGpsLost) {
+      _notifiedGpsLost = true;
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Sin señal GPS: puede que dejes de verte bien en el mapa del grupo.',
+          ),
+        ),
+      );
+    } else if (!lost) {
+      _notifiedGpsLost = false;
+    }
     if (ref.read(routeSimulationActiveProvider)) {
       final own = ref.read(ownDevicePositionProvider);
       if (own != null) {

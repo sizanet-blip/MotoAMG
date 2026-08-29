@@ -389,6 +389,14 @@ class _GroupIncidentSessionPanelState
       });
       if (isCritical112) {
         await _runCritical112Actions(point: point, groupQueued: true);
+      } else if (_silent &&
+          (type == GroupIncidentType.emergencia ||
+              type == GroupIncidentType.averia)) {
+        unawaited(
+          ref.read(navigationVoiceServiceProvider).speakUrgent(
+                'Aviso guardado. Se enviará con cobertura.',
+              ),
+        );
       } else if (!_silent) {
         _notifyUser('Se enviará al recuperar cobertura');
       }
@@ -460,7 +468,17 @@ class _GroupIncidentSessionPanelState
       displayName: widget.user.displayName,
       point: point,
     );
-    if (!mounted || _silent) {
+    if (!mounted) {
+      return;
+    }
+    if (_silent) {
+      if (groupQueued) {
+        unawaited(
+          ref.read(navigationVoiceServiceProvider).speakUrgent(
+                'Ubicación copiada. Se enviará el aviso con cobertura. Pulsa llamar al ciento doce.',
+              ),
+        );
+      }
       return;
     }
     _notifyUser(result.snackBarMessage(groupQueued: groupQueued));

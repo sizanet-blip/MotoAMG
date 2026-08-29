@@ -1,8 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:loc_motos/features/groups/domain/entities/group_incident.dart';
 import 'package:loc_motos/features/groups/domain/services/critical_emergency_actions.dart';
+import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
+import 'package:loc_motos/features/settings/data/repositories/emergency_contacts_repository.dart';
+import 'package:loc_motos/features/settings/presentation/providers/settings_providers.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Barra inferior de incidencias del grupo.
@@ -411,7 +415,7 @@ class _IncidentButton extends StatelessWidget {
 }
 
 /// Banner compacto de alerta (no tapa el mapa).
-class GroupIncidentBanner extends StatelessWidget {
+class GroupIncidentBanner extends ConsumerWidget {
   const GroupIncidentBanner({
     super.key,
     required this.incident,
@@ -450,7 +454,7 @@ class GroupIncidentBanner extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final name = (incident.displayName ?? 'Motero').trim();
     final title = incident.type == GroupIncidentType.emergencia
         ? '${incident.type.label} · ${incident.severity?.shortBanner ?? 'GRAVE'}'
@@ -458,6 +462,9 @@ class GroupIncidentBanner extends StatelessWidget {
     final coords =
         '${incident.point.lat.toStringAsFixed(5)}, ${incident.point.lng.toStringAsFixed(5)}';
     final personName = name.isEmpty ? 'Motero' : name;
+    final ownContacts = isOwnIncident && incident.isCriticalEmergency
+        ? ref.watch(emergencyContactsProvider).validContacts
+        : const <EmergencyContact>[];
 
     return Material(
       elevation: 3,
@@ -546,6 +553,18 @@ class GroupIncidentBanner extends StatelessWidget {
                       );
                     },
                   ),
+                  if (ownContacts.isNotEmpty)
+                    _BannerAction(
+                      label: 'Avisar contacto',
+                      onTap: () => unawaited(
+                        _notifyEmergencyContact(
+                          context,
+                          contacts: ownContacts,
+                          displayName: personName,
+                          point: incident.point,
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ],
@@ -572,6 +591,101 @@ class GroupIncidentBanner extends StatelessWidget {
             ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+Future<void> _notifyEmergencyContact(
+  BuildContext context, {
+  required List<EmergencyContact> contacts,
+  required String displayName,
+  required GeoPoint point,
+}) async {
+  EmergencyContact contact = contacts.first;
+  if (contacts.length > 1) {
+    final picked = await showModalBottomSheet<EmergencyContact>(
+      context: context,
+      useRootNavigator: true,
+      showDragHandle: true,
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const ListTile(title: Text('¿A quién avisas?')),
+              for (final c in contacts)
+                ListTile(
+                  leading: const Icon(Icons.person_outline),
+                  title: Text(c.name),
+                  subtitle: Text(c.phone),
+                  onTap: () => Navigator.pop(context, c),
+                ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+    if (picked == null || !context.mounted) {
+      return;
+    }
+    contact = picked;
+  }
+
+  final channel = await showModalBottomSheet<String>(
+    context: context,
+    useRootNavigator: true,
+    showDragHandle: true,
+    builder: (context) {
+      return SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              title: Text('Avisar a ${contact.name}'),
+              subtitle: const Text('Elige SMS o WhatsApp (manual)'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.sms_outlined),
+              title: const Text('SMS'),
+              onTap: () => Navigator.pop(context, 'sms'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.chat_outlined),
+              title: const Text('WhatsApp'),
+              onTap: () => Navigator.pop(context, 'whatsapp'),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      );
+    },
+  );
+  if (channel == null || !context.mounted) {
+    return;
+  }
+
+  final body = CriticalEmergencyActions.locationClipboardMessage(
+    displayName: displayName,
+    point: point,
+  );
+  final ok = channel == 'whatsapp'
+      ? await CriticalEmergencyActions.openWhatsApp(
+          contact: contact,
+          body: body,
+        )
+      : await CriticalEmergencyActions.openSms(
+          contact: contact,
+          body: body,
+        );
+  if (!context.mounted) {
+    return;
+  }
+  if (!ok) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('No se pudo abrir la app. Prueba a copiar la ubicación.'),
       ),
     );
   }
