@@ -185,7 +185,9 @@ class SettingsScreen extends ConsumerWidget {
           ListTile(
             leading: const Icon(Icons.help_outline),
             title: const Text('Ayuda'),
-            subtitle: const Text('Guía rápida de uso'),
+            subtitle: const Text(
+              'Guía rápida, manual completo y preguntas frecuentes',
+            ),
             trailing: const Icon(Icons.chevron_right),
             onTap: () {
               Navigator.of(context).push(

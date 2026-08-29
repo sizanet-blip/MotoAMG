@@ -79,6 +79,12 @@ class _AboutAppScreenState extends State<AboutAppScreen> {
       context: context,
       applicationName: AppConstants.appName,
       applicationVersion: _versionLabel,
+      applicationLegalese:
+          '${AppConstants.copyrightNotice}\n'
+          'Desarrollo: ${AppConstants.developerName}\n\n'
+          'Las bibliotecas de terceros se listan a continuación con sus '
+          'licencias. Mapas, radares, carburantes y servicios de infraestructura '
+          'tienen atribuciones propias en «Acerca de LocMotos».',
       applicationIcon: Image.asset(
         AppConstants.appIconAsset,
         width: 48,
@@ -86,6 +92,7 @@ class _AboutAppScreenState extends State<AboutAppScreen> {
       ),
     );
   }
+
 
   String get _versionLabel {
     final info = _info;
@@ -183,7 +190,7 @@ class _AboutAppScreenState extends State<AboutAppScreen> {
           _AboutLinkTile(
             icon: Icons.code_outlined,
             title: 'Licencias de software libre',
-            subtitle: 'Bibliotecas de código abierto usadas en la app',
+            subtitle: 'Paquetes de código abierto y sus licencias',
             onTap: _openLicenses,
           ),
           const SizedBox(height: 20),
@@ -194,14 +201,14 @@ class _AboutAppScreenState extends State<AboutAppScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Mapas y datos',
+                    'Atribuciones de mapas y datos',
                     style: textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    AppConstants.mapAttributionPlain,
+                    AppConstants.dataAttributionsPlain,
                     style: textTheme.bodySmall?.copyWith(
                       color: colors.onSurfaceVariant,
                       height: 1.4,
@@ -211,6 +218,7 @@ class _AboutAppScreenState extends State<AboutAppScreen> {
               ),
             ),
           ),
+
         ],
       ),
     );

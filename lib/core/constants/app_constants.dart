@@ -15,6 +15,18 @@ abstract final class AppConstants {
   static const String mapAttributionPlain =
       'Mapas: Protomaps · Datos © OpenStreetMap contributors';
 
+  /// Atribuciones de datos y servicios (Acerca de / licencias).
+  static const String dataAttributionsPlain =
+      'Cartografía y estilos: Protomaps · Datos © OpenStreetMap contributors.\n'
+      'Geocodificación: OpenStreetMap Nominatim (cuando aplica).\n'
+      'Radares offline: inventarios derivados de fuentes oficiales (DGT / SCT) '
+      'y datos OpenStreetMap, servidos o empaquetados para LocMotos.\n'
+      'Gasolineras y precios: inventario público MITECO (carburantes), '
+      'cuando está descargado o disponible.\n'
+      'Autenticación, datos en la nube e informes de error: Google Firebase.\n'
+      'Intercom de voz: LiveKit.\n'
+      'Bibliotecas de código abierto: ver «Licencias de software libre».';
+
   static const String colorThemeBox = 'app_color_theme';
   static const String colorThemeKey = 'palette_v1';
 
