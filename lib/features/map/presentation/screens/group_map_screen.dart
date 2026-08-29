@@ -14,6 +14,7 @@ import 'package:loc_motos/features/auth/domain/entities/vehicle_map_marker.dart'
 import 'package:loc_motos/features/auth/presentation/widgets/vehicle_navigation_marker.dart';
 import 'package:loc_motos/features/groups/domain/entities/group_incident.dart';
 import 'package:loc_motos/features/groups/domain/entities/group_member.dart';
+import 'package:loc_motos/features/groups/domain/entities/group_voice_announcement.dart';
 import 'package:loc_motos/features/groups/domain/entities/ride_role.dart';
 import 'package:loc_motos/features/groups/domain/services/group_pack_proximity_tracker.dart';
 import 'package:loc_motos/features/groups/domain/services/group_ride_alert_feedback.dart';
@@ -1115,6 +1116,7 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
         if (!mounted || choice == null) {
           return;
         }
+        unawaited(_publishCatchUpVoice(choice));
       }
     }
 
@@ -1161,6 +1163,30 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
       ),
       (route) => route.isFirst,
     );
+  }
+
+  Future<void> _publishCatchUpVoice(CatchUpCabeceraChoice choice) async {
+    final announcement = GroupVoiceAnnouncement(
+      id: 'local',
+      uid: widget.user.uid,
+      kind: choice.voiceKind,
+      at: DateTime.now(),
+      displayName: widget.user.displayName,
+    );
+    unawaited(
+      GroupRideAlertFeedback.playVoiceAnnouncement(
+        announcement: announcement,
+        voice: ref.read(navigationVoiceServiceProvider),
+      ),
+    );
+    try {
+      await ref.read(groupVoiceDatasourceProvider).publish(
+            groupId: widget.groupId,
+            announcement: announcement,
+          );
+    } catch (_) {
+      // Sin red: solo se oye en este móvil.
+    }
   }
 
   Future<void> _openStopsSheet({required bool canManageStops}) async {

@@ -19,6 +19,7 @@ class AuthGate extends ConsumerWidget {
       ref.invalidate(liveUserProvider);
       ref.invalidate(groupLocationsProvider);
       ref.invalidate(myGroupsProvider);
+      ref.read(groupMapSessionOpenProvider.notifier).state = false;
     }
 
     ref.listen(signedInUserProvider, (previous, next) {

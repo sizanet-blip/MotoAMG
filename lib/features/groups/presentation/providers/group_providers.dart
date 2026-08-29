@@ -3,6 +3,7 @@ import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
 import 'package:loc_motos/features/auth/presentation/providers/auth_providers.dart';
 import 'package:loc_motos/features/groups/data/datasources/group_incident_remote_datasource.dart';
 import 'package:loc_motos/features/groups/data/datasources/group_stop_remote_datasource.dart';
+import 'package:loc_motos/features/groups/data/datasources/group_voice_remote_datasource.dart';
 import 'package:loc_motos/features/groups/data/datasources/group_remote_datasource.dart';
 import 'package:loc_motos/features/groups/data/repositories/group_pack_alert_repository.dart';
 import 'package:loc_motos/features/groups/data/repositories/group_repository_impl.dart';
@@ -10,6 +11,7 @@ import 'package:loc_motos/features/groups/domain/entities/group_incident.dart';
 import 'package:loc_motos/features/groups/domain/entities/group_member.dart';
 import 'package:loc_motos/features/groups/domain/entities/group_stop.dart';
 import 'package:loc_motos/features/groups/domain/entities/group_membership.dart';
+import 'package:loc_motos/features/groups/domain/entities/group_voice_announcement.dart';
 import 'package:loc_motos/features/groups/domain/entities/ride_group.dart';
 import 'package:loc_motos/features/groups/domain/entities/ride_role.dart';
 import 'package:loc_motos/features/groups/domain/exceptions/group_exceptions.dart';
@@ -96,6 +98,16 @@ final groupIncidentsProvider =
   return ref.watch(groupIncidentDatasourceProvider).watchGroup(groupId);
 });
 
+final groupVoiceDatasourceProvider =
+    Provider<GroupVoiceRemoteDataSource>((ref) {
+  return GroupVoiceRemoteDataSource();
+});
+
+final groupVoiceAnnouncementsProvider =
+    StreamProvider.family<List<GroupVoiceAnnouncement>, String>((ref, groupId) {
+  return ref.watch(groupVoiceDatasourceProvider).watchGroup(groupId);
+});
+
 final groupStopDatasourceProvider =
     Provider<GroupStopRemoteDataSource>((ref) {
   return GroupStopRemoteDataSource();
@@ -152,6 +164,10 @@ final groupActionControllerProvider =
       GroupActionController.new,
     );
 
+/// El mapa del grupo solo se muestra si el usuario lo abre en esta sesión.
+/// Al arrancar la app queda en false → página de inicio (Mis grupos).
+final groupMapSessionOpenProvider = StateProvider<bool>((ref) => false);
+
 class GroupActionController extends Notifier<AsyncValue<void>> {
   @override
   AsyncValue<void> build() => const AsyncData(null);
@@ -188,6 +204,7 @@ class GroupActionController extends Notifier<AsyncValue<void>> {
           clearCurrentGroupId: true,
         );
       }
+      ref.read(groupMapSessionOpenProvider.notifier).state = false;
     });
   }
 
@@ -209,6 +226,7 @@ class GroupActionController extends Notifier<AsyncValue<void>> {
           clearCurrentGroupId: true,
         );
       }
+      ref.read(groupMapSessionOpenProvider.notifier).state = false;
     });
   }
 
@@ -251,6 +269,7 @@ class GroupActionController extends Notifier<AsyncValue<void>> {
           clearCurrentGroupId: true,
         );
       }
+      ref.read(groupMapSessionOpenProvider.notifier).state = false;
     });
   }
 
@@ -388,6 +407,7 @@ class GroupActionController extends Notifier<AsyncValue<void>> {
     ref.read(signedInUserProvider.notifier).state = current.copyWith(
       currentGroupId: groupId,
     );
+    ref.read(groupMapSessionOpenProvider.notifier).state = true;
   }
 
   Future<void> _run(Future<void> Function() action) async {

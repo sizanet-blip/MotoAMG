@@ -1,7 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:loc_motos/features/groups/domain/entities/group_voice_announcement.dart';
 import 'package:loc_motos/features/navigation/presentation/widgets/route_preferences_bar.dart';
 
 enum CatchUpCabeceraChoice { chase, destination }
+
+extension CatchUpCabeceraChoiceX on CatchUpCabeceraChoice {
+  GroupVoiceKind get voiceKind => switch (this) {
+        CatchUpCabeceraChoice.chase => GroupVoiceKind.catchUpChase,
+        CatchUpCabeceraChoice.destination => GroupVoiceKind.catchUpDestination,
+      };
+}
 
 /// Elige ir a la cabecera (con estilo de ruta) o directo al destino del grupo.
 Future<CatchUpCabeceraChoice?> showCatchUpCabeceraSheet({

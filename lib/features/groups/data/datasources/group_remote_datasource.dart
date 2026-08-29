@@ -250,6 +250,16 @@ class GroupRemoteDataSource {
             .ref('${AppConstants.groupAlertsPath}/$groupId')
             .remove();
       } catch (_) {}
+      try {
+        await _database
+            .ref('${AppConstants.groupVoicePath}/$groupId')
+            .remove();
+      } catch (_) {}
+      try {
+        await _database
+            .ref('${AppConstants.groupStopsPath}/$groupId')
+            .remove();
+      } catch (_) {}
     } on GroupException {
       rethrow;
     } on FirebaseException catch (error) {

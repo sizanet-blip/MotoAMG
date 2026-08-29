@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/services.dart';
 import 'package:loc_motos/features/groups/domain/entities/group_incident.dart';
+import 'package:loc_motos/features/groups/domain/entities/group_voice_announcement.dart';
 import 'package:loc_motos/features/navigation/data/services/navigation_voice_service.dart';
 
 /// Feedback háptico / sonido / voz para incidencias y pelotón.
@@ -65,6 +66,19 @@ abstract final class GroupRideAlertFeedback {
     }
     if (voice != null) {
       unawaited(voice.speak(spoken));
+    }
+  }
+
+  /// Rezagado elige cabecera o destino: aviso de voz al pelotón.
+  static Future<void> playVoiceAnnouncement({
+    required GroupVoiceAnnouncement announcement,
+    NavigationVoiceService? voice,
+  }) async {
+    await HapticFeedback.mediumImpact();
+    await SystemSound.play(SystemSoundType.alert);
+    if (voice != null) {
+      // Urgente: suena con copiloto muteado y las maniobras no lo cortan.
+      unawaited(voice.speakUrgent(announcement.spokenMessage()));
     }
   }
 

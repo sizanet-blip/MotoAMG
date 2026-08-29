@@ -23,6 +23,14 @@
           ".write": "auth != null"
         }
       }
+    },
+    "group_voice": {
+      "$groupId": {
+        ".read": "auth != null",
+        "$announcementId": {
+          ".write": "auth != null && (!newData.exists() || (newData.hasChildren() && newData.child('uid').val() === auth.uid))"
+        }
+      }
     }
   }
 }

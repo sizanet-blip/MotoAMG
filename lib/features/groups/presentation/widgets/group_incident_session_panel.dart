@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
 import 'package:loc_motos/features/groups/domain/entities/group_incident.dart';
+import 'package:loc_motos/features/groups/domain/entities/group_voice_announcement.dart';
 import 'package:loc_motos/features/groups/domain/entities/ride_role.dart';
 import 'package:loc_motos/features/groups/domain/services/critical_emergency_actions.dart';
 import 'package:loc_motos/features/groups/domain/services/group_incident_service.dart';
@@ -61,7 +62,9 @@ class _GroupIncidentSessionPanelState
     extends ConsumerState<GroupIncidentSessionPanel> {
   final _dismissedBannerIds = <String>{};
   final _seenIncidentKeys = <String>{};
+  final _seenVoiceKeys = <String>{};
   var _incidentAlertPrimed = false;
+  var _voiceAlertPrimed = false;
   _PendingIncidentRaise? _pendingIncident;
   GroupIncident? _localOwnIncident;
   var _incidentBusy = false;
@@ -124,7 +127,19 @@ class _GroupIncidentSessionPanelState
       );
     });
 
+    ref.listen(groupVoiceAnnouncementsProvider(widget.groupId), (_, next) {
+      final list = next.asData?.value;
+      if (list != null) {
+        _maybeAlertVoiceAnnouncements(list);
+      }
+    });
+
     _maybeAlertNewIncidents(incidents);
+    final voiceList =
+        ref.watch(groupVoiceAnnouncementsProvider(widget.groupId)).asData?.value;
+    if (voiceList != null) {
+      _maybeAlertVoiceAnnouncements(voiceList);
+    }
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -286,6 +301,47 @@ class _GroupIncidentSessionPanelState
           ),
         );
       }
+    }
+  }
+
+  void _maybeAlertVoiceAnnouncements(List<GroupVoiceAnnouncement> list) {
+    const freshWindow = Duration(seconds: 30);
+    final now = DateTime.now();
+    if (!_voiceAlertPrimed) {
+      for (final announcement in list) {
+        _seenVoiceKeys.add(announcement.dedupeKey);
+        final age = now.difference(announcement.at).abs();
+        // Si acabas de entrar al HUD y el aviso es reciente de otro, aún lo oyes.
+        if (announcement.uid != widget.user.uid && age <= freshWindow) {
+          unawaited(
+            GroupRideAlertFeedback.playVoiceAnnouncement(
+              announcement: announcement,
+              voice: ref.read(navigationVoiceServiceProvider),
+            ),
+          );
+        }
+      }
+      _voiceAlertPrimed = true;
+      return;
+    }
+    final voice = ref.read(navigationVoiceServiceProvider);
+    for (final announcement in list) {
+      if (!_seenVoiceKeys.add(announcement.dedupeKey)) {
+        continue;
+      }
+      if (now.difference(announcement.at).abs() > freshWindow) {
+        continue;
+      }
+      // Quien publica ya oye en local; el resto del grupo por RTDB.
+      if (announcement.uid == widget.user.uid) {
+        continue;
+      }
+      unawaited(
+        GroupRideAlertFeedback.playVoiceAnnouncement(
+          announcement: announcement,
+          voice: voice,
+        ),
+      );
     }
   }
 

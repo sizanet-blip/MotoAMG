@@ -38,7 +38,9 @@ class HomeScreen extends ConsumerWidget {
       );
     });
 
-    if (effective.isInGroup) {
+    final mapOpen = ref.watch(groupMapSessionOpenProvider);
+
+    if (effective.isInGroup && mapOpen) {
       return LocationBinder(
         user: effective,
         groupId: effective.currentGroupId!,

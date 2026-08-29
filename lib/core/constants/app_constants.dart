@@ -94,4 +94,5 @@ abstract final class AppConstants {
   static const String liveLocationsPath = 'live_locations';
   static const String groupAlertsPath = 'group_alerts';
   static const String groupStopsPath = 'group_stops';
+  static const String groupVoicePath = 'group_voice';
 }
