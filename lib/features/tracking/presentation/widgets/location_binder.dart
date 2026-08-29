@@ -5,10 +5,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:loc_motos/core/constants/app_constants.dart';
 import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
+import 'package:loc_motos/features/navigation/presentation/providers/navigation_providers.dart';
 import 'package:loc_motos/features/tracking/domain/entities/device_position.dart';
 import 'package:loc_motos/features/tracking/domain/entities/live_location.dart';
 import 'package:loc_motos/features/tracking/domain/exceptions/location_exceptions.dart';
 import 'package:loc_motos/features/tracking/presentation/providers/tracking_providers.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 /// Pide GPS y lo envía a Firebase mientras el usuario está en el grupo.
 class LocationBinder extends ConsumerStatefulWidget {
@@ -40,12 +42,16 @@ class _LocationBinderState extends ConsumerState<LocationBinder>
   var _checkingGps = false;
   var _notifiedPublishError = false;
   var _notifiedGpsLost = false;
+  var _wakeLockArmed = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _start());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_armWakeLock());
+      unawaited(_start());
+    });
   }
 
   @override
@@ -337,6 +343,30 @@ class _LocationBinderState extends ConsumerState<LocationBinder>
     }
   }
 
+  Future<void> _armWakeLock() async {
+    if (_wakeLockArmed) {
+      return;
+    }
+    final keepOn = ref.read(hudSafetyProvider).keepScreenOn;
+    if (!keepOn) {
+      return;
+    }
+    try {
+      await WakelockPlus.enable();
+      _wakeLockArmed = true;
+    } catch (_) {}
+  }
+
+  Future<void> _disarmWakeLock() async {
+    if (!_wakeLockArmed) {
+      return;
+    }
+    _wakeLockArmed = false;
+    try {
+      await WakelockPlus.disable();
+    } catch (_) {}
+  }
+
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
@@ -344,6 +374,10 @@ class _LocationBinderState extends ConsumerState<LocationBinder>
     _gpsCheck?.cancel();
     unawaited(_serviceSubscription?.cancel());
     unawaited(_subscription?.cancel());
+    if (_wakeLockArmed) {
+      _wakeLockArmed = false;
+      unawaited(WakelockPlus.disable());
+    }
     super.dispose();
   }
 
@@ -355,6 +389,13 @@ class _LocationBinderState extends ConsumerState<LocationBinder>
         return;
       }
       unawaited(_publishDevicePosition(next));
+    });
+    ref.listen(hudSafetyProvider.select((p) => p.keepScreenOn), (prev, next) {
+      if (next) {
+        unawaited(_armWakeLock());
+      } else {
+        unawaited(_disarmWakeLock());
+      }
     });
     return widget.child;
   }

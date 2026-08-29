@@ -18,6 +18,8 @@ import 'package:loc_motos/features/groups/domain/services/group_ride_alert_feedb
 import 'package:loc_motos/features/groups/presentation/providers/group_providers.dart';
 import 'package:loc_motos/features/groups/presentation/widgets/group_incident_session_panel.dart';
 import 'package:loc_motos/features/groups/presentation/widgets/group_pack_list_sheet.dart';
+import 'package:loc_motos/features/intercom/presentation/widgets/intercom_controls_bar.dart';
+import 'package:loc_motos/features/intercom/presentation/widgets/intercom_session_binder.dart';
 import 'package:loc_motos/features/navigation/data/repositories/map_appearance_repository.dart';
 import 'package:loc_motos/features/navigation/data/services/route_alerts_service.dart';
 import 'package:loc_motos/features/navigation/data/services/route_guidance_service.dart';
@@ -213,7 +215,12 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
     }
     _hudDisplayArmed = false;
     try {
-      await WakelockPlus.disable();
+      // Si sigues en el mapa de grupo, LocationBinder mantiene la pantalla.
+      final keepForGroup = ref.read(groupMapSessionOpenProvider) &&
+          ref.read(hudSafetyProvider).keepScreenOn;
+      if (!keepForGroup) {
+        await WakelockPlus.disable();
+      }
       final saved = _savedBrightness;
       if (saved != null) {
         await ScreenBrightness.instance.setApplicationScreenBrightness(saved);
@@ -1707,6 +1714,17 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
                       (landscape ? 58 : (groupId != null ? 168 : 92)),
                   child: const OfflineMapBanner(compact: true),
                 ),
+              if (landscape && !_arrived && (groupId ?? '').isNotEmpty)
+                Positioned(
+                  left: 10,
+                  right: 80,
+                  bottom: bottomInset + 72,
+                  child: IntercomControlsBar(
+                    groupId: groupId!,
+                    compact: true,
+                    dark: true,
+                  ),
+                ),
               if (landscape && !_arrived) ...[
                 Positioned(
                   left: 10,
@@ -1818,6 +1836,15 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
                                 onTap: _toggleSimulation,
                               ),
                             ],
+                          ),
+                        ),
+                      if ((groupId ?? '').isNotEmpty && !_arrived)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
+                          child: IntercomControlsBar(
+                            groupId: groupId!,
+                            compact: true,
+                            dark: true,
                           ),
                         ),
                       if ((groupId ?? '').isNotEmpty && !_arrived)
@@ -2015,15 +2042,18 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
     );
   }
 
-  /// Si hay grupo, publica GPS/simulación al RTDB desde el HUD.
+  /// Si hay grupo, publica GPS/simulación al RTDB desde el HUD y mantiene intercom.
   Widget _wrapGroupPublisher(Widget child) {
     final groupId = _resolveGroupId();
     if (groupId == null) {
       return child;
     }
-    return GroupLiveLocationPublisher(
-      user: widget.user,
-      child: child,
+    return IntercomSessionBinder(
+      groupId: groupId,
+      child: GroupLiveLocationPublisher(
+        user: widget.user,
+        child: child,
+      ),
     );
   }
 

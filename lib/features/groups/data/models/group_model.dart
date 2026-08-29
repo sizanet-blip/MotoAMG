@@ -11,6 +11,7 @@ class GroupModel extends RideGroup {
     required super.createdAt,
     required super.isActive,
     super.adminUids,
+    super.intercomEnabled,
   });
 
   factory GroupModel.fromFirestore(
@@ -34,6 +35,7 @@ class GroupModel extends RideGroup {
       createdAt: parseFirestoreDate(data['createdAt']),
       isActive: data['isActive'] as bool? ?? true,
       adminUids: List.unmodifiable(adminUids),
+      intercomEnabled: data['intercomEnabled'] as bool? ?? false,
     );
   }
 
@@ -45,6 +47,7 @@ class GroupModel extends RideGroup {
       'createdAt': Timestamp.fromDate(createdAt),
       'isActive': isActive,
       'adminUids': adminUids,
+      'intercomEnabled': intercomEnabled,
     };
   }
 }

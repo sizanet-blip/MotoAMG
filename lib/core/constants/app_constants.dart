@@ -95,4 +95,9 @@ abstract final class AppConstants {
   static const String groupAlertsPath = 'group_alerts';
   static const String groupStopsPath = 'group_stops';
   static const String groupVoicePath = 'group_voice';
+
+  // --- LiveKit intercom ---
+  static const String liveKitUrl = 'wss://livekit.albertomaestre.es';
+  static const String liveKitTokenUrl =
+      'https://livekit.albertomaestre.es/token';
 }

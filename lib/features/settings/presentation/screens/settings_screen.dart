@@ -13,6 +13,7 @@ import 'package:loc_motos/features/settings/presentation/screens/app_help_screen
 import 'package:loc_motos/features/settings/presentation/screens/app_theme_settings_screen.dart';
 import 'package:loc_motos/features/settings/presentation/screens/emergency_contacts_settings_screen.dart';
 import 'package:loc_motos/features/settings/presentation/screens/fuel_cache_settings_screen.dart';
+import 'package:loc_motos/features/intercom/presentation/screens/intercom_settings_screen.dart';
 import 'package:loc_motos/features/settings/presentation/screens/group_ride_settings_screen.dart';
 import 'package:loc_motos/features/settings/presentation/screens/hud_safety_settings_screen.dart';
 import 'package:loc_motos/features/settings/presentation/screens/map_appearance_settings_screen.dart';
@@ -66,7 +67,7 @@ class SettingsScreen extends ConsumerWidget {
             leading: const Icon(Icons.sports_motorsports_outlined),
             title: const Text('Pantalla al navegar'),
             subtitle: const Text(
-              'Que no se apague, más brillo y botones grandes con guantes',
+              'Que no se apague (grupo y ruta), más brillo y botones grandes',
             ),
             trailing: const Icon(Icons.chevron_right),
             onTap: () {
@@ -88,6 +89,21 @@ class SettingsScreen extends ConsumerWidget {
               Navigator.of(context).push(
                 MaterialPageRoute<void>(
                   builder: (_) => const GroupRideSettingsScreen(),
+                ),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.headset_mic_outlined),
+            title: const Text('Intercom'),
+            subtitle: const Text(
+              'Hablar y oír por defecto (el canal lo activa el creador del grupo)',
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const IntercomSettingsScreen(),
                 ),
               );
             },

@@ -26,7 +26,7 @@ class HudSafetySettingsScreen extends ConsumerWidget {
             secondary: const Icon(Icons.smartphone_outlined),
             title: const Text('Mantener pantalla encendida'),
             subtitle: const Text(
-              'Así no se apaga sola mientras estás en ruta',
+              'Así no se apaga sola en el mapa de grupo ni al navegar',
             ),
             value: prefs.keepScreenOn,
             onChanged: controller.setKeepScreenOn,

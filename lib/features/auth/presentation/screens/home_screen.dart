@@ -8,6 +8,7 @@ import 'package:loc_motos/features/groups/presentation/providers/group_providers
 import 'package:loc_motos/features/groups/presentation/screens/group_options_screen.dart';
 import 'package:loc_motos/features/groups/presentation/screens/my_groups_view.dart';
 import 'package:loc_motos/features/groups/presentation/widgets/group_entry_dialogs.dart';
+import 'package:loc_motos/features/intercom/presentation/widgets/intercom_session_binder.dart';
 import 'package:loc_motos/features/map/presentation/screens/group_map_screen.dart';
 import 'package:loc_motos/features/navigation/presentation/screens/navigation_hub_screen.dart';
 import 'package:loc_motos/features/tracking/presentation/widgets/location_binder.dart';
@@ -41,12 +42,16 @@ class HomeScreen extends ConsumerWidget {
     final mapOpen = ref.watch(groupMapSessionOpenProvider);
 
     if (effective.isInGroup && mapOpen) {
+      final groupId = effective.currentGroupId!;
       return LocationBinder(
         user: effective,
-        groupId: effective.currentGroupId!,
-        child: _InGroupView(
-          user: effective,
-          groupId: effective.currentGroupId!,
+        groupId: groupId,
+        child: IntercomSessionBinder(
+          groupId: groupId,
+          child: _InGroupView(
+            user: effective,
+            groupId: groupId,
+          ),
         ),
       );
     }

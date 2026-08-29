@@ -64,6 +64,50 @@ class GroupOptionsScreen extends ConsumerWidget {
               const SizedBox(height: 16),
               _InviteCodeCard(code: group.code),
               const SizedBox(height: 24),
+              if (group.isOwner(user.uid)) ...[
+                Text(
+                  'Intercom del pelotón',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 4),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  secondary: const Icon(Icons.headset_mic_outlined),
+                  title: const Text('Activar intercom del grupo'),
+                  subtitle: Text(
+                    group.intercomEnabled
+                        ? 'Canal de voz activo: en el mapa solo se controla Hablar y Oír.'
+                        : 'Solo tú puedes encenderlo. El resto se une al abrirlo.',
+                  ),
+                  value: group.intercomEnabled,
+                  onChanged: busy
+                      ? null
+                      : (value) {
+                          ref
+                              .read(groupActionControllerProvider.notifier)
+                              .setGroupIntercomEnabled(
+                                actor: user,
+                                groupId: groupId,
+                                enabled: value,
+                              );
+                        },
+                ),
+                const SizedBox(height: 16),
+              ] else if (group.intercomEnabled) ...[
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(
+                    Icons.headset_mic,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  title: const Text('Intercom del grupo activo'),
+                  subtitle: const Text(
+                    'En el mapa puedes silenciar Hablar u Oír. '
+                    'Lo apaga solo el creador.',
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
               Text('Moteros', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
               membersAsync.when(

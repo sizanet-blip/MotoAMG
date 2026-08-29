@@ -58,6 +58,13 @@ abstract class GroupRepository {
     required NavigationRoute route,
   });
 
+  /// Activa o desactiva el intercom del grupo (solo el creador).
+  Future<void> setGroupIntercomEnabled({
+    required AppUser actor,
+    required String groupId,
+    required bool enabled,
+  });
+
   Stream<RideGroup?> watchGroup(String groupId);
 
   Stream<List<GroupMember>> watchMembers(String groupId);

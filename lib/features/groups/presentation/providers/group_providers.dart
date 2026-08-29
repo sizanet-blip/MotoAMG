@@ -339,6 +339,20 @@ class GroupActionController extends Notifier<AsyncValue<void>> {
     });
   }
 
+  Future<void> setGroupIntercomEnabled({
+    required AppUser actor,
+    required String groupId,
+    required bool enabled,
+  }) {
+    return _run(() async {
+      await _repo.setGroupIntercomEnabled(
+        actor: actor,
+        groupId: groupId,
+        enabled: enabled,
+      );
+    });
+  }
+
   Future<void> raiseIncident({
     required String groupId,
     required String uid,

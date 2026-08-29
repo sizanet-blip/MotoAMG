@@ -519,6 +519,32 @@ class GroupRemoteDataSource {
     }
   }
 
+  Future<void> setGroupIntercomEnabled({
+    required AppUser actor,
+    required String groupId,
+    required bool enabled,
+  }) async {
+    try {
+      final groupSnap = await _groups.doc(groupId).get();
+      if (!groupSnap.exists) {
+        throw const GroupException('Ese grupo no existe.');
+      }
+      final group = GroupModel.fromFirestore(groupSnap);
+      if (!group.isOwner(actor.uid)) {
+        throw const GroupException(
+          'Solo el creador del grupo puede activar el intercom.',
+        );
+      }
+      await _groups.doc(groupId).update({'intercomEnabled': enabled});
+    } on GroupException {
+      rethrow;
+    } on FirebaseException catch (error) {
+      throw GroupException(
+        'No se pudo cambiar el intercom. ${error.message ?? error.code}',
+      );
+    }
+  }
+
   Stream<NavigationRouteModel?> watchSharedRoute(String groupId) {
     return _sharedRouteRef(groupId).snapshots().map((snap) {
       final data = snap.data();

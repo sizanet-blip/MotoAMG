@@ -30,6 +30,7 @@ import 'package:loc_motos/features/groups/domain/services/group_stop_service.dar
 import 'package:loc_motos/features/groups/presentation/widgets/group_stop_map_marker.dart';
 import 'package:loc_motos/features/groups/presentation/widgets/group_stops_list_sheet.dart';
 import 'package:loc_motos/features/groups/presentation/widgets/group_stop_widgets.dart';
+import 'package:loc_motos/features/intercom/presentation/widgets/intercom_controls_bar.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
 import 'package:loc_motos/features/navigation/domain/entities/hybrid_map_styles.dart';
@@ -41,6 +42,7 @@ import 'package:loc_motos/features/navigation/presentation/theme/navigation_hud_
 import 'package:loc_motos/features/navigation/presentation/widgets/navigation_map_my_location_button.dart';
 import 'package:loc_motos/features/navigation/presentation/widgets/navigation_map_zoom_controls.dart';
 import 'package:loc_motos/features/navigation/presentation/widgets/offline_map_banner.dart';
+import 'package:loc_motos/features/settings/presentation/screens/offline_maps_settings_screen.dart';
 import 'package:loc_motos/features/tracking/domain/entities/device_position.dart';
 import 'package:loc_motos/features/tracking/domain/entities/live_location.dart';
 import 'package:loc_motos/features/tracking/presentation/providers/tracking_providers.dart';
@@ -461,63 +463,82 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
         Positioned(
           top: mapTop,
           left: (landscape ? leftSafe : 0) + 8,
-          right: 72,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (!landscape)
-                const _MapLegend(
-                  meColor: _meColor,
-                  groupColor: _groupColor,
-                  cabeceraColor: _cabeceraColor,
-                  colaColor: _colaColor,
-                ),
-              if (sharedRoute != null) ...[
-                const SizedBox(height: 8),
-                GroupMapModeBanner(
-                  destinationLabel: sharedRoute.destinationDisplay,
-                  compact: landscape,
-                ),
-              ],
-              if (!hasNetwork) ...[
-                if (!landscape) const SizedBox(height: 8),
-                const OfflineMapBanner(compact: true),
-              ],
-              if (waiting.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                _WaitingBanner(names: waiting, compact: landscape),
-              ],
-              if (locationsAsync.hasError) ...[
-                const SizedBox(height: 8),
-                Material(
-                  color: Theme.of(context).colorScheme.errorContainer,
-                  borderRadius: BorderRadius.circular(8),
-                  child: Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: Text(
-                      'No se ven las motos del grupo. ${locationsAsync.error}',
+          right: landscape ? 120 : 72,
+          child: landscape
+              ? _buildLandscapeTopAlerts(
+                  context,
+                  sharedRoute: sharedRoute,
+                  hasNetwork: hasNetwork,
+                  bannerIncident: bannerIncident,
+                )
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const _MapLegend(
+                      meColor: _meColor,
+                      groupColor: _groupColor,
+                      cabeceraColor: _cabeceraColor,
+                      colaColor: _colaColor,
                     ),
-                  ),
+                    if (sharedRoute != null) ...[
+                      const SizedBox(height: 8),
+                      GroupMapModeBanner(
+                        destinationLabel: sharedRoute.destinationDisplay,
+                      ),
+                    ],
+                    if (!hasNetwork) ...[
+                      const SizedBox(height: 8),
+                      const OfflineMapBanner(compact: true),
+                    ],
+                    if (waiting.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      _WaitingBanner(names: waiting),
+                    ],
+                    if (locationsAsync.hasError) ...[
+                      const SizedBox(height: 8),
+                      Material(
+                        color: Theme.of(context).colorScheme.errorContainer,
+                        borderRadius: BorderRadius.circular(8),
+                        child: Padding(
+                          padding: const EdgeInsets.all(8),
+                          child: Text(
+                            'No se ven las motos del grupo. ${locationsAsync.error}',
+                          ),
+                        ),
+                      ),
+                    ],
+                    if (bannerIncident != null) ...[
+                      const SizedBox(height: 8),
+                      GroupIncidentBanner(
+                        incident: bannerIncident,
+                        onDismiss: () {
+                          setState(() {
+                            _dismissedBannerIds
+                                .add(_bannerId(bannerIncident));
+                          });
+                        },
+                        isOwnIncident:
+                            bannerIncident.uid == widget.user.uid,
+                        onClear: bannerIncident.uid == widget.user.uid
+                            ? () =>
+                                unawaited(_clearOwnIncidentFromBanner())
+                            : null,
+                      ),
+                    ],
+                  ],
                 ),
-              ],
-              if (bannerIncident != null) ...[
-                const SizedBox(height: 8),
-                GroupIncidentBanner(
-                  incident: bannerIncident,
-                  onDismiss: () {
-                    setState(() {
-                      _dismissedBannerIds.add(_bannerId(bannerIncident));
-                    });
-                  },
-                  isOwnIncident: bannerIncident.uid == widget.user.uid,
-                  onClear: bannerIncident.uid == widget.user.uid
-                      ? () => unawaited(_clearOwnIncidentFromBanner())
-                      : null,
-                ),
-              ],
-            ],
-          ),
         ),
+        if (landscape &&
+            waiting.isNotEmpty &&
+            bannerIncident == null)
+          Positioned(
+            left: leftSafe + 60,
+            bottom: padding.bottom + 8,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 200),
+              child: _WaitingBanner(names: waiting, compact: true),
+            ),
+          ),
         if (_controller != null)
           Positioned(
             top: mapTop,
@@ -593,6 +614,17 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
           ),
         if (landscape)
           Positioned(
+            left: leftSafe + 60,
+            right: rightSafe + 120,
+            bottom: padding.bottom + 8,
+            child: IntercomControlsBar(
+              groupId: widget.groupId,
+              compact: true,
+              dark: true,
+            ),
+          ),
+        if (landscape)
+          Positioned(
             left: leftSafe + 8,
             bottom: padding.bottom + 8,
             child: SizedBox(
@@ -635,6 +667,11 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        IntercomControlsBar(
+                          groupId: widget.groupId,
+                          compact: true,
+                        ),
+                        const Divider(height: 8),
                         quickActions(embedded: true),
                         const Divider(height: 8),
                         GroupIncidentSessionPanel(
@@ -1536,6 +1573,99 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
           textColor: '#E65100',
         ),
     };
+  }
+
+  /// En horizontal: como mucho incidencia, o un solo aviso compacto (destino/offline).
+  Widget _buildLandscapeTopAlerts(
+    BuildContext context, {
+    required NavigationRoute? sharedRoute,
+    required bool hasNetwork,
+    required GroupIncident? bannerIncident,
+  }) {
+    if (bannerIncident != null) {
+      return GroupIncidentBanner(
+        incident: bannerIncident,
+        compact: true,
+        onDismiss: () {
+          setState(() {
+            _dismissedBannerIds.add(_bannerId(bannerIncident));
+          });
+        },
+        isOwnIncident: bannerIncident.uid == widget.user.uid,
+        onClear: bannerIncident.uid == widget.user.uid
+            ? () => unawaited(_clearOwnIncidentFromBanner())
+            : null,
+      );
+    }
+
+    final hasDestination = sharedRoute != null;
+    final offline = !hasNetwork;
+    if (!hasDestination && !offline) {
+      return const SizedBox.shrink();
+    }
+
+    final colors = Theme.of(context).colorScheme;
+    final dest = sharedRoute?.destinationDisplay.trim() ?? '';
+    final shortDest = dest.isEmpty
+        ? 'Ruta del grupo'
+        : (dest.length > 42 ? '${dest.substring(0, 40)}…' : dest);
+
+    return Material(
+      elevation: 2,
+      color: offline
+          ? colors.inverseSurface.withValues(alpha: 0.94)
+          : colors.primaryContainer.withValues(alpha: 0.92),
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        child: Row(
+          children: [
+            Icon(
+              offline ? Icons.wifi_off_rounded : Icons.map_outlined,
+              size: 16,
+              color: offline ? colors.onInverseSurface : colors.onPrimaryContainer,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                offline
+                    ? (hasDestination
+                        ? 'Sin red · $shortDest'
+                        : 'Sin conexión · solo zonas descargadas')
+                    : 'Destino: $shortDest',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: offline
+                          ? colors.onInverseSurface
+                          : colors.onPrimaryContainer,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                    ),
+              ),
+            ),
+            if (offline)
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const OfflineMapsSettingsScreen(),
+                    ),
+                  );
+                },
+                style: TextButton.styleFrom(
+                  foregroundColor: colors.onInverseSurface,
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  visualDensity: VisualDensity.compact,
+                ),
+                child: const Text('Mapas', style: TextStyle(fontSize: 12)),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _clearOwnIncidentFromBanner() async {

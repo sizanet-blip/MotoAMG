@@ -128,6 +128,19 @@ class GroupRepositoryImpl implements GroupRepository {
   }
 
   @override
+  Future<void> setGroupIntercomEnabled({
+    required AppUser actor,
+    required String groupId,
+    required bool enabled,
+  }) {
+    return _remote.setGroupIntercomEnabled(
+      actor: actor,
+      groupId: groupId,
+      enabled: enabled,
+    );
+  }
+
+  @override
   Stream<RideGroup?> watchGroup(String groupId) {
     return _remote.watchGroup(groupId);
   }

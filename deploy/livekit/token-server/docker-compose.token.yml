@@ -1,0 +1,17 @@
+services:
+  livekit-token:
+    image: node:20-bookworm-slim
+    container_name: locmotos-livekit-token
+    working_dir: /app
+    volumes:
+      - ./:/app
+      - ./serviceAccount.json:/secrets/serviceAccount.json:ro
+    environment:
+      PORT: "7882"
+      LIVEKIT_URL: wss://livekit.albertomaestre.es
+      LIVEKIT_API_KEY: locmotos
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET}
+      GOOGLE_APPLICATION_CREDENTIALS: /secrets/serviceAccount.json
+    command: ["bash", "-lc", "npm ci --omit=dev && node server.js"]
+    network_mode: host
+    restart: unless-stopped

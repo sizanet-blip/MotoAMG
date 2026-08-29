@@ -58,6 +58,8 @@
 	<string>LocMotos necesita tu ubicación para mostrarte en el mapa del grupo y guiarte en la ruta.</string>
 	<key>NSLocationUsageDescription</key>
 	<string>LocMotos necesita tu ubicación para el mapa del grupo y la navegación.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>LocMotos usa el micrófono para el intercom de voz del pelotón mientras la app está abierta.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

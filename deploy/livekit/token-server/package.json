@@ -1,0 +1,17 @@
+{
+  "name": "locmotos-livekit-token",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Emite JWT LiveKit tras validar Firebase Auth + membresía Firestore",
+  "main": "server.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.4.0",
+    "livekit-server-sdk": "^2.13.0"
+  }
+}

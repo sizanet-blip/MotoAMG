@@ -15,9 +15,14 @@ class NavigationVoiceService {
   /// Evita que el [stop] previo a un speakUrgent limpie [_urgentSpeaking].
   var _ignoreTtsEnd = false;
 
+  /// Alguien habla por intercom: bajamos volumen y no lanzamos maniobras.
+  var _intercomDuck = false;
+
   bool get isMuted => _muted;
 
   bool get isUrgentSpeaking => _urgentSpeaking;
+
+  bool get isIntercomDuck => _intercomDuck;
 
   Future<void> init() async {
     if (_ready) {
@@ -33,7 +38,6 @@ class NavigationVoiceService {
       await _tts.setAudioAttributesForNavigation();
       await _tts.setQueueMode(1);
     } else if (defaultTargetPlatform == TargetPlatform.iOS) {
-      // Igual que Android: baja la música/radio solo mientras habla.
       await _tts.setIosAudioCategory(
         IosTextToSpeechAudioCategory.playback,
         [
@@ -59,15 +63,27 @@ class NavigationVoiceService {
 
   Future<void> setMuted(bool muted) async {
     _muted = muted;
-    // No cortar un aviso urgente de grupo solo por silenciar el copiloto.
     if (muted && !_urgentSpeaking) {
       await stop();
     }
   }
 
-  /// Maniobras / copiloto de ruta. No habla si hay mute o un aviso urgente.
+  /// Baja el copiloto mientras hay voz remota en el intercom.
+  Future<void> setIntercomDuck(bool duck) async {
+    if (_intercomDuck == duck) {
+      return;
+    }
+    _intercomDuck = duck;
+    await init();
+    await _tts.setVolume(duck ? 0.18 : 1);
+    if (duck && !_urgentSpeaking) {
+      await stop();
+    }
+  }
+
+  /// Maniobras / copiloto de ruta. No habla si hay mute, duck o aviso urgente.
   Future<void> speak(String text) async {
-    if (_muted || text.trim().isEmpty || _urgentSpeaking) {
+    if (_muted || _intercomDuck || text.trim().isEmpty || _urgentSpeaking) {
       return;
     }
     await _speakNow(text, urgent: false);
@@ -83,7 +99,7 @@ class NavigationVoiceService {
 
   Future<void> _speakNow(String text, {required bool urgent}) async {
     await init();
-    if (!urgent && _urgentSpeaking) {
+    if (!urgent && (_urgentSpeaking || _intercomDuck)) {
       return;
     }
 
@@ -95,6 +111,7 @@ class NavigationVoiceService {
       _ignoreTtsEnd = false;
     }
     _urgentSpeaking = urgent;
+    await _tts.setVolume(_intercomDuck ? 0.35 : 1);
 
     if (defaultTargetPlatform == TargetPlatform.android) {
       await _tts.speak(text, focus: true);
