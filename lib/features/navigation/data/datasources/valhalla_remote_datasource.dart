@@ -166,6 +166,10 @@ class ValhallaRemoteDataSource {
       attributes: const [
         'shape',
         'edge.speed_limit',
+        'edge.road_class',
+        'edge.use',
+        'edge.density',
+        'edge.unpaved',
         'edge.begin_shape_index',
         'edge.end_shape_index',
       ],

@@ -25,9 +25,17 @@ import 'package:loc_motos/features/tracking/presentation/widgets/own_position_wa
 import 'package:maplibre_gl/maplibre_gl.dart';
 
 class NavigationHubScreen extends ConsumerStatefulWidget {
-  const NavigationHubScreen({super.key, required this.user});
+  const NavigationHubScreen({
+    super.key,
+    required this.user,
+    this.enableGroupFeatures = false,
+  });
 
   final AppUser user;
+
+  /// Solo true al preparar/navegar desde el mapa del grupo.
+  final bool enableGroupFeatures;
+
 
   @override
   ConsumerState<NavigationHubScreen> createState() =>
@@ -315,7 +323,11 @@ class _NavigationHubScreenState extends ConsumerState<NavigationHubScreen> {
       }
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
-          builder: (_) => RoutePreviewScreen(plan: plan, user: widget.user),
+          builder: (_) => RoutePreviewScreen(
+            plan: plan,
+            user: widget.user,
+            enableGroupFeatures: widget.enableGroupFeatures,
+          ),
         ),
       );
     } catch (error) {
@@ -359,8 +371,7 @@ class _NavigationHubScreenState extends ConsumerState<NavigationHubScreen> {
           builder: (_) => NavigationHudScreen(
             route: route,
             user: widget.user,
-            enableGroupFeatures:
-                (widget.user.currentGroupId ?? '').isNotEmpty,
+            enableGroupFeatures: widget.enableGroupFeatures,
           ),
         ),
         (route) => route.isFirst,

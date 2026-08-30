@@ -4,6 +4,26 @@ abstract final class NavigationConstants {
   /// Vacío = modo demo sin servidor.
   static const String valhallaBaseUrl = 'https://valhalla.albertomaestre.es';
 
+  /// API key TomTom (Snap to Roads / límites).
+  /// Build: `--dart-define=TOMTOM_API_KEY=tu_clave`
+  static const String tomtomApiKey = String.fromEnvironment('TOMTOM_API_KEY');
+
+  /// Endpoint síncrono Snap to Roads (límites a lo largo de la polilínea).
+  static const String tomtomSnapToRoadsUrl =
+      'https://api.tomtom.com/snapToRoads/1';
+
+  static const Duration tomtomRequestTimeout = Duration(seconds: 30);
+
+  /// Máx. puntos por petición Snap to Roads (límite API: 5000).
+  static const int tomtomSnapMaxPoints = 2000;
+
+  /// Distancia máx. entre puntos consecutivos (API: 6000 m).
+  static const double tomtomSnapMaxGapMeters = 5500;
+
+  /// Longitud máx. del trazado por petición (API síncrona: 100 km).
+  /// Margen por debajo para evitar 400 Distance limit exceeded.
+  static const double tomtomSnapMaxPathMeters = 95000;
+
   /// URL base del servidor Photon (sin barra final).
   /// Vacío = usar Nominatim público como fallback.
   static const String photonBaseUrl = 'https://photon.albertomaestre.es';

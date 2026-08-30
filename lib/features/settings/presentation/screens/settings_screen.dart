@@ -9,6 +9,7 @@ import 'package:loc_motos/core/theme/app_color_theme.dart';
 import 'package:loc_motos/core/theme/app_color_theme_provider.dart';
 import 'package:loc_motos/features/settings/presentation/screens/about_app_screen.dart';
 import 'package:loc_motos/features/settings/presentation/screens/alert_preferences_screen.dart';
+import 'package:loc_motos/features/settings/presentation/screens/api_usage_settings_screen.dart';
 import 'package:loc_motos/features/settings/presentation/screens/app_help_screen.dart';
 import 'package:loc_motos/features/settings/presentation/screens/app_theme_settings_screen.dart';
 import 'package:loc_motos/features/settings/presentation/screens/emergency_contacts_settings_screen.dart';
@@ -193,6 +194,21 @@ class SettingsScreen extends ConsumerWidget {
               Navigator.of(context).push(
                 MaterialPageRoute<void>(
                   builder: (_) => const AppHelpScreen(),
+                ),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.cloud_outlined),
+            title: const Text('Uso de APIs'),
+            subtitle: const Text(
+              'TomTom límites: OK, fallos y último error de esta sesión',
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const ApiUsageSettingsScreen(),
                 ),
               );
             },

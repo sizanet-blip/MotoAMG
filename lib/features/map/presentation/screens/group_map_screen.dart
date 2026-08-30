@@ -351,6 +351,7 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
                       user: widget.user.copyWith(
                         currentGroupId: widget.groupId,
                       ),
+                      enableGroupFeatures: true,
                     ),
                   ),
                 );
@@ -617,6 +618,7 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
                               user: widget.user.copyWith(
                                 currentGroupId: widget.groupId,
                               ),
+                              enableGroupFeatures: true,
                             ),
                           ),
                         );

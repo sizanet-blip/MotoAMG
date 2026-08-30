@@ -1,6 +1,8 @@
 import 'package:loc_motos/features/navigation/data/datasources/hive_route_cache_datasource.dart';
+import 'package:loc_motos/features/navigation/data/datasources/tomtom_snap_to_roads_datasource.dart';
 import 'package:loc_motos/features/navigation/data/datasources/valhalla_remote_datasource.dart';
 import 'package:loc_motos/features/navigation/data/models/navigation_route_model.dart';
+import 'package:loc_motos/features/navigation/data/services/speed_limit_merge.dart';
 import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
 import 'package:loc_motos/features/navigation/domain/entities/navigation_route.dart';
 import 'package:loc_motos/features/navigation/domain/entities/route_plan.dart';
@@ -9,10 +11,15 @@ import 'package:loc_motos/features/navigation/domain/exceptions/navigation_excep
 import 'package:loc_motos/features/navigation/domain/repositories/navigation_repository.dart';
 
 class NavigationRepositoryImpl implements NavigationRepository {
-  NavigationRepositoryImpl(this._valhalla, this._cache);
+  NavigationRepositoryImpl(
+    this._valhalla,
+    this._cache, {
+    TomTomSnapToRoadsDataSource? tomtom,
+  }) : _tomtom = tomtom ?? TomTomSnapToRoadsDataSource();
 
   final ValhallaRemoteDataSource _valhalla;
   final HiveRouteCacheDataSource _cache;
+  final TomTomSnapToRoadsDataSource _tomtom;
 
   @override
   Future<RoutePlan> planRoute({
@@ -46,8 +53,12 @@ class NavigationRepositoryImpl implements NavigationRepository {
       ];
     }
 
+    final withLimits = await Future.wait([
+      for (final route in baseRoutes) _enrichWithTomTomLimits(route),
+    ]);
+
     final labeled = [
-      for (final route in baseRoutes)
+      for (final route in withLimits)
         route.copyWithLabels(
           originLabel: originLabel,
           destinationLabel: destinationLabel,
@@ -80,9 +91,35 @@ class NavigationRepositoryImpl implements NavigationRepository {
 
   @override
   Future<NavigationRoute> refreshSpeedLimits(NavigationRoute route) async {
-    if (!_valhalla.isConfigured || route is! NavigationRouteModel) {
+    if (route is! NavigationRouteModel) {
       return route;
     }
-    return _valhalla.attachSpeedLimitsToRoute(route);
+    var updated = route;
+    if (_valhalla.isConfigured) {
+      updated = await _valhalla.attachSpeedLimitsToRoute(route);
+    }
+    return _enrichWithTomTomLimits(updated);
+  }
+
+  Future<NavigationRouteModel> _enrichWithTomTomLimits(
+    NavigationRouteModel route,
+  ) async {
+    if (!_tomtom.isConfigured || route.polyline.length < 2) {
+      return route;
+    }
+    final tomtomSegments =
+        await _tomtom.fetchSpeedLimitSegments(route.polyline);
+    if (tomtomSegments.isEmpty) {
+      return route;
+    }
+    final merged = SpeedLimitMerge.mergePreferringOverlay(
+      base: route.speedLimitSegments,
+      overlay: tomtomSegments,
+      polylineLength: route.polyline.length,
+    );
+    if (merged.isEmpty) {
+      return route;
+    }
+    return route.copyWithSpeedLimits(merged);
   }
 }

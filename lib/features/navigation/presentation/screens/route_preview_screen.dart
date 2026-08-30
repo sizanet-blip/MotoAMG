@@ -31,10 +31,14 @@ class RoutePreviewScreen extends ConsumerStatefulWidget {
     super.key,
     required this.plan,
     required this.user,
+    this.enableGroupFeatures = false,
   });
 
   final RoutePlan plan;
   final AppUser user;
+
+  /// Solo true al preparar/navegar desde el mapa del grupo.
+  final bool enableGroupFeatures;
 
   @override
   ConsumerState<RoutePreviewScreen> createState() => _RoutePreviewScreenState();
@@ -207,8 +211,7 @@ class _RoutePreviewScreenState extends ConsumerState<RoutePreviewScreen> {
         builder: (_) => NavigationHudScreen(
           route: route,
           user: widget.user,
-          enableGroupFeatures:
-              (widget.user.currentGroupId ?? '').isNotEmpty,
+          enableGroupFeatures: widget.enableGroupFeatures,
         ),
       ),
       (route) => route.isFirst,

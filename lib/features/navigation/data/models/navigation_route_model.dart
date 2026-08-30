@@ -5,6 +5,7 @@ import 'package:loc_motos/features/navigation/domain/entities/navigation_route.d
 import 'package:loc_motos/features/navigation/domain/entities/route_alert.dart';
 import 'package:loc_motos/features/navigation/domain/entities/speed_limit_segment.dart';
 import 'package:loc_motos/features/navigation/domain/exceptions/navigation_exceptions.dart';
+import 'package:loc_motos/features/navigation/domain/services/dgt_speed_limit_resolver.dart';
 
 class NavigationRouteModel extends NavigationRoute {
   const NavigationRouteModel({
@@ -254,13 +255,13 @@ class NavigationRouteModel extends NavigationRoute {
     return coalesceSpeedLimits(raw);
   }
 
-  /// Solo el maxspeed reportado por Valhalla/OSM. Sin defaults ni heurísticas.
+  /// Prioridad: maxspeed OSM/Valhalla → fallback genérico DGT por clase de vía.
   static int? resolveEdgeSpeedLimitKmh(Map<String, dynamic> edge) {
     final posted = (edge['speed_limit'] as num?)?.round();
-    if (posted == null || posted <= 0 || posted > 160) {
-      return null;
+    if (posted != null && posted > 0 && posted <= 160) {
+      return posted;
     }
-    return posted;
+    return DgtSpeedLimitResolver.fromValhallaEdge(edge);
   }
 
   factory NavigationRouteModel.demo({

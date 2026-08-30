@@ -8,6 +8,7 @@ import 'package:loc_motos/features/auth/domain/entities/vehicle_map_marker.dart'
 import 'package:loc_motos/features/auth/presentation/providers/auth_providers.dart';
 import 'package:loc_motos/features/navigation/data/datasources/hive_route_cache_datasource.dart';
 import 'package:loc_motos/features/navigation/data/datasources/geocoding_datasource_factory.dart';
+import 'package:loc_motos/features/navigation/data/datasources/tomtom_snap_to_roads_datasource.dart';
 import 'package:loc_motos/features/navigation/data/datasources/valhalla_remote_datasource.dart';
 import 'package:loc_motos/features/navigation/data/repositories/geocoding_repository_impl.dart';
 import 'package:loc_motos/features/navigation/data/repositories/map_region_repository_impl.dart';
@@ -45,6 +46,7 @@ final navigationRepositoryProvider = Provider<NavigationRepository>((ref) {
   return NavigationRepositoryImpl(
     ValhallaRemoteDataSource(),
     HiveRouteCacheDataSource(),
+    tomtom: TomTomSnapToRoadsDataSource(),
   );
 });
 

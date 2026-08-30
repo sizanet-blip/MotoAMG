@@ -82,6 +82,35 @@ void main() {
       expect(segments.last.speedLimitKmh, 50);
     });
 
+    test('sin maxspeed usa fallback DGT por road_class (secundaria 90)', () {
+      final segments = NavigationRouteModel.speedLimitsFromTraceAttributes({
+        'edges': [
+          {
+            'road_class': 'secondary',
+            'density': 2,
+            'begin_shape_index': 0,
+            'end_shape_index': 5,
+          },
+          {
+            'road_class': 'motorway',
+            'density': 1,
+            'begin_shape_index': 5,
+            'end_shape_index': 10,
+          },
+          {
+            'speed_limit': 70,
+            'road_class': 'primary',
+            'begin_shape_index': 10,
+            'end_shape_index': 12,
+          },
+        ],
+      });
+      expect(segments, hasLength(3));
+      expect(segments[0].speedLimitKmh, 90);
+      expect(segments[1].speedLimitKmh, 120);
+      expect(segments[2].speedLimitKmh, 70);
+    });
+
     test('mapea rotonda Valhalla (26/27) y giros izquierda/derecha', () {
       expect(
         NavigationRouteModel.mapValhallaManeuverType(26),
