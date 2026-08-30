@@ -1642,19 +1642,7 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
                   top: topInset + (showOffRouteBanner ? 64 : 8),
                   left: 12,
                   width: landscape ? 220 : null,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _WeakGpsBanner(lost: gpsLost),
-                      if (landscape &&
-                          (groupId ?? '').isNotEmpty &&
-                          !_arrived) ...[
-                        const SizedBox(height: 6),
-                        _buildLandscapeIncidentRail(groupId!),
-                      ],
-                    ],
-                  ),
+                  child: _WeakGpsBanner(lost: gpsLost),
                 )
               else if (maneuver != null) ...[
                 Positioned(
@@ -1671,12 +1659,6 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
                         nextManeuver: landscape ? null : _nextManeuver,
                         remainingMeters: _remainingMeters,
                       ),
-                      if (landscape &&
-                          (groupId ?? '').isNotEmpty &&
-                          !_arrived) ...[
-                        const SizedBox(height: 6),
-                        _buildLandscapeIncidentRail(groupId!),
-                      ],
                       if (!landscape &&
                           maneuver.hasLaneGuidance &&
                           _remainingMeters <=
@@ -1725,6 +1707,15 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
                   ),
                 ),
               ],
+              // Avisos del pelotón: siempre visibles en horizontal (no dependen del cartel).
+              if (landscape &&
+                  !_arrived &&
+                  (groupId ?? '').isNotEmpty)
+                Positioned(
+                  left: 12,
+                  bottom: bottomInset + 72,
+                  child: _buildLandscapeIncidentRail(groupId!),
+                ),
               if (!_arrived)
                 Positioned(
                   top: topInset + (showOffRouteBanner ? 64 : 8),
@@ -1741,7 +1732,7 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
                 ),
               if (landscape && !_arrived && (groupId ?? '').isNotEmpty)
                 Positioned(
-                  left: 10,
+                  left: 68,
                   right: 80,
                   bottom: bottomInset + 72,
                   child: IntercomControlsBar(
@@ -1876,8 +1867,10 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
                         Padding(
                           padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
                           child: GroupIncidentSessionPanel(
-                            compact: false,
+                            compact: true,
+                            embedded: true,
                             drivingMode: true,
+                            showBanner: true,
                             groupId: groupId!,
                             user: widget.user,
                           ),

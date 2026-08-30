@@ -128,6 +128,17 @@ class GroupRepositoryImpl implements GroupRepository {
   }
 
   @override
+  Future<void> clearSharedRoute({
+    required AppUser actor,
+    required String groupId,
+  }) {
+    return _remote.clearSharedRoute(
+      actor: actor,
+      groupId: groupId,
+    );
+  }
+
+  @override
   Future<void> setGroupIntercomEnabled({
     required AppUser actor,
     required String groupId,

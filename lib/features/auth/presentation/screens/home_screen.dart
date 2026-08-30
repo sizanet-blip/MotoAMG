@@ -186,6 +186,7 @@ class _InGroupView extends ConsumerWidget {
 
     final landscape =
         MediaQuery.orientationOf(context) == Orientation.landscape;
+    final canPrepareRoute = groupAsync.valueOrNull?.isAdmin(user.uid) ?? false;
 
     return Scaffold(
       appBar: AppBar(
@@ -221,19 +222,22 @@ class _InGroupView extends ConsumerWidget {
                 ],
               ),
         actions: [
-          TextButton.icon(
-            onPressed: busy
-                ? null
-                : () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => NavigationHubScreen(user: user),
-                      ),
-                    );
-                  },
-            icon: const Icon(Icons.route_outlined),
-            label: const Text('Ruta'),
-          ),
+          if (canPrepareRoute)
+            TextButton.icon(
+              onPressed: busy
+                  ? null
+                  : () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => NavigationHubScreen(
+                            user: user.copyWith(currentGroupId: groupId),
+                          ),
+                        ),
+                      );
+                    },
+              icon: const Icon(Icons.route_outlined),
+              label: const Text('Ruta'),
+            ),
           IconButton(
             tooltip: 'Opciones del grupo',
             onPressed: groupAsync.valueOrNull == null

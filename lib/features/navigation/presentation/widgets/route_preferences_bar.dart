@@ -37,7 +37,7 @@ class RoutePreferencesBar extends ConsumerWidget {
           Expanded(
             child: OutlinedButton(
               onPressed: enabled
-                  ? () => _openCurvatureSheet(context, ref, prefs)
+                  ? () => openCurvatureSheet(context, ref)
                   : null,
               style: buttonStyle,
               child: Row(
@@ -62,7 +62,7 @@ class RoutePreferencesBar extends ConsumerWidget {
         Expanded(
           child: OutlinedButton(
             onPressed: enabled
-                ? () => _openAvoidancesSheet(context, ref, prefs)
+                ? () => openAvoidancesSheet(context, ref)
                 : null,
             style: buttonStyle,
             child: Row(
@@ -101,11 +101,11 @@ class RoutePreferencesBar extends ConsumerWidget {
     );
   }
 
-  Future<void> _openCurvatureSheet(
+  static Future<void> openCurvatureSheet(
     BuildContext context,
     WidgetRef ref,
-    RoutePreferences prefs,
   ) async {
+    final prefs = ref.read(routePreferencesProvider);
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -163,10 +163,9 @@ class RoutePreferencesBar extends ConsumerWidget {
     );
   }
 
-  Future<void> _openAvoidancesSheet(
+  static Future<void> openAvoidancesSheet(
     BuildContext context,
     WidgetRef ref,
-    RoutePreferences prefs,
   ) async {
     await showModalBottomSheet<void>(
       context: context,

@@ -58,6 +58,11 @@ abstract class GroupRepository {
     required NavigationRoute route,
   });
 
+  Future<void> clearSharedRoute({
+    required AppUser actor,
+    required String groupId,
+  });
+
   /// Activa o desactiva el intercom del grupo (solo el creador).
   Future<void> setGroupIntercomEnabled({
     required AppUser actor,

@@ -339,6 +339,18 @@ class GroupActionController extends Notifier<AsyncValue<void>> {
     });
   }
 
+  Future<void> clearSharedRoute({
+    required AppUser actor,
+    required String groupId,
+  }) {
+    return _run(() async {
+      await _repo.clearSharedRoute(
+        actor: actor,
+        groupId: groupId,
+      );
+    });
+  }
+
   Future<void> setGroupIntercomEnabled({
     required AppUser actor,
     required String groupId,

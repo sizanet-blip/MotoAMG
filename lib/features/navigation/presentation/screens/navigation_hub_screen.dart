@@ -356,7 +356,12 @@ class _NavigationHubScreenState extends ConsumerState<NavigationHubScreen> {
       }
       await Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute<void>(
-          builder: (_) => NavigationHudScreen(route: route, user: widget.user),
+          builder: (_) => NavigationHudScreen(
+            route: route,
+            user: widget.user,
+            enableGroupFeatures:
+                (widget.user.currentGroupId ?? '').isNotEmpty,
+          ),
         ),
         (route) => route.isFirst,
       );

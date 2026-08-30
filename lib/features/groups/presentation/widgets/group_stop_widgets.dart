@@ -78,7 +78,9 @@ class GroupMapModeBanner extends StatelessWidget {
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                'Mapa de grupo · destino: $destinationLabel',
+                'Ruta del grupo · $destinationLabel',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: colors.onPrimaryContainer,
                       fontWeight: FontWeight.w600,

@@ -546,6 +546,31 @@ class GroupRemoteDataSource {
     }
   }
 
+  Future<void> clearSharedRoute({
+    required AppUser actor,
+    required String groupId,
+  }) async {
+    try {
+      final groupSnap = await _groups.doc(groupId).get();
+      if (!groupSnap.exists) {
+        throw const GroupException('Ese grupo no existe.');
+      }
+      final group = GroupModel.fromFirestore(groupSnap);
+      if (!group.isAdmin(actor.uid)) {
+        throw const GroupException(
+          'Solo un administrador puede quitar la ruta del grupo.',
+        );
+      }
+      await _sharedRouteRef(groupId).delete();
+    } on GroupException {
+      rethrow;
+    } on FirebaseException catch (error) {
+      throw GroupException(
+        'No se pudo quitar la ruta. ${error.message ?? error.code}',
+      );
+    }
+  }
+
   Future<void> setGroupIntercomEnabled({
     required AppUser actor,
     required String groupId,

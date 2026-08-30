@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:loc_motos/core/constants/navigation_constants.dart';
 import 'package:loc_motos/core/utils/distance_format.dart';
+import 'package:loc_motos/core/utils/external_navigation.dart';
 import 'package:loc_motos/core/utils/gps_status.dart';
 import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
 import 'package:loc_motos/features/auth/domain/entities/vehicle_map_marker.dart';
@@ -23,7 +24,6 @@ import 'package:loc_motos/features/groups/presentation/widgets/catch_up_cabecera
 import 'package:loc_motos/features/groups/presentation/widgets/group_incident_session_panel.dart';
 import 'package:loc_motos/features/groups/presentation/widgets/group_incident_widgets.dart';
 import 'package:loc_motos/features/groups/presentation/widgets/group_pack_list_sheet.dart';
-import 'package:loc_motos/core/utils/external_navigation.dart';
 import 'package:loc_motos/features/groups/domain/entities/group_stop.dart';
 import 'package:loc_motos/features/groups/domain/services/group_stop_service.dart';
 import 'package:loc_motos/features/groups/presentation/widgets/group_stop_map_marker.dart';
@@ -245,9 +245,8 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
         ) ??
         false;
     final canManageStops = iAmAdmin || iAmCabecera;
-    // Sin ruta compartida: cualquiera del grupo puede abrir el planificador;
-    // publicar en el grupo sigue exigiendo admin en la vista previa.
-    final canPrepareRoute = sharedRoute == null;
+    // Solo creador/admin prepara o cambia la ruta del grupo.
+    final canPrepareRoute = iAmAdmin;
     final incidentsAsync = ref.watch(groupIncidentsProvider(widget.groupId));
     final incidents = incidentsAsync.valueOrNull ?? const <GroupIncident>[];
     final locations = locationsAsync.valueOrNull ?? const <LiveLocation>[];
@@ -319,6 +318,7 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
             LatLng(sharedRoute.destination.lat, sharedRoute.destination.lng),
             for (final wp in sharedRoute.waypoints)
               LatLng(wp.lat, wp.lng),
+            ..._samplePolyline(sharedRoute.polyline),
           ],
         ],
       );
@@ -355,6 +355,9 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
                   ),
                 );
               }
+            : null,
+        onClearRoute: iAmAdmin && sharedRoute != null
+            ? () => unawaited(_confirmClearSharedRoute())
             : null,
         onNavigate: sharedRoute == null
             ? null
@@ -588,9 +591,7 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
                       icon: Icons.place_outlined,
                       emphasized: stops.isNotEmpty,
                       onTap: () => unawaited(
-                        _openStopsSheet(
-                          canManageStops: canManageStops,
-                        ),
+                        _openStopsSheet(canManageStops: canManageStops),
                       ),
                     ),
                   ],
@@ -604,9 +605,11 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
                   if (canPrepareRoute) ...[
                     const SizedBox(width: 8),
                     _GroupMapRoundButton(
-                      tooltip: 'Preparar ruta',
+                      tooltip: sharedRoute == null
+                          ? 'Preparar ruta'
+                          : 'Cambiar ruta',
                       icon: Icons.route_outlined,
-                      emphasized: true,
+                      emphasized: sharedRoute == null,
                       onTap: () {
                         Navigator.of(context).push(
                           MaterialPageRoute<void>(
@@ -618,6 +621,14 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
                           ),
                         );
                       },
+                    ),
+                  ],
+                  if (iAmAdmin && sharedRoute != null) ...[
+                    const SizedBox(width: 8),
+                    _GroupMapRoundButton(
+                      tooltip: 'Quitar ruta del grupo',
+                      icon: Icons.playlist_remove_rounded,
+                      onTap: () => unawaited(_confirmClearSharedRoute()),
                     ),
                   ],
                   if (sharedRoute != null) ...[
@@ -647,7 +658,6 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
         if (landscape)
           Positioned(
             left: leftSafe + 60,
-            // Hueco a la derecha para la fila de acciones (~4×44 + gaps).
             right: rightSafe + 220,
             bottom: padding.bottom + 8,
             child: IntercomControlsBar(
@@ -660,8 +670,6 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
           Positioned(
             left: leftSafe + 8,
             bottom: padding.bottom + 8,
-            // Solo left+bottom daba maxHeight = pantalla y el botón rojo se
-            // estiraba. Intrinsic height + absorber long-press del mapa.
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onLongPress: () {},
@@ -712,9 +720,7 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
                           groupId: widget.groupId,
                           compact: true,
                         ),
-                        const Divider(height: 8),
                         quickActions(embedded: true),
-                        const Divider(height: 8),
                         GroupIncidentSessionPanel(
                           groupId: widget.groupId,
                           user: widget.user,
@@ -1617,6 +1623,50 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
     };
   }
 
+  Future<void> _confirmClearSharedRoute() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('¿Quitar la ruta del grupo?'),
+        content: const Text(
+          'El grupo dejará de ver esta ruta en el mapa.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Quitar'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) {
+      return;
+    }
+    try {
+      await ref.read(groupActionControllerProvider.notifier).clearSharedRoute(
+            actor: widget.user,
+            groupId: widget.groupId,
+          );
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ruta del grupo eliminada')),
+      );
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se pudo quitar la ruta.')),
+      );
+    }
+  }
+
   /// En horizontal: como mucho incidencia, o un solo aviso compacto (destino/offline).
   Widget _buildLandscapeTopAlerts(
     BuildContext context, {
@@ -1830,6 +1880,80 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
       _followGroup = true;
       _lastFollowFit = null;
     });
+    // Encaja ya (no esperar al throttle de 2 s del follow automático).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_followGroup) {
+        return;
+      }
+      final points = _collectFollowPoints();
+      if (points.isEmpty) {
+        return;
+      }
+      _lastFollowFit = DateTime.now();
+      unawaited(_fitPoints(points));
+    });
+  }
+
+  List<LatLng> _collectFollowPoints() {
+    final members =
+        ref.read(groupMembersProvider(widget.groupId)).asData?.value ??
+            const <GroupMember>[];
+    final locations =
+        ref.read(groupLocationsProvider(widget.groupId)).valueOrNull ??
+            const <LiveLocation>[];
+    final stops =
+        ref.read(groupStopsProvider(widget.groupId)).asData?.value ??
+            const <GroupStop>[];
+    final sharedRoute =
+        ref.read(groupSharedRouteProvider(widget.groupId)).asData?.value;
+    final now = DateTime.now();
+    final points = <LatLng>[];
+    for (final location in locations) {
+      if (!location.hasSignal || isGpsStale(location.updatedAt, now)) {
+        continue;
+      }
+      // Solo miembros del grupo (por si queda basura en RTDB).
+      if (!members.any((m) => m.uid == location.uid)) {
+        continue;
+      }
+      points.add(LatLng(location.lat, location.lng));
+    }
+    for (final stop in stops) {
+      points.add(LatLng(stop.point.lat, stop.point.lng));
+    }
+    if (sharedRoute != null) {
+      points.add(LatLng(sharedRoute.origin.lat, sharedRoute.origin.lng));
+      points.add(
+        LatLng(sharedRoute.destination.lat, sharedRoute.destination.lng),
+      );
+      for (final wp in sharedRoute.waypoints) {
+        points.add(LatLng(wp.lat, wp.lng));
+      }
+      points.addAll(_samplePolyline(sharedRoute.polyline));
+    }
+    return points;
+  }
+
+  List<LatLng> _samplePolyline(List<GeoPoint> polyline) {
+    if (polyline.isEmpty) {
+      return const [];
+    }
+    if (polyline.length <= 40) {
+      return [for (final p in polyline) LatLng(p.lat, p.lng)];
+    }
+    final step = (polyline.length / 40).ceil();
+    final out = <LatLng>[];
+    for (var i = 0; i < polyline.length; i += step) {
+      final p = polyline[i];
+      out.add(LatLng(p.lat, p.lng));
+    }
+    final last = polyline.last;
+    if (out.isEmpty ||
+        out.last.latitude != last.lat ||
+        out.last.longitude != last.lng) {
+      out.add(LatLng(last.lat, last.lng));
+    }
+    return out;
   }
 
   Future<void> _recenterOnMe() async {
@@ -1872,6 +1996,20 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
     if (controller == null || points.isEmpty) {
       return;
     }
+    final landscape =
+        MediaQuery.orientationOf(context) == Orientation.landscape;
+    final size = MediaQuery.sizeOf(context);
+    final safe = MediaQuery.paddingOf(context);
+    // El mapa ocupa toda la pantalla; el panel inferior tapa la zona baja.
+    // Sin ese margen, ruta y pelotón quedan “centrados” detrás del panel.
+    final topPad = landscape
+        ? math.max(72.0, safe.top + 56)
+        : math.max(140.0, safe.top + kToolbarHeight + 72);
+    final bottomPad = landscape
+        ? math.max(88.0, safe.bottom + 72)
+        : math.max(220.0, size.height * 0.30 + safe.bottom);
+    final sidePad = landscape ? 88.0 : 48.0;
+
     _programmaticCamera = true;
     try {
       if (points.length == 1) {
@@ -1908,18 +2046,10 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
             southwest: LatLng(minLat, minLng),
             northeast: LatLng(maxLat, maxLng),
           ),
-          left: MediaQuery.orientationOf(context) == Orientation.landscape
-              ? 72
-              : 48,
-          top: MediaQuery.orientationOf(context) == Orientation.landscape
-              ? 72
-              : 120,
-          right: MediaQuery.orientationOf(context) == Orientation.landscape
-              ? 72
-              : 48,
-          bottom: MediaQuery.orientationOf(context) == Orientation.landscape
-              ? 72
-              : 100,
+          left: sidePad,
+          top: topPad,
+          right: sidePad,
+          bottom: bottomPad,
         ),
         duration: const Duration(milliseconds: 450),
       );
@@ -2060,6 +2190,7 @@ class _GroupMapQuickActions extends StatelessWidget {
     required this.preferExternalNav,
     required this.followGroup,
     this.onPrepareRoute,
+    this.onClearRoute,
     required this.onNavigate,
     this.onOpenWaze,
     this.onOpenGoogleMaps,
@@ -2075,6 +2206,7 @@ class _GroupMapQuickActions extends StatelessWidget {
   final bool preferExternalNav;
   final bool followGroup;
   final VoidCallback? onPrepareRoute;
+  final VoidCallback? onClearRoute;
   final VoidCallback? onNavigate;
   final VoidCallback? onOpenWaze;
   final VoidCallback? onOpenGoogleMaps;
@@ -2090,9 +2222,15 @@ class _GroupMapQuickActions extends StatelessWidget {
       if (onPrepareRoute != null)
         _QuickActionTile(
           icon: Icons.route_outlined,
-          label: 'Ruta',
-          emphasized: true,
+          label: hasSharedRoute ? 'Cambiar' : 'Ruta',
+          emphasized: !hasSharedRoute,
           onTap: onPrepareRoute,
+        ),
+      if (onClearRoute != null)
+        _QuickActionTile(
+          icon: Icons.playlist_remove_rounded,
+          label: 'Quitar',
+          onTap: onClearRoute,
         ),
       if (hasSharedRoute)
         _QuickActionTile(
@@ -2131,7 +2269,7 @@ class _GroupMapQuickActions extends StatelessWidget {
       if (onShowStops != null)
         _QuickActionTile(
           icon: Icons.place_outlined,
-          label: stopCount > 0 ? 'Paradas' : 'Paradas',
+          label: 'Paradas',
           badge: stopCount > 0 ? '$stopCount' : null,
           emphasized: stopCount > 0,
           onTap: onShowStops,
@@ -2209,21 +2347,20 @@ class _QuickActionTile extends StatelessWidget {
                 final selected = await showModalBottomSheet<int>(
                   context: context,
                   showDragHandle: true,
-                  builder: (context) {
-                    return SafeArea(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          for (var i = 0; i < menuItems.length; i++)
-                            ListTile(
-                              leading: Icon(menuItems[i].icon),
-                              title: Text(menuItems[i].label),
-                              onTap: () => Navigator.pop(context, i),
-                            ),
-                        ],
-                      ),
-                    );
-                  },
+                  builder: (ctx) => SafeArea(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        for (var i = 0; i < menuItems.length; i++)
+                          ListTile(
+                            leading: Icon(menuItems[i].icon),
+                            title: Text(menuItems[i].label),
+                            onTap: () => Navigator.pop(ctx, i),
+                          ),
+                        const SizedBox(height: 8),
+                      ],
+                    ),
+                  ),
                 );
                 if (selected != null) {
                   menuItems[selected].onTap();
@@ -2232,17 +2369,32 @@ class _QuickActionTile extends StatelessWidget {
         child: SizedBox(
           width: 44,
           height: 44,
-          child: Icon(icon, size: 22, color: fg),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Icon(icon, color: fg, size: 22),
+              if (badge != null)
+                Positioned(
+                  right: 4,
+                  top: 4,
+                  child: CircleAvatar(
+                    radius: 8,
+                    backgroundColor: colors.error,
+                    child: Text(
+                      badge!,
+                      style: TextStyle(
+                        color: colors.onError,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
-
-    if (badge != null) {
-      circle = Badge(
-        label: Text(badge!),
-        child: circle,
-      );
-    }
 
     return Column(
       mainAxisSize: MainAxisSize.min,

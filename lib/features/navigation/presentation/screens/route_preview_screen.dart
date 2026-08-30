@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:loc_motos/core/utils/spain_data_freshness.dart';
 import 'package:loc_motos/core/utils/distance_format.dart';
 import 'package:loc_motos/core/utils/navigation_duration_format.dart';
+import 'package:loc_motos/core/widgets/map_quick_action_tile.dart';
 import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
 import 'package:loc_motos/features/groups/presentation/providers/group_providers.dart';
 import 'package:loc_motos/features/navigation/domain/entities/alert_preferences.dart';
@@ -203,7 +204,12 @@ class _RoutePreviewScreenState extends ConsumerState<RoutePreviewScreen> {
     // Sustituye la preview: dos MapLibre a la vez tumba el proceso Android 11.
     await Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute<void>(
-        builder: (_) => NavigationHudScreen(route: route, user: widget.user),
+        builder: (_) => NavigationHudScreen(
+          route: route,
+          user: widget.user,
+          enableGroupFeatures:
+              (widget.user.currentGroupId ?? '').isNotEmpty,
+        ),
       ),
       (route) => route.isFirst,
     );
@@ -246,8 +252,55 @@ class _RoutePreviewScreenState extends ConsumerState<RoutePreviewScreen> {
           error == null
               ? (updating
                   ? 'Ruta del grupo actualizada'
-                  : 'Ruta publicada en el grupo')
+                  : 'Ruta compartida con el grupo')
               : 'No se pudo publicar: $error',
+        ),
+      ),
+    );
+  }
+
+  Future<void> _clearGroupRoute() async {
+    final groupId = widget.user.currentGroupId;
+    if (groupId == null || groupId.isEmpty) {
+      return;
+    }
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('¿Quitar la ruta del grupo?'),
+        content: const Text(
+          'El grupo dejará de ver esta ruta en el mapa. '
+          'Podrás compartir otra más adelante.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Quitar'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) {
+      return;
+    }
+    await ref.read(groupActionControllerProvider.notifier).clearSharedRoute(
+          actor: widget.user,
+          groupId: groupId,
+        );
+    if (!mounted) {
+      return;
+    }
+    final error = ref.read(groupActionControllerProvider).asError?.error;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          error == null
+              ? 'Ruta del grupo eliminada'
+              : 'No se pudo quitar: $error',
         ),
       ),
     );
@@ -366,6 +419,9 @@ class _RoutePreviewScreenState extends ConsumerState<RoutePreviewScreen> {
                 onPublishToGroup: () => unawaited(
                   _publishToGroup(updating: hasSharedRoute),
                 ),
+                onClearGroupRoute: hasSharedRoute && canPublishGroupRoute
+                    ? () => unawaited(_clearGroupRoute())
+                    : null,
                 maxHeight: screenSize.height * 0.46,
               );
 
@@ -629,6 +685,7 @@ class _RoutePreviewSheet extends StatelessWidget {
     this.publishBusy = false,
     this.updatingGroupRoute = false,
     this.onPublishToGroup,
+    this.onClearGroupRoute,
     required this.maxHeight,
   });
 
@@ -648,6 +705,7 @@ class _RoutePreviewSheet extends StatelessWidget {
   final bool publishBusy;
   final bool updatingGroupRoute;
   final VoidCallback? onPublishToGroup;
+  final VoidCallback? onClearGroupRoute;
   final double maxHeight;
 
   int? get _fastestIndex {
@@ -712,9 +770,7 @@ class _RoutePreviewSheet extends StatelessWidget {
       if (!enriching && radarAlertsEnabled && radarStaleMessage != null)
         radarStaleMessage!,
     ];
-    final panelTitle = route.hasWaypoints
-        ? 'Vista previa del circuito'
-        : 'Vista previa de la ruta';
+    final panelTitle = 'Vista previa de la ruta';
     final panelSubtitle =
         '${formatRideDistance(route.distanceMeters)} · '
         '${formatNavigationDurationCompact(route.durationSeconds)}';
@@ -835,12 +891,39 @@ class _RoutePreviewSheet extends StatelessWidget {
     }
 
     Widget actionButtons({required bool withBorder}) {
+      final dense = landscape || MediaQuery.sizeOf(context).height < 720;
+      final actionTiles = <Widget>[
+        if (canPublishToGroup)
+          MapQuickActionTile(
+            icon: updatingGroupRoute
+                ? Icons.sync_rounded
+                : Icons.groups_rounded,
+            label: updatingGroupRoute ? 'Actualizar' : 'Grupo',
+            emphasized: true,
+            enabled: !enriching && !publishBusy,
+            onTap: enriching || publishBusy ? null : onPublishToGroup,
+          ),
+        if (onClearGroupRoute != null)
+          MapQuickActionTile(
+            icon: Icons.playlist_remove_rounded,
+            label: 'Quitar',
+            enabled: !enriching,
+            onTap: enriching ? null : onClearGroupRoute,
+          ),
+        MapQuickActionTile(
+          icon: Icons.ios_share_rounded,
+          label: 'GPX',
+          enabled: !enriching,
+          onTap: enriching ? null : onShare,
+        ),
+      ];
+
       return Container(
         padding: EdgeInsets.fromLTRB(
           hPad,
-          landscape ? 6 : 8,
+          dense ? 6 : 8,
           hPad,
-          landscape ? 10 : 12,
+          dense ? 10 : 12,
         ),
         decoration: withBorder
             ? BoxDecoration(
@@ -853,60 +936,30 @@ class _RoutePreviewSheet extends StatelessWidget {
               )
             : null,
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            FilledButton.icon(
+            Row(
+              children: [
+                for (var i = 0; i < actionTiles.length; i++) ...[
+                  if (i > 0) const SizedBox(width: 4),
+                  Expanded(child: actionTiles[i]),
+                ],
+              ],
+            ),
+            SizedBox(height: dense ? 10 : 12),
+            FilledButton(
               onPressed: enriching ? null : onStart,
               style: FilledButton.styleFrom(
-                visualDensity:
-                    landscape ? VisualDensity.compact : VisualDensity.standard,
-                padding: landscape
-                    ? const EdgeInsets.symmetric(vertical: 10)
-                    : null,
-              ),
-              icon: Icon(Icons.navigation, size: landscape ? 18 : 24),
-              label: const Text('Empezar navegación'),
-            ),
-            if (canPublishToGroup) ...[
-              SizedBox(height: landscape ? 6 : 8),
-              FilledButton.tonalIcon(
-                onPressed: enriching || publishBusy ? null : onPublishToGroup,
-                style: FilledButton.styleFrom(
-                  visualDensity:
-                      landscape ? VisualDensity.compact : VisualDensity.standard,
-                  padding: landscape
-                      ? const EdgeInsets.symmetric(vertical: 10)
-                      : null,
-                ),
-                icon: Icon(
-                  updatingGroupRoute
-                      ? Icons.sync_rounded
-                      : Icons.groups_rounded,
-                  size: landscape ? 18 : 24,
-                ),
-                label: Text(
-                  publishBusy
-                      ? (updatingGroupRoute
-                          ? 'Actualizando…'
-                          : 'Publicando…')
-                      : (updatingGroupRoute
-                          ? 'Actualizar ruta del grupo'
-                          : 'Publicar en el grupo'),
+                minimumSize: Size.fromHeight(dense ? 44 : 48),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
                 ),
               ),
-            ],
-            SizedBox(height: landscape ? 6 : 8),
-            OutlinedButton.icon(
-              onPressed: enriching ? null : onShare,
-              style: OutlinedButton.styleFrom(
-                visualDensity:
-                    landscape ? VisualDensity.compact : VisualDensity.standard,
-                padding: landscape
-                    ? const EdgeInsets.symmetric(vertical: 10)
-                    : null,
+              child: const Text(
+                'Empezar navegación',
+                style: TextStyle(fontWeight: FontWeight.w700),
               ),
-              icon: Icon(Icons.ios_share_rounded, size: landscape ? 18 : 24),
-              label: const Text('Compartir GPX'),
             ),
           ],
         ),
@@ -918,28 +971,17 @@ class _RoutePreviewSheet extends StatelessWidget {
       subtitle: panelSubtitle,
       sidePanel: landscape,
       maxExpandedHeight: landscape ? null : maxHeight,
-      child: landscape
-          ? Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                alternativesHeader(),
-                routeDetails(),
-                actionButtons(withBorder: false),
-              ],
-            )
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                alternativesHeader(),
-                Flexible(
-                  child: SingleChildScrollView(
-                    child: routeDetails(),
-                  ),
-                ),
-                actionButtons(withBorder: true),
-              ],
-            ),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            alternativesHeader(),
+            routeDetails(),
+            actionButtons(withBorder: !landscape),
+          ],
+        ),
+      ),
     );
   }
 }
