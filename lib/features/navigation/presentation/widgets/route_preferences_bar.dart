@@ -10,15 +10,26 @@ class RoutePreferencesBar extends ConsumerWidget {
     super.key,
     this.enabled = true,
     this.showCurvature = true,
+    this.compact = false,
   });
 
   final bool enabled;
   final bool showCurvature;
+  final bool compact;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final prefs = ref.watch(routePreferencesProvider);
     final colors = Theme.of(context).colorScheme;
+    final buttonStyle = OutlinedButton.styleFrom(
+      visualDensity: compact ? VisualDensity.compact : VisualDensity.standard,
+      tapTargetSize:
+          compact ? MaterialTapTargetSize.shrinkWrap : MaterialTapTargetSize.padded,
+      padding: EdgeInsets.symmetric(
+        horizontal: 10,
+        vertical: compact ? 6 : 10,
+      ),
+    );
 
     return Row(
       children: [
@@ -28,10 +39,7 @@ class RoutePreferencesBar extends ConsumerWidget {
               onPressed: enabled
                   ? () => _openCurvatureSheet(context, ref, prefs)
                   : null,
-              style: OutlinedButton.styleFrom(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-              ),
+              style: buttonStyle,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -56,9 +64,7 @@ class RoutePreferencesBar extends ConsumerWidget {
             onPressed: enabled
                 ? () => _openAvoidancesSheet(context, ref, prefs)
                 : null,
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-            ),
+            style: buttonStyle,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [

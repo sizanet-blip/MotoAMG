@@ -77,4 +77,12 @@ class NavigationRepositoryImpl implements NavigationRepository {
 
   @override
   Future<void> clearActiveRoute() => _cache.clearActiveRoute();
+
+  @override
+  Future<NavigationRoute> refreshSpeedLimits(NavigationRoute route) async {
+    if (!_valhalla.isConfigured || route is! NavigationRouteModel) {
+      return route;
+    }
+    return _valhalla.attachSpeedLimitsToRoute(route);
+  }
 }

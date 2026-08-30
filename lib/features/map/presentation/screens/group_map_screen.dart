@@ -1201,6 +1201,7 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
           user: widget.user,
           chaseCabecera: chase,
           sharedGroupRoute: chase ? sharedRoute : null,
+          enableGroupFeatures: true,
         ),
       ),
       (route) => route.isFirst,

@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:http/http.dart' as http;
 import 'package:loc_motos/core/constants/navigation_constants.dart';
 import 'package:loc_motos/features/navigation/data/models/navigation_route_model.dart';
+import 'package:loc_motos/features/navigation/data/services/route_guidance_service.dart';
 import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
 import 'package:loc_motos/features/navigation/domain/entities/route_preferences.dart';
 import 'package:loc_motos/features/navigation/domain/entities/speed_limit_segment.dart';
@@ -135,22 +136,35 @@ class ValhallaRemoteDataSource {
     if (!attachSpeedLimits) {
       return routes;
     }
-    final segments = await _fetchSpeedLimitSegments(routes.first.polyline);
+    return Future.wait([
+      for (final route in routes) _withAttachedSpeedLimits(route),
+    ]);
+  }
+
+  Future<NavigationRouteModel> _withAttachedSpeedLimits(
+    NavigationRouteModel route,
+  ) async {
+    final segments = await _fetchSpeedLimitSegments(route.polyline);
     if (segments.isEmpty) {
-      return routes;
+      return route;
     }
-    return [
-      routes.first.copyWithSpeedLimits(segments),
-      ...routes.skip(1),
-    ];
+    return route.copyWithSpeedLimits(segments);
+  }
+
+  /// Recalcula límites sobre una ruta ya planificada (p. ej. al abrir el HUD).
+  Future<NavigationRouteModel> attachSpeedLimitsToRoute(
+    NavigationRouteModel route,
+  ) {
+    return _withAttachedSpeedLimits(route);
   }
 
   Future<List<SpeedLimitSegment>> _fetchSpeedLimitSegments(
     List<GeoPoint> polyline,
   ) async {
-    final traced = await fetchTraceAttributes(
+    final traced = await _fetchTraceAttributesJson(
       polyline,
       attributes: const [
+        'shape',
         'edge.speed_limit',
         'edge.begin_shape_index',
         'edge.end_shape_index',
@@ -159,11 +173,40 @@ class ValhallaRemoteDataSource {
     if (traced == null) {
       return const [];
     }
-    return NavigationRouteModel.speedLimitsFromTraceAttributes(traced);
+
+    // Índices Valhalla → shape emparejada del response (no la muestra enviada).
+    final matchedShape = NavigationRouteModel.decodePolyline6(
+      traced['shape'] as String? ?? '',
+    );
+    if (matchedShape.length < 2) {
+      return const [];
+    }
+
+    final guidance = RouteGuidanceService();
+    int toRouteIndex(int matchedIndex) {
+      final idx = matchedIndex.clamp(0, matchedShape.length - 1);
+      final along = guidance.distanceAlongRouteMeters(
+        matchedShape[idx],
+        polyline,
+      );
+      return guidance.shapeIndexAtDistance(polyline, along);
+    }
+
+    return NavigationRouteModel.speedLimitsFromTraceAttributes(
+      traced,
+      toRouteShapeIndex: toRouteIndex,
+    );
   }
 
   /// Trace attributes genérico (límites, peajes, etc.).
   Future<Map<String, dynamic>?> fetchTraceAttributes(
+    List<GeoPoint> polyline, {
+    required List<String> attributes,
+  }) {
+    return _fetchTraceAttributesJson(polyline, attributes: attributes);
+  }
+
+  Future<Map<String, dynamic>?> _fetchTraceAttributesJson(
     List<GeoPoint> polyline, {
     required List<String> attributes,
   }) async {
@@ -173,15 +216,15 @@ class ValhallaRemoteDataSource {
     try {
       final uri =
           Uri.parse('${NavigationConstants.valhallaBaseUrl}/trace_attributes');
-      // Muestrear polilíneas muy largas para no saturar el body.
-      final sampled = _samplePolyline(polyline, maxPoints: 800);
+      final sample = _samplePolyline(polyline, maxPoints: 800);
       final body = jsonEncode({
         'shape': [
-          for (final point in sampled) {'lat': point.lat, 'lon': point.lng},
+          for (final point in sample) {'lat': point.lat, 'lon': point.lng},
         ],
         'shape_match': 'map_snap',
         'costing': NavigationConstants.valhallaCosting,
         'units': 'kilometers',
+        'shape_format': 'polyline6',
         'filters': {
           'action': 'include',
           'attributes': attributes,
@@ -211,9 +254,10 @@ class ValhallaRemoteDataSource {
   Future<List<({GeoPoint point, int beginShapeIndex})>> fetchTollEntries(
     List<GeoPoint> polyline,
   ) async {
-    final traced = await fetchTraceAttributes(
+    final traced = await _fetchTraceAttributesJson(
       polyline,
       attributes: const [
+        'shape',
         'edge.toll',
         'edge.begin_shape_index',
         'edge.end_shape_index',
@@ -222,6 +266,10 @@ class ValhallaRemoteDataSource {
     if (traced == null) {
       return const [];
     }
+    final matchedShape = NavigationRouteModel.decodePolyline6(
+      traced['shape'] as String? ?? '',
+    );
+    final guidance = RouteGuidanceService();
     final edges = traced['edges'] as List<dynamic>? ?? const [];
     final entries = <({GeoPoint point, int beginShapeIndex})>[];
     var previousToll = false;
@@ -230,9 +278,19 @@ class ValhallaRemoteDataSource {
         continue;
       }
       final isToll = raw['toll'] == true;
-      final begin = (raw['begin_shape_index'] as num?)?.toInt() ?? 0;
+      final beginMatched = (raw['begin_shape_index'] as num?)?.toInt() ?? 0;
       if (isToll && !previousToll) {
-        final idx = begin.clamp(0, polyline.length - 1);
+        late final int idx;
+        if (matchedShape.length >= 2) {
+          final mi = beginMatched.clamp(0, matchedShape.length - 1);
+          final along = guidance.distanceAlongRouteMeters(
+            matchedShape[mi],
+            polyline,
+          );
+          idx = guidance.shapeIndexAtDistance(polyline, along);
+        } else {
+          idx = beginMatched.clamp(0, polyline.length - 1);
+        }
         entries.add((point: polyline[idx], beginShapeIndex: idx));
       }
       previousToll = isToll;
@@ -240,7 +298,10 @@ class ValhallaRemoteDataSource {
     return entries;
   }
 
-  List<GeoPoint> _samplePolyline(List<GeoPoint> polyline, {required int maxPoints}) {
+  List<GeoPoint> _samplePolyline(
+    List<GeoPoint> polyline, {
+    required int maxPoints,
+  }) {
     if (polyline.length <= maxPoints) {
       return polyline;
     }

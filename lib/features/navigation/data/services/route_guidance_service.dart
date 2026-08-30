@@ -4,7 +4,6 @@ import 'package:loc_motos/core/constants/navigation_constants.dart';
 import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
 import 'package:loc_motos/features/navigation/domain/entities/navigation_maneuver.dart';
 import 'package:loc_motos/features/navigation/domain/entities/navigation_route.dart';
-import 'package:loc_motos/features/navigation/domain/entities/speed_limit_segment.dart';
 
 /// Guidance estilo Waze/Sygic: cartel = próximo punto de decisión + metros hasta él.
 class RouteGuidanceService {
@@ -172,7 +171,7 @@ class RouteGuidanceService {
         straight <= thresholdMeters * 2.5;
   }
 
-  /// Límite legal en el tramo actual (km/h), o null si no hay datos.
+  /// Límite legal en el tramo actual (km/h), o null si no hay dato fiable.
   int? resolveSpeedLimitKmh({
     required GeoPoint position,
     required NavigationRoute route,
@@ -183,16 +182,16 @@ class RouteGuidanceService {
     }
     final along = distanceAlongRouteMeters(position, route.polyline);
     final shapeIndex = shapeIndexAtDistance(route.polyline, along);
-    // Tramos ordenados: el último con begin <= índice es el vigente.
-    SpeedLimitSegment? match;
+    // Solo dentro del tramo: no arrastrar un 50 urbano al siguiente vacío.
     for (final segment in segments) {
-      if (shapeIndex >= segment.beginShapeIndex) {
-        match = segment;
-      } else {
-        break;
+      if (shapeIndex < segment.beginShapeIndex) {
+        return null;
+      }
+      if (shapeIndex <= segment.endShapeIndex) {
+        return segment.speedLimitKmh;
       }
     }
-    return match?.speedLimitKmh ?? route.speedLimitKmh;
+    return null;
   }
 
   /// Índice de polilínea correspondiente a [alongMeters] desde el origen.

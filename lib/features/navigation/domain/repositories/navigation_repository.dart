@@ -25,4 +25,7 @@ abstract class NavigationRepository {
   Future<void> saveActiveRoute(NavigationRoute route);
 
   Future<void> clearActiveRoute();
+
+  /// Recalcula tramos de límite de velocidad (Valhalla) sobre una ruta existente.
+  Future<NavigationRoute> refreshSpeedLimits(NavigationRoute route);
 }

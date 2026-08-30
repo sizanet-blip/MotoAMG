@@ -199,32 +199,33 @@ class ItinerarySheet extends ConsumerWidget {
             SizedBox(height: landscape ? 6 : 8),
             Wrap(
               spacing: 8,
-              runSpacing: landscape ? 4 : 8,
+              runSpacing: 6,
               children: [
                 OutlinedButton.icon(
                   onPressed: busy ? null : onAddStop,
                   style: OutlinedButton.styleFrom(
-                    visualDensity:
-                        landscape ? VisualDensity.compact : VisualDensity.standard,
-                    padding: landscape
-                        ? const EdgeInsets.symmetric(horizontal: 10, vertical: 6)
-                        : null,
+                    visualDensity: VisualDensity.compact,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
                   ),
-                  icon: Icon(Icons.add_location_alt_outlined,
-                      size: landscape ? 18 : 24),
+                  icon: const Icon(Icons.add_location_alt_outlined, size: 18),
                   label: const Text('Añadir parada'),
                 ),
                 if (canCloseLoop)
                   OutlinedButton.icon(
                     onPressed: busy ? null : onCloseLoop,
                     style: OutlinedButton.styleFrom(
-                      visualDensity:
-                          landscape ? VisualDensity.compact : VisualDensity.standard,
-                      padding: landscape
-                          ? const EdgeInsets.symmetric(horizontal: 10, vertical: 6)
-                          : null,
+                      visualDensity: VisualDensity.compact,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
                     ),
-                    icon: Icon(Icons.loop, size: landscape ? 18 : 24),
+                    icon: const Icon(Icons.loop, size: 18),
                     label: const Text('Cerrar circuito'),
                   ),
               ],
@@ -233,16 +234,15 @@ class ItinerarySheet extends ConsumerWidget {
             RoutePreferencesBar(
               enabled: !busy,
               showCurvature: showCurvature,
+              compact: true,
             ),
             SizedBox(height: landscape ? 8 : 10),
             FilledButton.icon(
               onPressed: busy || !itinerary.canPlan ? null : onPlanRoute,
               style: FilledButton.styleFrom(
-                visualDensity:
-                    landscape ? VisualDensity.compact : VisualDensity.standard,
-                padding: landscape
-                    ? const EdgeInsets.symmetric(vertical: 10)
-                    : null,
+                visualDensity: VisualDensity.compact,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                padding: const EdgeInsets.symmetric(vertical: 10),
               ),
               icon: busy
                   ? const SizedBox(
@@ -250,7 +250,7 @@ class ItinerarySheet extends ConsumerWidget {
                       height: 18,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : Icon(Icons.route, size: landscape ? 18 : 24),
+                  : const Icon(Icons.route, size: 18),
               label: Text(
                 itinerary.hasIntermediateStops ? 'Ver circuito' : 'Ver ruta',
               ),

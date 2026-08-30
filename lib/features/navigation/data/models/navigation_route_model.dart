@@ -112,7 +112,7 @@ class NavigationRouteModel extends NavigationRoute {
       final summary = leg['summary'] as Map<String, dynamic>? ?? const {};
       final maneuversJson = leg['maneuvers'] as List<dynamic>? ?? const [];
       final shape = leg['shape'] as String? ?? '';
-      final legPolyline = _decodePolyline6(shape);
+      final legPolyline = decodePolyline6(shape);
       final shapeOffset = polyline.length;
 
       totalDistanceMeters +=
@@ -225,29 +225,42 @@ class NavigationRouteModel extends NavigationRoute {
   }
 
   static List<SpeedLimitSegment> speedLimitsFromTraceAttributes(
-    Map<String, dynamic> json,
-  ) {
+    Map<String, dynamic> json, {
+    int Function(int matchedIndex)? toRouteShapeIndex,
+  }) {
     final edges = json['edges'] as List<dynamic>? ?? const [];
     final raw = <SpeedLimitSegment>[];
     for (final edge in edges) {
       if (edge is! Map<String, dynamic>) {
         continue;
       }
-      final limit = (edge['speed_limit'] as num?)?.round();
-      if (limit == null || limit <= 0) {
+      final limit = resolveEdgeSpeedLimitKmh(edge);
+      if (limit == null) {
         continue;
       }
-      final begin = (edge['begin_shape_index'] as num?)?.toInt() ?? 0;
-      final end = (edge['end_shape_index'] as num?)?.toInt() ?? begin;
+      final beginMatched = (edge['begin_shape_index'] as num?)?.toInt() ?? 0;
+      final endMatched =
+          (edge['end_shape_index'] as num?)?.toInt() ?? beginMatched;
+      final begin = toRouteShapeIndex?.call(beginMatched) ?? beginMatched;
+      final end = toRouteShapeIndex?.call(endMatched) ?? endMatched;
       raw.add(
         SpeedLimitSegment(
-          beginShapeIndex: begin,
-          endShapeIndex: end,
+          beginShapeIndex: begin <= end ? begin : end,
+          endShapeIndex: begin <= end ? end : begin,
           speedLimitKmh: limit,
         ),
       );
     }
     return coalesceSpeedLimits(raw);
+  }
+
+  /// Solo el maxspeed reportado por Valhalla/OSM. Sin defaults ni heurísticas.
+  static int? resolveEdgeSpeedLimitKmh(Map<String, dynamic> edge) {
+    final posted = (edge['speed_limit'] as num?)?.round();
+    if (posted == null || posted <= 0 || posted > 160) {
+      return null;
+    }
+    return posted;
   }
 
   factory NavigationRouteModel.demo({
@@ -472,7 +485,7 @@ class NavigationRouteModel extends NavigationRoute {
   static ManeuverType mapValhallaManeuverType(int type) => _maneuverType(type);
 
   /// Decodifica polyline6 de Valhalla (precisión 1e6).
-  static List<GeoPoint> _decodePolyline6(String encoded) {
+  static List<GeoPoint> decodePolyline6(String encoded) {
     if (encoded.isEmpty) {
       return const [];
     }

@@ -57,6 +57,7 @@ class NavigationHudScreen extends ConsumerStatefulWidget {
     required this.user,
     this.chaseCabecera = false,
     this.sharedGroupRoute,
+    this.enableGroupFeatures = false,
   });
 
   final NavigationRoute route;
@@ -67,6 +68,9 @@ class NavigationHudScreen extends ConsumerStatefulWidget {
 
   /// Ruta compartida del pelotón (fase 2). Necesaria si [chaseCabecera].
   final NavigationRoute? sharedGroupRoute;
+
+  /// Intercom, avisos de grupo y pelotón. Solo true al navegar desde el mapa del grupo.
+  final bool enableGroupFeatures;
 
   @override
   ConsumerState<NavigationHudScreen> createState() =>
@@ -154,6 +158,7 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
       });
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_refreshSpeedLimits());
       unawaited(_armHudDisplay());
       unawaited(_syncGuidanceToMyGps());
     });
@@ -1320,6 +1325,9 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
   }
 
   String? _resolveGroupId() {
+    if (!widget.enableGroupFeatures) {
+      return null;
+    }
     final live = ref.read(signedInUserProvider)?.currentGroupId;
     if (live != null && live.isNotEmpty) {
       return live;
@@ -1414,6 +1422,23 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
         return;
       }
       setState(() => _route = enriched);
+      _updateGuidance();
+    } catch (_) {}
+  }
+
+  Future<void> _refreshSpeedLimits() async {
+    try {
+      final updated = await ref
+          .read(navigationRepositoryProvider)
+          .refreshSpeedLimits(_route);
+      if (!mounted || updated.id != _route.id) {
+        return;
+      }
+      if (updated.speedLimitSegments == _route.speedLimitSegments &&
+          updated.speedLimitKmh == _route.speedLimitKmh) {
+        return;
+      }
+      setState(() => _route = updated);
       _updateGuidance();
     } catch (_) {}
   }
