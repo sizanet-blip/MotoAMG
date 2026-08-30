@@ -58,6 +58,36 @@ import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
   return (traveled: traveled, remaining: remaining);
 }
 
+/// Proyecta un punto GPS sobre la polilínea (snap suave para puck/cámara).
+({GeoPoint point, double distanceMeters})? projectOntoPolyline(
+  List<GeoPoint> polyline,
+  double lat,
+  double lng,
+) {
+  if (polyline.length < 2) {
+    return null;
+  }
+  var bestDist = double.infinity;
+  GeoPoint? bestPoint;
+  for (var i = 0; i < polyline.length - 1; i++) {
+    final projected = _projectOnSegment(lat, lng, polyline[i], polyline[i + 1]);
+    final d = Geolocator.distanceBetween(
+      lat,
+      lng,
+      projected.point.lat,
+      projected.point.lng,
+    );
+    if (d < bestDist) {
+      bestDist = d;
+      bestPoint = projected.point;
+    }
+  }
+  if (bestPoint == null) {
+    return null;
+  }
+  return (point: bestPoint, distanceMeters: bestDist);
+}
+
 ({GeoPoint point, double t}) _projectOnSegment(
   double lat,
   double lng,

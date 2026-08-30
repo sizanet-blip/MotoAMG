@@ -229,6 +229,9 @@ class _NavigationMapViewState extends State<NavigationMapView> {
   var _awaitingStyleFadeOut = false;
   /// Evita confundir un animateCamera nuestro con un pan del usuario.
   var _programmaticCameraMove = false;
+  var _cameraMoveBusy = false;
+  CameraUpdate? _pendingCameraUpdate;
+  double? _smoothedNavZoom;
   late String _activeStyle;
   var _allowMapMount = true;
 
@@ -384,7 +387,7 @@ class _NavigationMapViewState extends State<NavigationMapView> {
       unawaited(_syncRouteProgress());
       unawaited(_syncAlertsSource());
       unawaited(_syncStyleForVisiblePoint());
-    } else if ((oldWidget.speedMps - widget.speedMps).abs() > 1.5 &&
+    } else if ((oldWidget.speedMps - widget.speedMps).abs() > 3.5 &&
         widget.cameraFollowUser) {
       // Zoom dinámico al cambiar de ritmo (ciudad ↔ carretera).
       unawaited(_moveCamera(animate: true));
@@ -1291,8 +1294,21 @@ class _NavigationMapViewState extends State<NavigationMapView> {
     return splitRoutePolyline(poly, lat, lng);
   }
 
-  double get _navigationCameraZoom =>
-      NavigationConstants.navigationZoomForSpeedMps(widget.speedMps);
+  double get _navigationCameraZoom {
+    final target = NavigationConstants.navigationZoomForSpeedMps(widget.speedMps);
+    final prev = _smoothedNavZoom;
+    if (prev == null) {
+      _smoothedNavZoom = target;
+      return target;
+    }
+    // Histéresis: no cambiar zoom por microvariaciones de velocidad.
+    if ((target - prev).abs() < 0.35) {
+      return prev;
+    }
+    final next = prev + (target - prev) * 0.22;
+    _smoothedNavZoom = next;
+    return next;
+  }
 
   double get _navigationCameraBearing {
     final lat = widget.latitude;
@@ -2203,7 +2219,13 @@ class _NavigationMapViewState extends State<NavigationMapView> {
       );
     }
 
+    if (_cameraMoveBusy && animate && !widget._isPreview) {
+      _pendingCameraUpdate = update;
+      return;
+    }
+
     _programmaticCameraMove = true;
+    _cameraMoveBusy = true;
     try {
       if (!animate) {
         await controller.moveCamera(update);
@@ -2216,12 +2238,18 @@ class _NavigationMapViewState extends State<NavigationMapView> {
         final target = _cameraTarget;
         final deltaLat = (target.latitude - _lastCameraTarget.latitude).abs();
         final deltaLng = (target.longitude - _lastCameraTarget.longitude).abs();
-        await controller.animateCamera(
-          update,
-          duration: Duration(
-            milliseconds: deltaLat < 0.00001 && deltaLng < 0.00001 ? 280 : 650,
-          ),
-        );
+        final tiny = deltaLat < 0.000008 && deltaLng < 0.000008;
+        // Animaciones cortas: si se solapan con el siguiente fix, hay trompicones.
+        if (tiny) {
+          await controller.moveCamera(update);
+        } else {
+          await controller.animateCamera(
+            update,
+            duration: Duration(
+              milliseconds: deltaLat < 0.00004 && deltaLng < 0.00004 ? 160 : 280,
+            ),
+          );
+        }
         _lastCameraTarget = target;
         return;
       }
@@ -2230,10 +2258,30 @@ class _NavigationMapViewState extends State<NavigationMapView> {
         _lastCameraTarget = _cameraTarget;
       }
     } finally {
-      // Se limpia en onCameraIdle; si no llega, no bloquear el siguiente pan.
-      Future<void>.delayed(const Duration(milliseconds: 800), () {
+      _cameraMoveBusy = false;
+      Future<void>.delayed(const Duration(milliseconds: 400), () {
         _programmaticCameraMove = false;
       });
+      final pending = _pendingCameraUpdate;
+      if (pending != null && mounted && widget.cameraFollowUser) {
+        _pendingCameraUpdate = null;
+        _programmaticCameraMove = true;
+        _cameraMoveBusy = true;
+        try {
+          await controller.animateCamera(
+            pending,
+            duration: const Duration(milliseconds: 180),
+          );
+          if (!widget._isPreview) {
+            _lastCameraTarget = _cameraTarget;
+          }
+        } finally {
+          _cameraMoveBusy = false;
+          Future<void>.delayed(const Duration(milliseconds: 350), () {
+            _programmaticCameraMove = false;
+          });
+        }
+      }
     }
   }
 

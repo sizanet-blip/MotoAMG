@@ -88,6 +88,11 @@ class _LocationBinderState extends ConsumerState<LocationBinder>
       final gps = ref.read(deviceLocationServiceProvider);
       await gps.ensurePermission();
       _started = true;
+      // Si el HUD ya tiene el GPS, no lo pisamos con el stream lento del grupo.
+      if (ref.read(ownPositionWatchSourceProvider) ==
+          OwnPositionWatchSource.navigation) {
+        return;
+      }
       ref.read(ownPositionWatchSourceProvider.notifier).state =
           OwnPositionWatchSource.group;
       final first = await gps.readPosition();
@@ -314,6 +319,41 @@ class _LocationBinderState extends ConsumerState<LocationBinder>
         AppConstants.locationStoppedPublishInterval;
   }
 
+  Future<void> _yieldToNavigation() async {
+    await _subscription?.cancel();
+    _subscription = null;
+    _heartbeat?.cancel();
+    _heartbeat = null;
+  }
+
+  Future<void> _reclaimAfterNavigation() async {
+    if (!mounted || !_started) {
+      return;
+    }
+    if (ref.read(ownPositionWatchSourceProvider) ==
+        OwnPositionWatchSource.navigation) {
+      return;
+    }
+    ref.read(ownPositionWatchSourceProvider.notifier).state =
+        OwnPositionWatchSource.group;
+    if (_subscription != null) {
+      return;
+    }
+    final gps = ref.read(deviceLocationServiceProvider);
+    _subscription = gps.watchPosition().listen(
+      _rememberPosition,
+      onError: (Object error) {
+        if (error is LocationServiceDisabledException) {
+          _setGpsLost(true);
+        }
+      },
+      onDone: () => _subscription = null,
+    );
+    _heartbeat ??= Timer.periodic(AppConstants.locationUpdateInterval, (_) {
+      unawaited(_publishLatest());
+    });
+  }
+
   Future<void> _stop({required bool clearRemote}) async {
     _heartbeat?.cancel();
     _heartbeat = null;
@@ -383,6 +423,17 @@ class _LocationBinderState extends ConsumerState<LocationBinder>
 
   @override
   Widget build(BuildContext context) {
+    // El HUD de navegación necesita GPS frecuente: cedemos el stream del grupo.
+    ref.listen(ownPositionWatchSourceProvider, (previous, next) {
+      if (!_started || !mounted) {
+        return;
+      }
+      if (next == OwnPositionWatchSource.navigation) {
+        unawaited(_yieldToNavigation());
+      } else if (previous == OwnPositionWatchSource.navigation) {
+        unawaited(_reclaimAfterNavigation());
+      }
+    });
     // Durante simulación del HUD, reenviar la posición ficticia al grupo.
     ref.listen(ownDevicePositionProvider, (previous, next) {
       if (!ref.read(routeSimulationActiveProvider) || next == null) {

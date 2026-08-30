@@ -64,10 +64,12 @@ class DeviceLocationService {
   }
 
   LocationSettings _navigationWatchSettings({required bool foregroundService}) {
+    // Navegación: fixes frecuentes. El stream del grupo (8 m / 3 s) no sirve en curva.
     if (defaultTargetPlatform == TargetPlatform.android && foregroundService) {
       return AndroidSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 5,
+        accuracy: LocationAccuracy.bestForNavigation,
+        distanceFilter: 0,
+        intervalDuration: const Duration(milliseconds: 800),
         foregroundNotificationConfig: const ForegroundNotificationConfig(
           notificationTitle: AppConstants.navigationNotificationTitle,
           notificationText: AppConstants.navigationNotificationText,
@@ -82,15 +84,15 @@ class DeviceLocationService {
       return AppleSettings(
         accuracy: LocationAccuracy.bestForNavigation,
         activityType: ActivityType.automotiveNavigation,
-        distanceFilter: 5,
+        distanceFilter: 0,
         pauseLocationUpdatesAutomatically: false,
         showBackgroundLocationIndicator: true,
         allowBackgroundLocationUpdates: true,
       );
     }
     return const LocationSettings(
-      accuracy: LocationAccuracy.high,
-      distanceFilter: 5,
+      accuracy: LocationAccuracy.bestForNavigation,
+      distanceFilter: 0,
     );
   }
 

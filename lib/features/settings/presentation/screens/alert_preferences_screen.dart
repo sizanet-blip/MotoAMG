@@ -77,6 +77,16 @@ class AlertPreferencesScreen extends ConsumerWidget {
                 notifier.update((p) => p.copyWith(curvesEnabled: v)),
             onOpenDetail: () => _openDetail(context, _AlertCategory.curves),
           ),
+          _AlertTypeHubTile(
+            icon: Icons.speed,
+            title: 'Límite de velocidad',
+            summary: _speedLimitSummary(prefs),
+            enabled: prefs.speedLimitAlertEnabled,
+            onEnabledChanged: (v) =>
+                notifier.update((p) => p.copyWith(speedLimitAlertEnabled: v)),
+            onOpenDetail: () =>
+                _openDetail(context, _AlertCategory.speedLimit),
+          ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
             child: DecoratedBox(
@@ -129,7 +139,7 @@ class AlertPreferencesScreen extends ConsumerWidget {
   }
 }
 
-enum _AlertCategory { radars, fuel, tolls, curves }
+enum _AlertCategory { radars, fuel, tolls, curves, speedLimit }
 
 class _AlertTypeDetailScreen extends ConsumerWidget {
   const _AlertTypeDetailScreen({required this.category});
@@ -141,6 +151,7 @@ class _AlertTypeDetailScreen extends ConsumerWidget {
         _AlertCategory.fuel => 'Gasolineras',
         _AlertCategory.tolls => 'Peajes',
         _AlertCategory.curves => 'Curvas pronunciadas',
+        _AlertCategory.speedLimit => 'Límite de velocidad',
       };
 
   String get _mainSwitchTitle => switch (category) {
@@ -148,6 +159,7 @@ class _AlertTypeDetailScreen extends ConsumerWidget {
         _AlertCategory.fuel => 'Avisos de gasolinera',
         _AlertCategory.tolls => 'Avisos de peaje',
         _AlertCategory.curves => 'Detectar curvas',
+        _AlertCategory.speedLimit => 'Avisarme si me paso',
       };
 
   bool _isEnabled(AlertPreferences prefs) => switch (category) {
@@ -155,6 +167,7 @@ class _AlertTypeDetailScreen extends ConsumerWidget {
         _AlertCategory.fuel => prefs.fuelEnabled,
         _AlertCategory.tolls => prefs.tollsEnabled,
         _AlertCategory.curves => prefs.curvesEnabled,
+        _AlertCategory.speedLimit => prefs.speedLimitAlertEnabled,
       };
 
   AlertPreferences _setEnabled(AlertPreferences prefs, bool value) =>
@@ -163,6 +176,8 @@ class _AlertTypeDetailScreen extends ConsumerWidget {
         _AlertCategory.fuel => prefs.copyWith(fuelEnabled: value),
         _AlertCategory.tolls => prefs.copyWith(tollsEnabled: value),
         _AlertCategory.curves => prefs.copyWith(curvesEnabled: value),
+        _AlertCategory.speedLimit =>
+          prefs.copyWith(speedLimitAlertEnabled: value),
       };
 
   @override
@@ -180,9 +195,13 @@ class _AlertTypeDetailScreen extends ConsumerWidget {
           SwitchListTile(
             title: Text(_mainSwitchTitle),
             subtitle: Text(
-              enabled
-                  ? 'Configura abajo cómo quieres verlo y oírlo'
-                  : 'Actívalo para ajustar las opciones',
+              category == _AlertCategory.speedLimit
+                  ? (enabled
+                      ? 'Marca en rojo la velocidad cuando te pases'
+                      : 'Sin aviso visual ni sonido por exceso')
+                  : (enabled
+                      ? 'Configura abajo cómo quieres verlo y oírlo'
+                      : 'Actívalo para ajustar las opciones'),
             ),
             value: enabled,
             onChanged: (v) => notifier.update((p) => _setEnabled(p, v)),
@@ -198,7 +217,62 @@ class _AlertTypeDetailScreen extends ConsumerWidget {
                     ),
               ),
             )
-          else ...[
+          else if (category == _AlertCategory.speedLimit) ...[
+            const Divider(height: 24),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Text(
+                'MARGEN SOBRE EL LÍMITE',
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: colors.primary,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.5,
+                    ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Text(
+                'Avisa cuando vayas más rápido que el límite + este margen. '
+                'Con 0 km/h avisa en cuanto lo superas.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: colors.onSurfaceVariant,
+                    ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final km in AlertPreferences.speedLimitToleranceOptions)
+                    ChoiceChip(
+                      label: Text(
+                        km == 0 ? 'Al pasarlo' : '+$km km/h',
+                      ),
+                      selected: prefs.speedLimitToleranceKmh == km,
+                      onSelected: (_) => notifier.update(
+                        (p) => p.copyWith(speedLimitToleranceKmh: km),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const Divider(height: 28),
+            SwitchListTile(
+              secondary: const Icon(Icons.volume_up_outlined),
+              title: const Text('Sonido al pasarme'),
+              subtitle: const Text(
+                'Aviso corto (“Límite”) la primera vez. Se calla si sigues '
+                'pasado; vuelve a sonar si bajas al límite y te pasas otra vez',
+              ),
+              value: prefs.speedLimitSoundEnabled,
+              onChanged: (v) => notifier.update(
+                (p) => p.copyWith(speedLimitSoundEnabled: v),
+              ),
+            ),
+          ] else ...[
             const Divider(height: 24),
             _SettingsSection(
               title: 'En pantalla',
@@ -297,6 +371,7 @@ class _AlertTypeDetailScreen extends ConsumerWidget {
                 notifier.update((p) => p.copyWith(curvesShowOnPreview: v)),
           ),
         ],
+      _AlertCategory.speedLimit => const [],
     };
   }
 
@@ -339,6 +414,7 @@ class _AlertTypeDetailScreen extends ConsumerWidget {
                 notifier.update((p) => p.copyWith(curvesVoiceEnabled: v)),
           ),
         ],
+      _AlertCategory.speedLimit => const [],
     };
   }
 
@@ -615,6 +691,17 @@ String _curveSummary(AlertPreferences prefs) {
         !prefs.curvesShowOnPreview &&
         !prefs.curvesVoiceEnabled)
       'Solo detección',
+  ]);
+}
+
+String _speedLimitSummary(AlertPreferences prefs) {
+  if (!prefs.speedLimitAlertEnabled) {
+    return 'Desactivado';
+  }
+  final margin = prefs.speedLimitToleranceKmh;
+  return _joinSummary([
+    margin == 0 ? 'Al pasarlo' : 'Margen +$margin km/h',
+    if (prefs.speedLimitSoundEnabled) 'Sonido',
   ]);
 }
 

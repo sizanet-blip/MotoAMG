@@ -1,12 +1,14 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:loc_motos/core/constants/navigation_constants.dart';
 import 'package:loc_motos/core/utils/distance_format.dart';
 import 'package:loc_motos/core/utils/gps_status.dart';
 import 'package:loc_motos/core/utils/navigation_bearing.dart';
+import 'package:loc_motos/features/navigation/presentation/helpers/route_progress_split.dart';
 import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
 import 'package:loc_motos/features/auth/presentation/providers/auth_providers.dart';
 import 'package:loc_motos/features/groups/data/repositories/group_pack_alert_repository.dart';
@@ -114,6 +116,8 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
   final _announcedAlertIds = <String>{};
   final _announcedManeuverIndices = <int>{};
   var _arrivalAnnounced = false;
+  var _overspeedSoundArmed = true;
+  int? _overspeedArmedForLimit;
   /// Si el usuario arrastra el mapa, deja de seguir el GPS hasta recentrar.
   var _cameraFollowUser = true;
   var _cameraFollowEpoch = 0;
@@ -495,6 +499,11 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
     final speedLimit = guidance.resolveSpeedLimitKmh(
       position: position,
       route: _route,
+    );
+    _handleOverspeedCue(
+      speedKmh: own.speedMps * 3.6,
+      limitKmh: speedLimit,
+      prefs: ref.read(alertPreferencesProvider),
     );
     final along = guidance.distanceAlongRouteMeters(position, _route.polyline);
     final alertsService = ref.read(routeAlertsServiceProvider);
@@ -1518,18 +1527,24 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
     final mapStyleAsync = ref.watch(hybridMapStylesProvider);
     final hasNetwork =
         ref.watch(mapNetworkAvailableProvider).asData?.value ?? true;
-    final bearing = own == null
+    final display = own == null ? null : _mapDisplayPosition(own);
+    final bearing = display == null
         ? 0.0
         : _bearingFilter.next(
             resolveNavigationBearing(
-              lat: own.lat,
-              lng: own.lng,
-              headingDegrees: own.heading,
+              lat: display.lat,
+              lng: display.lng,
+              headingDegrees: own?.heading,
               polyline: _route.polyline,
             ),
-            speedMps: own.speedMps,
+            speedMps: own?.speedMps ?? 0,
           );
     final speedKmh = own == null ? 0.0 : own.speedMps * 3.6;
+    final alertPrefs = ref.watch(alertPreferencesProvider);
+    final overspeed = alertPrefs.isOverspeed(
+      speedKmh: speedKmh,
+      limitKmh: _speedLimitKmh,
+    );
     final gpsLost = !_simulating && ref.watch(ownGpsLostProvider);
     final weakGps = gpsLost ||
         (!_simulating &&
@@ -1578,8 +1593,8 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
               return _buildHudMapLayer(
                 mapStyles: mapStyles,
                 hasNetwork: hasNetwork,
-                latitude: own?.lat,
-                longitude: own?.lng,
+                latitude: display?.lat,
+                longitude: display?.lng,
                 bearing: bearing,
                 speedMps: own?.speedMps ?? 0,
                 groupId: groupId,
@@ -1753,9 +1768,7 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
                         width: 268,
                         child: Material(
                           elevation: 6,
-                          color: (_speedLimitKmh != null &&
-                                  _speedLimitKmh! > 0 &&
-                                  speedKmh > _speedLimitKmh! + 1)
+                          color: overspeed
                               ? const Color(0xFF3B1010).withValues(alpha: 0.96)
                               : NavigationHudTheme.panel.withValues(alpha: 0.96),
                           borderRadius: BorderRadius.circular(14),
@@ -1764,6 +1777,7 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
                             embedded: true,
                             speedKmh: speedKmh,
                             speedLimitKmh: _speedLimitKmh,
+                            overspeed: overspeed,
                             eta: eta,
                             remaining: remaining,
                             distanceLabel:
@@ -1799,6 +1813,11 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
                             if (simulator != null) {
                               simulator.speedMps = value / 3.6;
                             }
+                            _handleOverspeedCue(
+                              speedKmh: value,
+                              limitKmh: _speedLimitKmh,
+                              prefs: ref.read(alertPreferencesProvider),
+                            );
                           },
                         ),
                       ],
@@ -1835,6 +1854,12 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
                                     if (simulator != null) {
                                       simulator.speedMps = value / 3.6;
                                     }
+                                    _handleOverspeedCue(
+                                      speedKmh: value,
+                                      limitKmh: _speedLimitKmh,
+                                      prefs:
+                                          ref.read(alertPreferencesProvider),
+                                    );
                                   },
                                 ),
                               ),
@@ -1896,6 +1921,7 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
                       NavigationStatusBar(
                         speedKmh: speedKmh,
                         speedLimitKmh: _speedLimitKmh,
+                        overspeed: overspeed,
                         eta: eta,
                         remaining: remaining,
                         distanceLabel:
@@ -1913,6 +1939,60 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
       ),
       ),
       ),
+    );
+  }
+
+  /// Pitido único al entrar en exceso; se rearma al volver bajo el umbral.
+  void _handleOverspeedCue({
+    required double speedKmh,
+    required int? limitKmh,
+    required AlertPreferences prefs,
+  }) {
+    if (limitKmh != _overspeedArmedForLimit) {
+      _overspeedArmedForLimit = limitKmh;
+      _overspeedSoundArmed = true;
+    }
+    final over = prefs.isOverspeed(speedKmh: speedKmh, limitKmh: limitKmh);
+    if (!over) {
+      _overspeedSoundArmed = true;
+      return;
+    }
+    if (!_overspeedSoundArmed || !prefs.speedLimitSoundEnabled) {
+      return;
+    }
+    _overspeedSoundArmed = false;
+    unawaited(_playOverspeedCue());
+  }
+
+  Future<void> _playOverspeedCue() async {
+    try {
+      await HapticFeedback.heavyImpact();
+    } catch (_) {}
+    // SystemSound usa el volumen de notificación (casi siempre bajo/mute en ruta).
+    try {
+      await SystemSound.play(SystemSoundType.alert);
+    } catch (_) {}
+    // El copiloto usa el canal de navegación (el mismo que las maniobras).
+    try {
+      await ref.read(navigationVoiceServiceProvider).speakUrgent('Límite');
+    } catch (_) {}
+  }
+
+  /// Puck/cámara: si el GPS está cerca de la ruta, se pega al trazado (menos saltos en rotondas).
+  ({double lat, double lng}) _mapDisplayPosition(OwnDevicePosition own) {
+    if (_simulating || _offRoute || _chasingCabecera) {
+      return (lat: own.lat, lng: own.lng);
+    }
+    final snapped = projectOntoPolyline(_route.polyline, own.lat, own.lng);
+    if (snapped == null ||
+        snapped.distanceMeters >
+            NavigationConstants.navigationSnapToRouteMeters) {
+      return (lat: own.lat, lng: own.lng);
+    }
+    const blend = NavigationConstants.navigationSnapBlend;
+    return (
+      lat: own.lat + (snapped.point.lat - own.lat) * blend,
+      lng: own.lng + (snapped.point.lng - own.lng) * blend,
     );
   }
 

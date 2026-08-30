@@ -29,12 +29,18 @@ class AlertPreferences extends Equatable {
     this.curvesShowOnMap = false,
     this.curvesShowOnPreview = false,
     this.curvesVoiceEnabled = false,
+    this.speedLimitAlertEnabled = true,
+    this.speedLimitToleranceKmh = 5,
+    this.speedLimitSoundEnabled = true,
   });
 
   static const defaults = AlertPreferences();
 
   /// Por defecto: aviso medio + aviso fuerte (comportamiento anterior).
   static const defaultRadarAnnounceDistances = <double>[350, 90];
+
+  /// Márgenes típicos (km/h por encima del límite) para empezar a avisar.
+  static const speedLimitToleranceOptions = <int>[0, 3, 5, 7, 10];
 
   final bool radarsEnabled;
   final bool radarShowOnMap;
@@ -77,6 +83,15 @@ class AlertPreferences extends Equatable {
   /// Iconos de curva en la vista previa de ruta (por defecto off).
   final bool curvesShowOnPreview;
   final bool curvesVoiceEnabled;
+
+  /// Aviso visual (y opcional sonoro) al superar el límite de la vía.
+  final bool speedLimitAlertEnabled;
+
+  /// km/h de margen sobre el límite antes de avisar (0 = al pasarlo).
+  final int speedLimitToleranceKmh;
+
+  /// Pitido corto la primera vez que te pasas; se rearma al volver bajo el umbral.
+  final bool speedLimitSoundEnabled;
 
   /// Opciones de distancia para la UI.
   static const radarAnnounceOptions = <double>[800, 500, 350, 200, 150, 90, 50];
@@ -178,6 +193,21 @@ class AlertPreferences extends Equatable {
     };
   }
 
+  /// true si la velocidad actual debe marcarse como exceso según preferencias.
+  bool isOverspeed({
+    required double speedKmh,
+    required int? limitKmh,
+  }) {
+    if (!speedLimitAlertEnabled) {
+      return false;
+    }
+    if (limitKmh == null || limitKmh <= 0) {
+      return false;
+    }
+    final margin = speedLimitToleranceKmh.clamp(0, 30);
+    return speedKmh > limitKmh + margin;
+  }
+
   double announceMetersFor(RouteAlertType type) => switch (type) {
         RouteAlertType.speedCamera => radarHudMeters,
         RouteAlertType.fuel => fuelAnnounceMeters,
@@ -233,6 +263,9 @@ class AlertPreferences extends Equatable {
     bool? curvesShowOnMap,
     bool? curvesShowOnPreview,
     bool? curvesVoiceEnabled,
+    bool? speedLimitAlertEnabled,
+    int? speedLimitToleranceKmh,
+    bool? speedLimitSoundEnabled,
   }) {
     return AlertPreferences(
       radarsEnabled: radarsEnabled ?? this.radarsEnabled,
@@ -262,6 +295,12 @@ class AlertPreferences extends Equatable {
       curvesShowOnMap: curvesShowOnMap ?? this.curvesShowOnMap,
       curvesShowOnPreview: curvesShowOnPreview ?? this.curvesShowOnPreview,
       curvesVoiceEnabled: curvesVoiceEnabled ?? this.curvesVoiceEnabled,
+      speedLimitAlertEnabled:
+          speedLimitAlertEnabled ?? this.speedLimitAlertEnabled,
+      speedLimitToleranceKmh:
+          speedLimitToleranceKmh ?? this.speedLimitToleranceKmh,
+      speedLimitSoundEnabled:
+          speedLimitSoundEnabled ?? this.speedLimitSoundEnabled,
     );
   }
 
@@ -288,6 +327,9 @@ class AlertPreferences extends Equatable {
         'curvesShowOnMap': curvesShowOnMap,
         'curvesShowOnPreview': curvesShowOnPreview,
         'curvesVoiceEnabled': curvesVoiceEnabled,
+        'speedLimitAlertEnabled': speedLimitAlertEnabled,
+        'speedLimitToleranceKmh': speedLimitToleranceKmh,
+        'speedLimitSoundEnabled': speedLimitSoundEnabled,
       };
 
   factory AlertPreferences.fromJson(Map<String, dynamic> json) {
@@ -368,6 +410,15 @@ class AlertPreferences extends Equatable {
       curvesShowOnMap: flag('curvesShowOnMap', false),
       curvesShowOnPreview: flag('curvesShowOnPreview', false),
       curvesVoiceEnabled: flag('curvesVoiceEnabled', false),
+      speedLimitAlertEnabled: flag('speedLimitAlertEnabled', true),
+      speedLimitToleranceKmh: () {
+        final v = json['speedLimitToleranceKmh'];
+        if (v is num) {
+          return v.toInt().clamp(0, 30);
+        }
+        return 5;
+      }(),
+      speedLimitSoundEnabled: flag('speedLimitSoundEnabled', true),
     );
   }
 
@@ -395,6 +446,9 @@ class AlertPreferences extends Equatable {
         curvesShowOnMap,
         curvesShowOnPreview,
         curvesVoiceEnabled,
+        speedLimitAlertEnabled,
+        speedLimitToleranceKmh,
+        speedLimitSoundEnabled,
       ];
 }
 

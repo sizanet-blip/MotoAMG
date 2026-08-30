@@ -193,6 +193,12 @@ abstract final class NavigationConstants {
     return 15.1;
   }
 
+  /// Metros: si el GPS está más cerca, el puck/cámara se pegan a la ruta.
+  static const double navigationSnapToRouteMeters = 28;
+
+  /// Mezcla hacia el snap (1 = 100 % sobre la ruta).
+  static const double navigationSnapBlend = 0.72;
+
   /// Metros por delante para sesgar un poco la cámara en curvas.
   static const double cameraLookAheadMeters = 95;
 

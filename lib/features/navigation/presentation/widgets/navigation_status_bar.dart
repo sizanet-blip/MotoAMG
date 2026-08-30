@@ -9,6 +9,7 @@ class NavigationStatusBar extends StatelessWidget {
     required this.eta,
     required this.remaining,
     required this.distanceLabel,
+    this.overspeed = false,
     this.compact = false,
     this.sidePanel = false,
     this.embedded = false,
@@ -20,6 +21,9 @@ class NavigationStatusBar extends StatelessWidget {
   final Duration remaining;
   final String distanceLabel;
 
+  /// Exceso según preferencias (margen + activado).
+  final bool overspeed;
+
   /// Landscape horizontal bar: menos padding y tipografía más pequeña.
   final bool compact;
 
@@ -29,11 +33,6 @@ class NavigationStatusBar extends StatelessWidget {
   /// Dentro de un panel flotante (sin borde/safe area propios).
   final bool embedded;
 
-  bool get _overspeed {
-    final limit = speedLimitKmh;
-    return limit != null && limit > 0 && speedKmh > limit + 1;
-  }
-
   @override
   Widget build(BuildContext context) {
     final etaText =
@@ -41,7 +40,6 @@ class NavigationStatusBar extends StatelessWidget {
     final remainingText =
         '${remaining.inHours > 0 ? '${remaining.inHours} h ' : ''}'
         '${remaining.inMinutes.remainder(60)} min';
-    final overspeed = _overspeed;
 
     if (sidePanel) {
       return _SideStatusPanel(
@@ -58,7 +56,6 @@ class NavigationStatusBar extends StatelessWidget {
       children: [
         _SpeedBlock(
           speedKmh: speedKmh,
-          speedLimitKmh: speedLimitKmh,
           overspeed: overspeed,
           compact: compact,
         ),
@@ -158,9 +155,7 @@ class _SideStatusPanel extends StatelessWidget {
             _SideStat(
               label: overspeed ? 'Exceso' : 'Velocidad',
               value: '${speedKmh.round()}',
-              unit: speedLimitKmh != null && speedLimitKmh! > 0
-                  ? 'km/h · máx $speedLimitKmh'
-                  : 'km/h',
+              unit: 'km/h',
               emphasize: overspeed,
               danger: overspeed,
             ),
@@ -274,13 +269,11 @@ class _SideDivider extends StatelessWidget {
 class _SpeedBlock extends StatelessWidget {
   const _SpeedBlock({
     required this.speedKmh,
-    required this.speedLimitKmh,
     required this.overspeed,
     this.compact = false,
   });
 
   final double speedKmh;
-  final int? speedLimitKmh;
   final bool overspeed;
   final bool compact;
 
@@ -331,9 +324,7 @@ class _SpeedBlock extends StatelessWidget {
             ),
             SizedBox(height: compact ? 0 : 2),
             Text(
-              speedLimitKmh != null && speedLimitKmh! > 0
-                  ? 'km/h · máx $speedLimitKmh'
-                  : 'km/h',
+              'km/h',
               style: TextStyle(
                 color: overspeed
                     ? const Color(0xFFFF8A80)
