@@ -85,22 +85,46 @@ class ItinerarySheet extends ConsumerWidget {
           : screenHeight * 0.55,
       child: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
             if (vehicles.isNotEmpty) ...[
+              Text(
+                'Vehículo',
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: colors.onSurfaceVariant,
+                      fontWeight: FontWeight.w600,
+                    ),
+              ),
+              const SizedBox(height: 6),
               DropdownButtonFormField<String>(
                 // ignore: deprecated_member_use
                 value: selectedId,
+                isExpanded: true,
                 decoration: InputDecoration(
-                  labelText: 'Vehículo',
-                  border: const OutlineInputBorder(),
+                  filled: true,
+                  fillColor: colors.surfaceContainerHighest.withValues(
+                    alpha: 0.55,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: colors.primary, width: 1.5),
+                  ),
                   isDense: true,
-                  contentPadding: landscape
-                      ? const EdgeInsets.symmetric(horizontal: 12, vertical: 8)
-                      : null,
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: landscape ? 10 : 12,
+                  ),
                 ),
                 items: [
                   const DropdownMenuItem<String>(
@@ -123,7 +147,7 @@ class ItinerarySheet extends ConsumerWidget {
                             value ?? NavigationConstants.navigationNoVehicleId;
                       },
               ),
-              SizedBox(height: landscape ? 6 : 8),
+              SizedBox(height: landscape ? 8 : 12),
             ],
             ConstrainedBox(
               constraints: BoxConstraints(

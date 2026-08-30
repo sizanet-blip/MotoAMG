@@ -36,6 +36,7 @@ import 'package:loc_motos/features/navigation/domain/entities/hybrid_map_styles.
 import 'package:loc_motos/features/navigation/domain/entities/navigation_route.dart';
 import 'package:loc_motos/features/navigation/data/services/navigation_map_style_service.dart';
 import 'package:loc_motos/features/navigation/presentation/providers/navigation_providers.dart';
+import 'package:loc_motos/features/navigation/presentation/screens/navigation_hub_screen.dart';
 import 'package:loc_motos/features/navigation/presentation/screens/navigation_hud_screen.dart';
 import 'package:loc_motos/features/navigation/presentation/theme/navigation_hud_theme.dart';
 import 'package:loc_motos/features/navigation/presentation/widgets/navigation_map_my_location_button.dart';
@@ -244,6 +245,9 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
         ) ??
         false;
     final canManageStops = iAmAdmin || iAmCabecera;
+    // Sin ruta compartida: cualquiera del grupo puede abrir el planificador;
+    // publicar en el grupo sigue exigiendo admin en la vista previa.
+    final canPrepareRoute = sharedRoute == null;
     final incidentsAsync = ref.watch(groupIncidentsProvider(widget.groupId));
     final incidents = incidentsAsync.valueOrNull ?? const <GroupIncident>[];
     final locations = locationsAsync.valueOrNull ?? const <LiveLocation>[];
@@ -339,6 +343,19 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
         hasSharedRoute: sharedRoute != null,
         preferExternalNav: packPrefs.preferExternalNavigation,
         followGroup: _followGroup,
+        onPrepareRoute: canPrepareRoute
+            ? () {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => NavigationHubScreen(
+                      user: widget.user.copyWith(
+                        currentGroupId: widget.groupId,
+                      ),
+                    ),
+                  ),
+                );
+              }
+            : null,
         onNavigate: sharedRoute == null
             ? null
             : () => unawaited(_openGroupNavigation(sharedRoute)),
@@ -584,6 +601,25 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
                     emphasized: _followGroup,
                     onTap: _recenterGroup,
                   ),
+                  if (canPrepareRoute) ...[
+                    const SizedBox(width: 8),
+                    _GroupMapRoundButton(
+                      tooltip: 'Preparar ruta',
+                      icon: Icons.route_outlined,
+                      emphasized: true,
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => NavigationHubScreen(
+                              user: widget.user.copyWith(
+                                currentGroupId: widget.groupId,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
                   if (sharedRoute != null) ...[
                     const SizedBox(width: 8),
                     _GroupMapRoundButton(
@@ -2023,6 +2059,7 @@ class _GroupMapQuickActions extends StatelessWidget {
     required this.hasSharedRoute,
     required this.preferExternalNav,
     required this.followGroup,
+    this.onPrepareRoute,
     required this.onNavigate,
     this.onOpenWaze,
     this.onOpenGoogleMaps,
@@ -2037,6 +2074,7 @@ class _GroupMapQuickActions extends StatelessWidget {
   final bool hasSharedRoute;
   final bool preferExternalNav;
   final bool followGroup;
+  final VoidCallback? onPrepareRoute;
   final VoidCallback? onNavigate;
   final VoidCallback? onOpenWaze;
   final VoidCallback? onOpenGoogleMaps;
@@ -2049,6 +2087,13 @@ class _GroupMapQuickActions extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final tiles = <Widget>[
+      if (onPrepareRoute != null)
+        _QuickActionTile(
+          icon: Icons.route_outlined,
+          label: 'Ruta',
+          emphasized: true,
+          onTap: onPrepareRoute,
+        ),
       if (hasSharedRoute)
         _QuickActionTile(
           icon: preferExternalNav

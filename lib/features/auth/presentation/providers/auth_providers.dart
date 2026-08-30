@@ -218,6 +218,41 @@ class AuthActionController extends Notifier<AsyncValue<void>> {
 }
 
 AppUser? resolveSessionUser(AppUser? local, AppUser? remote) {
+  if (local != null &&
+      remote != null &&
+      local.uid == remote.uid &&
+      !local.needsDisplayName) {
+    // El StateProvider local evita el flash del nombre, pero los campos de
+    // peña/grupo deben seguir el documento de Firestore.
+    return AppUser(
+      uid: local.uid,
+      displayName: local.displayName,
+      createdAt: remote.createdAt,
+      provider: local.provider,
+      phoneNumber: remote.phoneNumber ?? local.phoneNumber,
+      email: remote.email ?? local.email,
+      username: remote.username ?? local.username,
+      photoUrl: remote.photoUrl ?? local.photoUrl,
+      currentGroupId: remote.currentGroupId,
+      currentClubId: remote.currentClubId,
+      // Pending remoto manda. Si hay club y no hay pending remoto, se limpia el
+      // local (aprobado). Si aún no hay club, el local puede ir por delante.
+      pendingClubRequestId: (remote.pendingClubRequestId != null &&
+              remote.pendingClubRequestId!.isNotEmpty)
+          ? remote.pendingClubRequestId
+          : ((remote.currentClubId != null && remote.currentClubId!.isNotEmpty)
+              ? null
+              : local.pendingClubRequestId),
+      allowSoloNavigation: remote.allowSoloNavigation,
+      bikeBrand: remote.bikeBrand ?? local.bikeBrand,
+      bikeModel: remote.bikeModel ?? local.bikeModel,
+      bikeYear: remote.bikeYear ?? local.bikeYear,
+      bikeColor: remote.bikeColor ?? local.bikeColor,
+      bikePlate: remote.bikePlate ?? local.bikePlate,
+      vehicles: remote.vehicles.isNotEmpty ? remote.vehicles : local.vehicles,
+      activeVehicleId: remote.activeVehicleId ?? local.activeVehicleId,
+    );
+  }
   if (local != null && !local.needsDisplayName) {
     return local;
   }

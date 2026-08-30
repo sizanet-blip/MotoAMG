@@ -102,6 +102,16 @@ abstract final class AppConstants {
   static const String sharedRouteSubcollection = 'sharedRoute';
   static const String sharedRouteDocId = 'current';
 
+  // --- Clubs / peñas (acceso y cupos; distinto de grupos de ruta) ---
+  static const String clubsCollection = 'clubs';
+  static const String clubMembersSubcollection = 'members';
+  static const String clubMembershipsSubcollection = 'clubMemberships';
+  static const String clubInvitesCollection = 'club_invites';
+  static const String clubRequestsCollection = 'club_requests';
+  static const int clubInviteCodeLength = 8;
+  static const int minClubNameLength = 3;
+  static const int maxClubNameLength = 60;
+
   // --- Realtime Database ---
   static const String liveLocationsPath = 'live_locations';
   static const String groupAlertsPath = 'group_alerts';

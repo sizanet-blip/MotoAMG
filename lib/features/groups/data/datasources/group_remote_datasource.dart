@@ -54,6 +54,7 @@ class GroupRemoteDataSource {
       isOwner: group.ownerId == uid,
       joinedAt: joinedAt,
       isActive: group.isActive,
+      clubId: group.clubId,
     ).toFirestore();
   }
 
@@ -84,6 +85,12 @@ class GroupRemoteDataSource {
         'Crea una cuenta para organizar la ruta.',
       );
     }
+    final clubId = user.currentClubId;
+    if (clubId == null || clubId.isEmpty) {
+      throw const GroupException(
+        'Necesitas pertenecer a un club para crear un grupo de ruta.',
+      );
+    }
     try {
       final code = await _uniqueCode();
       final groupRef = _groups.doc();
@@ -96,6 +103,7 @@ class GroupRemoteDataSource {
         createdAt: now,
         isActive: true,
         adminUids: const [],
+        clubId: clubId,
       );
       final member = GroupMemberModel.fromUser(user, now);
       final batch = _firestore.batch();
@@ -144,6 +152,24 @@ class GroupRemoteDataSource {
         throw const GroupException('Ese grupo ya está cerrado.');
       }
       final group = GroupModel.fromFirestore(activeDocs.first);
+
+      // Grupos de otra peña: no se puede entrar con el código.
+      final userClub = user.currentClubId;
+      if (group.clubId != null &&
+          group.clubId!.isNotEmpty &&
+          !user.isAnonymous) {
+        if (userClub == null || userClub.isEmpty) {
+          throw const GroupException(
+            'Ese grupo es de un club. Únete al club antes.',
+          );
+        }
+        if (group.clubId != userClub) {
+          throw const GroupException(
+            'Ese grupo pertenece a otro club.',
+          );
+        }
+      }
+
       final alreadyMember = await _members(group.id).doc(user.uid).get();
       if (alreadyMember.exists) {
         await _members(group.id).doc(user.uid).set({
@@ -347,6 +373,7 @@ class GroupRemoteDataSource {
         isOwner: group.ownerId == uid,
         joinedAt: group.createdAt,
         isActive: group.isActive,
+        clubId: group.clubId,
       );
       await _memberships(uid).doc(group.id).set(membership.toFirestore());
       return [membership];

@@ -15,6 +15,9 @@ class AppUser extends Equatable {
     this.username,
     this.photoUrl,
     this.currentGroupId,
+    this.currentClubId,
+    this.pendingClubRequestId,
+    this.allowSoloNavigation = false,
     this.bikeBrand,
     this.bikeModel,
     this.bikeYear,
@@ -33,6 +36,15 @@ class AppUser extends Equatable {
   final String? username;
   final String? photoUrl;
   final String? currentGroupId;
+
+  /// Peña / club activo (acceso a la app).
+  final String? currentClubId;
+
+  /// Solicitud de alta de peña pendiente de aprobación en el panel.
+  final String? pendingClubRequestId;
+
+  /// Si true, puede usar la app sin club (lo marca el admin en Yii2).
+  final bool allowSoloNavigation;
 
   /// Campos legacy (compatibilidad grupos / docs antiguos).
   final String? bikeBrand;
@@ -110,6 +122,25 @@ class AppUser extends Equatable {
 
   bool get isInGroup => currentGroupId != null && currentGroupId!.isNotEmpty;
 
+  bool get isInClub => currentClubId != null && currentClubId!.isNotEmpty;
+
+  bool get hasPendingClubRequest =>
+      pendingClubRequestId != null && pendingClubRequestId!.isNotEmpty;
+
+  /// Invitados saltan el gate de peña (solo unirse a salida con código).
+  bool get needsClubGate {
+    if (isAnonymous) {
+      return false;
+    }
+    if (allowSoloNavigation) {
+      return false;
+    }
+    if (isInClub) {
+      return false;
+    }
+    return true;
+  }
+
   bool get needsDisplayName => displayName.trim().isEmpty;
 
   AppUser copyWith({
@@ -122,6 +153,9 @@ class AppUser extends Equatable {
     String? username,
     String? photoUrl,
     String? currentGroupId,
+    String? currentClubId,
+    String? pendingClubRequestId,
+    bool? allowSoloNavigation,
     String? bikeBrand,
     String? bikeModel,
     String? bikeYear,
@@ -130,6 +164,8 @@ class AppUser extends Equatable {
     List<UserVehicle>? vehicles,
     String? activeVehicleId,
     bool clearCurrentGroupId = false,
+    bool clearCurrentClubId = false,
+    bool clearPendingClubRequestId = false,
     bool clearActiveVehicleId = false,
   }) {
     return AppUser(
@@ -144,6 +180,13 @@ class AppUser extends Equatable {
       currentGroupId: clearCurrentGroupId
           ? null
           : currentGroupId ?? this.currentGroupId,
+      currentClubId: clearCurrentClubId
+          ? null
+          : currentClubId ?? this.currentClubId,
+      pendingClubRequestId: clearPendingClubRequestId
+          ? null
+          : pendingClubRequestId ?? this.pendingClubRequestId,
+      allowSoloNavigation: allowSoloNavigation ?? this.allowSoloNavigation,
       bikeBrand: bikeBrand ?? this.bikeBrand,
       bikeModel: bikeModel ?? this.bikeModel,
       bikeYear: bikeYear ?? this.bikeYear,
@@ -167,6 +210,9 @@ class AppUser extends Equatable {
         username,
         photoUrl,
         currentGroupId,
+        currentClubId,
+        pendingClubRequestId,
+        allowSoloNavigation,
         bikeBrand,
         bikeModel,
         bikeYear,

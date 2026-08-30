@@ -10,12 +10,14 @@ class GroupMembershipModel extends GroupMembership {
     required super.isOwner,
     required super.joinedAt,
     super.isActive,
+    super.clubId,
   });
 
   factory GroupMembershipModel.fromFirestore(
     DocumentSnapshot<Map<String, dynamic>> snapshot,
   ) {
     final data = snapshot.data() ?? const <String, dynamic>{};
+    final clubId = data['clubId'] as String?;
     return GroupMembershipModel(
       groupId: snapshot.id,
       name: data['name'] as String? ?? 'Grupo',
@@ -23,6 +25,7 @@ class GroupMembershipModel extends GroupMembership {
       isOwner: data['isOwner'] as bool? ?? false,
       joinedAt: parseFirestoreDate(data['joinedAt']),
       isActive: data['isActive'] as bool? ?? true,
+      clubId: (clubId != null && clubId.isNotEmpty) ? clubId : null,
     );
   }
 
@@ -33,6 +36,7 @@ class GroupMembershipModel extends GroupMembership {
       'isOwner': isOwner,
       'joinedAt': Timestamp.fromDate(joinedAt),
       'isActive': isActive,
+      if (clubId != null) 'clubId': clubId,
     };
   }
 }

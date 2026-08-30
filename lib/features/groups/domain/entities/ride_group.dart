@@ -10,6 +10,7 @@ class RideGroup extends Equatable {
     required this.isActive,
     this.adminUids = const [],
     this.intercomEnabled = false,
+    this.clubId,
   });
 
   final String id;
@@ -25,6 +26,9 @@ class RideGroup extends Equatable {
   /// Canal de voz del pelotón (lo activa solo el creador).
   final bool intercomEnabled;
 
+  /// Peña a la que pertenece este grupo de ruta (null = legado).
+  final String? clubId;
+
   bool isOwner(String uid) => ownerId == uid;
 
   bool isAdmin(String uid) => isOwner(uid) || adminUids.contains(uid);
@@ -39,5 +43,6 @@ class RideGroup extends Equatable {
         isActive,
         adminUids,
         intercomEnabled,
+        clubId,
       ];
 }

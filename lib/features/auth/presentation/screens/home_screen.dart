@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:loc_motos/core/constants/app_constants.dart';
 import 'package:loc_motos/core/widgets/app_brand_title.dart';
 import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
+import 'package:loc_motos/features/auth/presentation/providers/auth_providers.dart';
 import 'package:loc_motos/features/auth/presentation/widgets/account_menu_button.dart';
 import 'package:loc_motos/features/groups/presentation/providers/group_providers.dart';
 import 'package:loc_motos/features/groups/presentation/screens/group_options_screen.dart';
@@ -12,6 +13,7 @@ import 'package:loc_motos/features/intercom/presentation/widgets/intercom_sessio
 import 'package:loc_motos/features/map/presentation/screens/group_map_screen.dart';
 import 'package:loc_motos/features/navigation/presentation/screens/navigation_hub_screen.dart';
 import 'package:loc_motos/features/settings/presentation/widgets/radar_update_reminder_binder.dart';
+import 'package:loc_motos/features/tracking/presentation/providers/tracking_providers.dart';
 import 'package:loc_motos/features/tracking/presentation/widgets/location_binder.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -21,14 +23,25 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final localSession = ref.watch(signedInUserProvider);
     final live = ref.watch(liveUserProvider(user.uid)).asData?.value;
-    final effective = live == null
+    var effective = live == null
         ? user
         : live.copyWith(
             displayName: live.displayName.trim().isNotEmpty
                 ? live.displayName
                 : user.displayName,
           );
+    // Tras crear/abrir grupo, el StateProvider local puede ir por delante.
+    final localGroupId = localSession?.uid == effective.uid
+        ? localSession?.currentGroupId
+        : null;
+    if ((effective.currentGroupId == null ||
+            effective.currentGroupId!.isEmpty) &&
+        localGroupId != null &&
+        localGroupId.isNotEmpty) {
+      effective = effective.copyWith(currentGroupId: localGroupId);
+    }
 
     ref.listen(groupActionControllerProvider, (previous, next) {
       next.whenOrNull(
@@ -208,8 +221,7 @@ class _InGroupView extends ConsumerWidget {
                 ],
               ),
         actions: [
-          IconButton(
-            tooltip: 'Navegación',
+          TextButton.icon(
             onPressed: busy
                 ? null
                 : () {
@@ -219,7 +231,8 @@ class _InGroupView extends ConsumerWidget {
                       ),
                     );
                   },
-            icon: const Icon(Icons.navigation_outlined),
+            icon: const Icon(Icons.route_outlined),
+            label: const Text('Ruta'),
           ),
           IconButton(
             tooltip: 'Opciones del grupo',

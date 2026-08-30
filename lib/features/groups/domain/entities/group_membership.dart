@@ -9,6 +9,7 @@ class GroupMembership extends Equatable {
     required this.isOwner,
     required this.joinedAt,
     this.isActive = true,
+    this.clubId,
   });
 
   final String groupId;
@@ -18,6 +19,10 @@ class GroupMembership extends Equatable {
   final DateTime joinedAt;
   final bool isActive;
 
+  /// Peña del grupo (para filtrar al cambiar de club).
+  final String? clubId;
+
   @override
-  List<Object?> get props => [groupId, name, code, isOwner, joinedAt, isActive];
+  List<Object?> get props =>
+      [groupId, name, code, isOwner, joinedAt, isActive, clubId];
 }

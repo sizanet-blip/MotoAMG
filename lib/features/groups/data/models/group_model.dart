@@ -12,6 +12,7 @@ class GroupModel extends RideGroup {
     required super.isActive,
     super.adminUids,
     super.intercomEnabled,
+    super.clubId,
   });
 
   factory GroupModel.fromFirestore(
@@ -27,6 +28,7 @@ class GroupModel extends RideGroup {
         for (final item in rawAdmins)
           if (item is String && item.isNotEmpty) item,
     ];
+    final clubId = data['clubId'] as String?;
     return GroupModel(
       id: snapshot.id,
       name: data['name'] as String? ?? 'Grupo',
@@ -36,6 +38,7 @@ class GroupModel extends RideGroup {
       isActive: data['isActive'] as bool? ?? true,
       adminUids: List.unmodifiable(adminUids),
       intercomEnabled: data['intercomEnabled'] as bool? ?? false,
+      clubId: (clubId != null && clubId.isNotEmpty) ? clubId : null,
     );
   }
 
@@ -48,6 +51,7 @@ class GroupModel extends RideGroup {
       'isActive': isActive,
       'adminUids': adminUids,
       'intercomEnabled': intercomEnabled,
+      if (clubId != null) 'clubId': clubId,
     };
   }
 }
