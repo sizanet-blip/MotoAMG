@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:livekit_client/livekit_client.dart';
 import 'package:loc_motos/features/intercom/data/datasources/intercom_token_remote_datasource.dart';
+import 'package:loc_motos/features/intercom/data/intercom_audio_session.dart';
 import 'package:loc_motos/features/intercom/data/repositories/intercom_preferences_repository.dart';
 import 'package:loc_motos/features/intercom/domain/entities/intercom_preferences.dart';
 import 'package:loc_motos/features/intercom/domain/entities/intercom_session_state.dart';
@@ -69,8 +70,11 @@ class IntercomSessionController extends Notifier<IntercomSessionState> {
   var _intentionalDisconnect = false;
   var _reconnectAttempt = 0;
   var _wasOnline = true;
+  var _systemMusicDucked = false;
 
   static const _maxReconnectAttempts = 8;
+  /// Tras agotar reintentos rápidos, seguir probando cada X (p. ej. al llegar a ciudad).
+  static const _slowRetrySeconds = 45;
 
   @override
   IntercomSessionState build() {
@@ -166,6 +170,8 @@ class IntercomSessionController extends Notifier<IntercomSessionState> {
 
     final online = await _hasNetwork();
     if (!online) {
+      // Forzar que el próximo “online” del plugin dispare reconexión.
+      _wasOnline = false;
       state = state.copyWith(
         status: IntercomConnectionStatus.unavailable,
         errorMessage: 'Sin cobertura, intercom no disponible',
@@ -233,6 +239,9 @@ class IntercomSessionController extends Notifier<IntercomSessionState> {
 
   Future<void> _connectRoom(IntercomTokenCredentials creds) async {
     await _tearDownRoom();
+    // Antes de crear la Room: modo idle (mezcla con música), no «llamada».
+    await IntercomAudioSession.applyIdle();
+    _systemMusicDucked = false;
 
     final room = Room(
       roomOptions: const RoomOptions(
@@ -314,24 +323,55 @@ class IntercomSessionController extends Notifier<IntercomSessionState> {
         names.add(name);
       }
     }
+    final transmitting = localSpeaking && state.speakEnabled;
     final speakersChanged = !listEquals(names, state.remoteSpeakerNames);
-    final localChanged = localSpeaking != state.localTransmitting;
+    final localChanged = transmitting != state.localTransmitting;
     if (speakersChanged || localChanged) {
       state = state.copyWith(
         remoteSpeakerNames: names,
-        localTransmitting: localSpeaking && state.speakEnabled,
+        localTransmitting: transmitting,
       );
     }
+    final remoteTalking = names.isNotEmpty && state.listenEnabled;
     if (speakersChanged) {
-      unawaited(_setIntercomDuck(names.isNotEmpty && state.listenEnabled));
+      unawaited(_setNavVoiceDuck(remoteTalking));
+    }
+    if (speakersChanged || localChanged) {
+      unawaited(_setSystemMusicDuck(remoteTalking || transmitting));
+    }
+  }
+
+  /// Baja el TTS de navegación mientras habla alguien por intercom.
+  Future<void> _setNavVoiceDuck(bool duck) async {
+    try {
+      await ref.read(navigationVoiceServiceProvider).setIntercomDuck(duck);
+    } catch (e) {
+      debugPrint('Intercom nav duck failed: $e');
+    }
+  }
+
+  /// Baja la música del sistema (Spotify, etc.) solo mientras hay voz.
+  Future<void> _setSystemMusicDuck(bool duck) async {
+    if (_systemMusicDucked == duck) {
+      return;
+    }
+    _systemMusicDucked = duck;
+    try {
+      if (duck) {
+        await IntercomAudioSession.applySpeaking();
+      } else {
+        await IntercomAudioSession.applyIdle();
+      }
+    } catch (e) {
+      debugPrint('Intercom system audio duck failed: $e');
+      _systemMusicDucked = !duck;
     }
   }
 
   Future<void> _setIntercomDuck(bool duck) async {
-    try {
-      await ref.read(navigationVoiceServiceProvider).setIntercomDuck(duck);
-    } catch (e) {
-      debugPrint('Intercom duck failed: $e');
+    await _setNavVoiceDuck(duck);
+    if (!duck) {
+      await _setSystemMusicDuck(false);
     }
   }
 
@@ -398,16 +438,27 @@ class IntercomSessionController extends Notifier<IntercomSessionState> {
     if (!state.desiredActive || state.hostCount <= 0) {
       return;
     }
+    _reconnectTimer?.cancel();
+
     if (_reconnectAttempt >= _maxReconnectAttempts) {
+      // No tirar la toalla del todo: muchos móviles siguen “online” con red
+      // inútil; al mejorar cobertura no siempre hay evento none→online.
       state = state.copyWith(
-        status: IntercomConnectionStatus.error,
+        status: IntercomConnectionStatus.reconnecting,
         errorMessage:
-            'No se pudo mantener el intercom. Revisa red o pulsa Activar.',
+            'Red inestable. Reintentando automáticamente…',
       );
+      _reconnectTimer = Timer(const Duration(seconds: _slowRetrySeconds), () {
+        if (!state.desiredActive || state.hostCount <= 0) {
+          return;
+        }
+        _reconnectAttempt = 0;
+        unawaited(_ensureConnected());
+      });
       return;
     }
+
     _reconnectAttempt++;
-    _reconnectTimer?.cancel();
     final seconds =
         immediate ? 1 : (2 * _reconnectAttempt).clamp(2, 15);
     _reconnectTimer = Timer(Duration(seconds: seconds), () {
@@ -421,6 +472,7 @@ class IntercomSessionController extends Notifier<IntercomSessionState> {
       _wasOnline = online;
       return;
     }
+
     if (!online) {
       _wasOnline = false;
       await _setIntercomDuck(false);
@@ -432,17 +484,34 @@ class IntercomSessionController extends Notifier<IntercomSessionState> {
       );
       return;
     }
-    if (!_wasOnline && online) {
-      _wasOnline = true;
-      _reconnectAttempt = 0;
-      state = state.copyWith(
-        status: IntercomConnectionStatus.reconnecting,
-        clearError: true,
-      );
-      _scheduleReconnect(immediate: true);
+
+    final regained = !_wasOnline;
+    _wasOnline = true;
+
+    final alreadyUp = state.isConnected &&
+        _room != null &&
+        _room!.connectionState == ConnectionState.connected;
+    if (alreadyUp) {
       return;
     }
-    _wasOnline = online;
+
+    // Recuperación de cobertura O cambio de red mientras no estamos conectados
+    // (p. ej. llegas a ciudad con datos que “nunca” pasaron por none).
+    final needsRetry = regained ||
+        state.status == IntercomConnectionStatus.unavailable ||
+        state.status == IntercomConnectionStatus.error ||
+        state.status == IntercomConnectionStatus.reconnecting;
+
+    if (!needsRetry) {
+      return;
+    }
+
+    _reconnectAttempt = 0;
+    state = state.copyWith(
+      status: IntercomConnectionStatus.reconnecting,
+      clearError: true,
+    );
+    _scheduleReconnect(immediate: true);
   }
 
   Future<bool> _hasNetwork() async {
@@ -475,6 +544,8 @@ class IntercomSessionController extends Notifier<IntercomSessionState> {
         await room.dispose();
       } catch (_) {}
     }
+    _systemMusicDucked = false;
+    await IntercomAudioSession.releaseOnDisconnect();
     _intentionalDisconnect = false;
   }
 
