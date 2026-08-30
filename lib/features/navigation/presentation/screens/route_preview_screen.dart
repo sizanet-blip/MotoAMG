@@ -70,6 +70,31 @@ class _RoutePreviewScreenState extends ConsumerState<RoutePreviewScreen> {
     }
     setState(() => _plan = next);
     ref.read(activeNavigationRouteProvider.notifier).state = next.selected;
+    unawaited(_enrichTomTomForSelected());
+  }
+
+  /// TomTom solo se aplica a la ruta activa (no a todas al calcular).
+  Future<void> _enrichTomTomForSelected() async {
+    final route = _plan.selected;
+    try {
+      final updated = await ref
+          .read(navigationRepositoryProvider)
+          .refreshSpeedLimits(route);
+      if (!mounted || updated.id != route.id) {
+        return;
+      }
+      final alts = [
+        for (final r in _plan.alternatives)
+          if (r.id == updated.id) updated else r,
+      ];
+      setState(() {
+        _plan = RoutePlan(
+          alternatives: alts,
+          selectedIndex: _plan.selectedIndex,
+        );
+      });
+      ref.read(activeNavigationRouteProvider.notifier).state = updated;
+    } catch (_) {}
   }
 
   bool _fuelVisibleOnMap(AlertPreferences prefs) {
@@ -971,8 +996,12 @@ class _RoutePreviewSheet extends StatelessWidget {
 
     return CollapsibleMapBottomPanel(
       title: panelTitle,
-      subtitle: panelSubtitle,
+      subtitle: plan.hasAlternatives
+          ? '$panelSubtitle · ${plan.alternatives.length} rutas'
+          : panelSubtitle,
       sidePanel: landscape,
+      // Con varias rutas, abrir el panel para que se vean los chips de elección.
+      initiallyExpanded: plan.hasAlternatives ? true : null,
       maxExpandedHeight: landscape ? null : maxHeight,
       child: SingleChildScrollView(
         child: Column(

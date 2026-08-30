@@ -53,9 +53,16 @@ class NavigationRepositoryImpl implements NavigationRepository {
       ];
     }
 
-    final withLimits = await Future.wait([
-      for (final route in baseRoutes) _enrichWithTomTomLimits(route),
-    ]);
+    // TomTom solo en la ruta elegida (la 1ª): enriquecer las 3 en paralelo
+    // alargaba mucho el cálculo y a veces dejaba la preview “colgada”.
+    final withLimits = <NavigationRouteModel>[];
+    for (var i = 0; i < baseRoutes.length; i++) {
+      if (i == 0) {
+        withLimits.add(await _enrichWithTomTomLimits(baseRoutes[i]));
+      } else {
+        withLimits.add(baseRoutes[i]);
+      }
+    }
 
     final labeled = [
       for (final route in withLimits)
