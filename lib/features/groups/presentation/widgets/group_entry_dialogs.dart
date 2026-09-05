@@ -1,6 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:moto_amg/core/constants/app_constants.dart';
+import 'package:moto_amg/core/theme/hub_style.dart';
 
 Future<String?> showCreateGroupDialog(BuildContext context) {
   return Navigator.of(context).push<String>(
@@ -52,20 +53,18 @@ class _CreateGroupPageState extends State<_CreateGroupPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Nuevo grupo'),
-      ),
+      backgroundColor: isDark ? null : HubStyle.surface,
+      appBar: HubStyle.appBar(titleText: 'Nuevo grupo'),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                'Nombre del grupo',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
+              Text('Nombre del grupo', style: HubStyle.sectionTitle()),
               const SizedBox(height: 12),
               TextField(
                 controller: _controller,
@@ -78,19 +77,20 @@ class _CreateGroupPageState extends State<_CreateGroupPage> {
                     setState(() => _error = null);
                   }
                 },
-                decoration: InputDecoration(
+                decoration: HubStyle.inputDecoration(
+                  labelText: 'Nombre',
                   hintText: 'Ej. Ruta del domingo',
-                  border: const OutlineInputBorder(),
-                  errorText: _error,
-                ),
+                ).copyWith(errorText: _error),
               ),
               const SizedBox(height: 24),
               FilledButton(
+                style: HubStyle.filledButtonStyle(),
                 onPressed: _submit,
                 child: const Text('Crear'),
               ),
               const SizedBox(height: 8),
               TextButton(
+                style: HubStyle.textButtonStyle(),
                 onPressed: () => Navigator.pop(context),
                 child: const Text('Cancelar'),
               ),
@@ -128,20 +128,18 @@ class _JoinGroupPageState extends State<_JoinGroupPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Unirme a un grupo'),
-      ),
+      backgroundColor: isDark ? null : HubStyle.surface,
+      appBar: HubStyle.appBar(titleText: 'Unirme a un grupo'),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                'Código del grupo',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
+              Text('Código del grupo', style: HubStyle.sectionTitle()),
               const SizedBox(height: 12),
               TextField(
                 controller: _controller,
@@ -154,19 +152,20 @@ class _JoinGroupPageState extends State<_JoinGroupPage> {
                   FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')),
                   UpperCaseTextFormatter(),
                 ],
-                decoration: const InputDecoration(
+                decoration: HubStyle.inputDecoration(
+                  labelText: 'Código',
                   hintText: 'Ej. K7M2PQ',
-                  border: OutlineInputBorder(),
-                  counterText: '',
-                ),
+                ).copyWith(counterText: ''),
               ),
               const SizedBox(height: 24),
               FilledButton(
+                style: HubStyle.filledButtonStyle(),
                 onPressed: _submit,
                 child: const Text('Unirme'),
               ),
               const SizedBox(height: 8),
               TextButton(
+                style: HubStyle.textButtonStyle(),
                 onPressed: () => Navigator.pop(context),
                 child: const Text('Cancelar'),
               ),

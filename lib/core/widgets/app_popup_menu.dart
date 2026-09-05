@@ -1,27 +1,33 @@
 import 'package:flutter/material.dart';
+import 'package:moto_amg/core/theme/hub_style.dart';
 
 /// Estilo unificado de menús emergentes (cuenta, perfil, navegación…).
 abstract final class AppPopupMenus {
   static const Offset offset = Offset(0, 8);
 
   static ShapeBorder shapeOf(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(16),
       side: BorderSide(
-        color: colors.outlineVariant.withValues(alpha: 0.55),
+        color: isDark
+            ? Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.55)
+            : const Color(0xFFE5E7EB),
       ),
     );
   }
 
-  static Color colorOf(BuildContext context) =>
-      Theme.of(context).colorScheme.surfaceContainerHigh;
+  static Color colorOf(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark
+        ? Theme.of(context).colorScheme.surfaceContainerHigh
+        : HubStyle.surface;
+  }
 
-  static Color surfaceTintOf(BuildContext context) =>
-      Theme.of(context).colorScheme.surface;
+  static Color surfaceTintOf(BuildContext context) => Colors.transparent;
 
   static const double elevation = 10;
-  static const Color shadowColor = Colors.black38;
+  static const Color shadowColor = Colors.black26;
 
   /// Aplica el look profesional a un [PopupMenuButton].
   static PopupMenuThemeData themeOf(BuildContext context) {
@@ -31,9 +37,7 @@ abstract final class AppPopupMenus {
       shadowColor: shadowColor,
       surfaceTintColor: surfaceTintOf(context),
       shape: shapeOf(context),
-      textStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
+      textStyle: HubStyle.body(color: HubStyle.title),
     );
   }
 }
@@ -52,7 +56,7 @@ class AppPopupMenuTile extends StatelessWidget {
   final IconData icon;
   final String label;
 
-  /// Color del icono; por defecto primary (o error si [destructive]).
+  /// Color del icono; por defecto [HubStyle.accent] (o error si [destructive]).
   final Color? tint;
   final bool destructive;
   final bool selected;
@@ -63,7 +67,7 @@ class AppPopupMenuTile extends StatelessWidget {
     final color = tint ??
         (destructive
             ? colors.error
-            : (selected ? colors.primary : colors.primary));
+            : HubStyle.accent);
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -82,16 +86,17 @@ class AppPopupMenuTile extends StatelessWidget {
           Expanded(
             child: Text(
               label,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight:
-                        destructive || selected ? FontWeight.w700 : FontWeight.w600,
-                    color: destructive ? color : colors.onSurface,
-                  ),
+              style: HubStyle.body(
+                color: destructive ? color : HubStyle.title,
+              ).copyWith(
+                fontWeight:
+                    destructive || selected ? FontWeight.w700 : FontWeight.w600,
+              ),
             ),
           ),
           if (selected) ...[
             const SizedBox(width: 8),
-            Icon(Icons.check_rounded, size: 18, color: colors.primary),
+            const Icon(Icons.check_rounded, size: 18, color: HubStyle.accent),
           ],
         ],
       ),

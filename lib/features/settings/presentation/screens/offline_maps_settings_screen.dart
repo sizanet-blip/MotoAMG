@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:moto_amg/core/theme/hub_style.dart';
 import 'package:moto_amg/core/utils/storage_space.dart';
 import 'package:moto_amg/features/navigation/domain/entities/map_region.dart';
 import 'package:moto_amg/features/navigation/domain/exceptions/navigation_user_message.dart';
@@ -17,6 +18,7 @@ class OfflineMapsSettingsScreen extends ConsumerWidget {
     final downloadingId = ref.watch(mapDownloadingRegionIdProvider);
     final progress = ref.watch(mapDownloadProgressProvider);
     final bytes = ref.watch(mapDownloadBytesProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final colors = Theme.of(context).colorScheme;
 
     ref.listen(mapRegionActionProvider, (previous, next) {
@@ -47,7 +49,8 @@ class OfflineMapsSettingsScreen extends ConsumerWidget {
     });
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Mapas offline')),
+      backgroundColor: isDark ? null : HubStyle.surface,
+      appBar: HubStyle.appBar(titleText: 'Mapas offline'),
       body: regionsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, _) => Center(
@@ -56,12 +59,14 @@ class OfflineMapsSettingsScreen extends ConsumerWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
+                Text(
                   'No se pudieron cargar las regiones.',
                   textAlign: TextAlign.center,
+                  style: HubStyle.body(),
                 ),
                 const SizedBox(height: 12),
                 FilledButton(
+                  style: HubStyle.filledButtonStyle(),
                   onPressed: () =>
                       ref.invalidate(availableMapRegionsProvider),
                   child: const Text('Reintentar'),
@@ -72,12 +77,13 @@ class OfflineMapsSettingsScreen extends ConsumerWidget {
         ),
         data: (regions) {
           if (regions.isEmpty) {
-            return const Center(
+            return Center(
               child: Padding(
-                padding: EdgeInsets.all(24),
+                padding: const EdgeInsets.all(24),
                 child: Text(
                   'No hay regiones disponibles por ahora.',
                   textAlign: TextAlign.center,
+                  style: HubStyle.body(),
                 ),
               ),
             );
@@ -90,40 +96,56 @@ class OfflineMapsSettingsScreen extends ConsumerWidget {
               (1024 * 1024);
 
           return ListView(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
             children: [
               Text(
                 'Descarga un mapa para usarlo sin internet dentro de esa zona '
                 '(calles, nombres e iconos). '
                 'Si se corta la descarga, pulsa Continuar para reanudarla. '
                 'Fuera de la región (con internet) se usa el mapa online.',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: colors.onSurfaceVariant,
-                    ),
+                style: HubStyle.body(),
               ),
               const SizedBox(height: 12),
-              Material(
-                color: colors.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(12),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 12,
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.offline_pin, color: colors.primary),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          downloaded == 0
-                              ? 'Ninguna región descargada'
-                              : '$downloaded de ${regions.length} descargadas'
-                                  '${downloadedMb >= 1 ? ' · ${downloadedMb.round()} MB' : ''}',
-                          style: Theme.of(context).textTheme.titleSmall,
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: isDark ? null : HubStyle.cardShadow,
+                ),
+                child: Material(
+                  color: isDark ? colors.surfaceContainerHighest : Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: const BoxDecoration(
+                            color: HubStyle.accent,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.offline_pin,
+                            color: Colors.white,
+                            size: 22,
+                          ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            downloaded == 0
+                                ? 'Ninguna región descargada'
+                                : '$downloaded de ${regions.length} descargadas'
+                                    '${downloadedMb >= 1 ? ' · ${downloadedMb.round()} MB' : ''}',
+                            style: HubStyle.sectionTitle(),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -135,6 +157,7 @@ class OfflineMapsSettingsScreen extends ConsumerWidget {
                   downloading: downloadingId == region.id,
                   progress: downloadingId == region.id ? progress : null,
                   bytes: downloadingId == region.id ? bytes : null,
+                  isDark: isDark,
                   onDownload: () => ref
                       .read(mapRegionActionProvider.notifier)
                       .download(region.id),
@@ -144,7 +167,7 @@ class OfflineMapsSettingsScreen extends ConsumerWidget {
                       .read(mapRegionActionProvider.notifier)
                       .delete(region.id),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
               ],
             ],
           );
@@ -161,6 +184,7 @@ class _RegionCard extends StatelessWidget {
     required this.downloading,
     required this.progress,
     required this.bytes,
+    required this.isDark,
     required this.onDownload,
     required this.onCancel,
     required this.onDelete,
@@ -171,6 +195,7 @@ class _RegionCard extends StatelessWidget {
   final bool downloading;
   final double? progress;
   final ({int received, int? total})? bytes;
+  final bool isDark;
   final VoidCallback onDownload;
   final VoidCallback onCancel;
   final VoidCallback onDelete;
@@ -183,92 +208,111 @@ class _RegionCard extends StatelessWidget {
         ? '${formatStorageMb(region.partialBytes)} de $sizeLabel'
         : null;
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  region.isDownloaded
-                      ? Icons.download_done
-                      : region.hasPartialDownload
-                          ? Icons.pause_circle_outline
-                          : Icons.map_outlined,
-                  color: region.isDownloaded
-                      ? colors.primary
-                      : region.hasPartialDownload
-                          ? colors.tertiary
-                          : colors.onSurfaceVariant,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        region.name,
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        region.isDownloaded
-                            ? 'Descargado · $sizeLabel'
-                            : region.hasPartialDownload
-                                ? 'Descarga a medias · $partialLabel'
-                                : '$sizeLabel aprox.',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: region.hasPartialDownload
-                                  ? colors.tertiary
-                                  : colors.onSurfaceVariant,
-                            ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (region.isDownloaded)
-                  TextButton(
-                    onPressed: busy ? null : onDelete,
-                    child: const Text('Eliminar'),
-                  )
-                else if (downloading)
-                  TextButton(
-                    onPressed: onCancel,
-                    child: const Text('Cancelar'),
-                  )
-                else
-                  FilledButton(
-                    onPressed: busy ? null : onDownload,
-                    child: Text(
-                      region.hasPartialDownload ? 'Continuar' : 'Descargar',
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: isDark ? null : HubStyle.cardShadow,
+      ),
+      child: Material(
+        color: isDark ? colors.surfaceContainerHighest : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: region.isDownloaded
+                          ? HubStyle.accent
+                          : HubStyle.accent.withValues(alpha: 0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      region.isDownloaded
+                          ? Icons.download_done
+                          : region.hasPartialDownload
+                              ? Icons.pause_circle_outline
+                              : Icons.map_outlined,
+                      color: region.isDownloaded
+                          ? Colors.white
+                          : HubStyle.accent,
+                      size: 22,
                     ),
                   ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(region.name, style: HubStyle.sectionTitle()),
+                        const SizedBox(height: 2),
+                        Text(
+                          region.isDownloaded
+                              ? 'Descargado · $sizeLabel'
+                              : region.hasPartialDownload
+                                  ? 'Descarga a medias · $partialLabel'
+                                  : '$sizeLabel aprox.',
+                          style: HubStyle.caption(
+                            color: region.hasPartialDownload
+                                ? colors.tertiary
+                                : null,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (region.isDownloaded)
+                    TextButton(
+                      style: HubStyle.textButtonStyle(),
+                      onPressed: busy ? null : onDelete,
+                      child: const Text('Eliminar'),
+                    )
+                  else if (downloading)
+                    TextButton(
+                      style: HubStyle.textButtonStyle(),
+                      onPressed: onCancel,
+                      child: const Text('Cancelar'),
+                    )
+                  else
+                    FilledButton(
+                      style: HubStyle.filledButtonStyle(enabled: !busy),
+                      onPressed: busy ? null : onDownload,
+                      child: Text(
+                        region.hasPartialDownload ? 'Continuar' : 'Descargar',
+                      ),
+                    ),
+                ],
+              ),
+              if (region.hasPartialDownload && !downloading) ...[
+                const SizedBox(height: 10),
+                LinearProgressIndicator(
+                  value: region.partialProgress,
+                  minHeight: 5,
+                  borderRadius: BorderRadius.circular(99),
+                  color: HubStyle.accent,
+                ),
               ],
-            ),
-            if (region.hasPartialDownload && !downloading) ...[
-              const SizedBox(height: 10),
-              LinearProgressIndicator(
-                value: region.partialProgress,
-                minHeight: 5,
-                borderRadius: BorderRadius.circular(99),
-              ),
+              if (downloading) ...[
+                const SizedBox(height: 12),
+                LinearProgressIndicator(
+                  value: progress,
+                  minHeight: 6,
+                  borderRadius: BorderRadius.circular(99),
+                  color: HubStyle.accent,
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  _progressLabel(progress, bytes),
+                  style: HubStyle.caption(),
+                ),
+              ],
             ],
-            if (downloading) ...[
-              const SizedBox(height: 12),
-              LinearProgressIndicator(
-                value: progress,
-                minHeight: 6,
-                borderRadius: BorderRadius.circular(99),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                _progressLabel(progress, bytes),
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            ],
-          ],
+          ),
         ),
       ),
     );

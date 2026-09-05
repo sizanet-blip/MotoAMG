@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:moto_amg/core/theme/hub_style.dart';
 import 'package:moto_amg/core/widgets/app_popup_menu.dart';
 import 'package:moto_amg/features/auth/domain/entities/app_user.dart';
 import 'package:moto_amg/features/auth/domain/entities/user_vehicle.dart';
@@ -137,10 +138,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   Future<void> _editVehicle({UserVehicle? existing}) async {
-    final result = await showModalBottomSheet<UserVehicle>(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) => _VehicleEditorSheet(initial: existing),
+    final result = await Navigator.of(context).push<UserVehicle>(
+      MaterialPageRoute(
+        builder: (_) => _VehicleEditorScreen(initial: existing),
+      ),
     );
     if (result == null || !mounted) {
       return;
@@ -187,16 +188,42 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final user = _user;
     final isLoading = ref.watch(authActionControllerProvider).isLoading;
     final error = ref.watch(authActionControllerProvider).asError?.error;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Mi perfil')),
+      backgroundColor: isDark ? null : HubStyle.surface,
+      appBar: HubStyle.appBar(titleText: 'Mi perfil'),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
         children: [
+          Center(
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  width: 96,
+                  height: 96,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: HubStyle.accent.withValues(alpha: 0.12),
+                    border: Border.all(color: HubStyle.accent, width: 2),
+                  ),
+                  child: const Icon(
+                    Icons.person_rounded,
+                    size: 48,
+                    color: HubStyle.accent,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
           if (error != null) ...[
             Text(
               '$error',
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
+              style: HubStyle.caption(
+                color: Theme.of(context).colorScheme.error,
+              ),
             ),
             const SizedBox(height: 12),
           ],
@@ -210,9 +237,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   enabled: !isLoading,
                   textCapitalization: TextCapitalization.words,
                   textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(
-                    labelText: 'Nombre en el mapa',
-                    border: OutlineInputBorder(),
+                  style: HubStyle.body(color: HubStyle.title),
+                  decoration: HubStyle.inputDecoration(
+                    labelText: 'Nombre',
+                  ).copyWith(
+                    prefixIcon: const Icon(
+                      Icons.person_outline_rounded,
+                      color: HubStyle.subtitle,
+                    ),
                   ),
                   validator: AuthValidators.displayName,
                 ),
@@ -222,26 +254,27 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   enabled: !isLoading,
                   keyboardType: TextInputType.phone,
                   textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(
+                  style: HubStyle.body(color: HubStyle.title),
+                  decoration: HubStyle.inputDecoration(
                     labelText: 'Teléfono (opcional)',
-                    border: OutlineInputBorder(),
+                  ).copyWith(
+                    prefixIcon: const Icon(
+                      Icons.phone_outlined,
+                      color: HubStyle.subtitle,
+                    ),
                   ),
                   validator: AuthValidators.optionalPhone,
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 28),
                 Row(
                   children: [
                     Expanded(
-                      child: Text(
-                        'Mis vehículos',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
+                      child: Text('Vehículos', style: HubStyle.sectionTitle()),
                     ),
                     TextButton.icon(
-                      onPressed: isLoading
-                          ? null
-                          : () => _editVehicle(),
-                      icon: const Icon(Icons.add),
+                      onPressed: isLoading ? null : () => _editVehicle(),
+                      style: HubStyle.textButtonStyle(),
+                      icon: const Icon(Icons.add_rounded),
                       label: const Text('Añadir'),
                     ),
                   ],
@@ -250,104 +283,51 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 Text(
                   'El vehículo activo define el tipo de ruta (moto/coche/camión) '
                   'y el combustible de las gasolineras.',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
+                  style: HubStyle.caption(),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 if (_vehicles.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 12),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
                     child: Text(
                       'Sin vehículos. Las gasolineras mostrarán todos los precios.',
+                      style: HubStyle.body(),
                     ),
                   )
                 else
                   for (final vehicle in _vehicles) ...[
-                    Card(
-                      child: ListTile(
-                        leading: Radio<String>(
-                          value: vehicle.id,
-                          groupValue: _activeVehicleId,
-                          onChanged: isLoading
-                              ? null
-                              : (value) => unawaited(_setActiveVehicle(value)),
-                        ),
-                        title: Text(vehicle.displayLabel),
-                        subtitle: Text(
-                          '${vehicle.kind.label} · ${vehicle.fuelType.label}'
-                          '${vehicle.plate != null ? ' · ${vehicle.plate}' : ''}',
-                        ),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (vehicle.navigationPuckStyle != null)
-                              Padding(
-                                padding: const EdgeInsets.only(right: 4),
-                                child: VehicleNavigationMarkerPreview(
-                                  icon: vehicle.navigationPuckStyle!.icon,
-                                  color: vehicle.navigationPuckStyle!.color,
-                                  size: 32,
-                                ),
-                              ),
-                            PopupMenuButton<String>(
-                              tooltip: 'Opciones del vehículo',
-                              offset: AppPopupMenus.offset,
-                              elevation: AppPopupMenus.elevation,
-                              shadowColor: AppPopupMenus.shadowColor,
-                              surfaceTintColor:
-                                  AppPopupMenus.surfaceTintOf(context),
-                              color: AppPopupMenus.colorOf(context),
-                              shape: AppPopupMenus.shapeOf(context),
-                              onSelected: (action) {
-                                if (action == 'edit') {
-                                  unawaited(_editVehicle(existing: vehicle));
-                                } else if (action == 'delete') {
-                                  unawaited(_deleteVehicle(vehicle.id));
-                                }
-                              },
-                              itemBuilder: (context) => [
-                                appPopupMenuItem(
-                                  value: 'edit',
-                                  icon: Icons.edit_outlined,
-                                  label: 'Editar',
-                                  tint: Theme.of(context).colorScheme.primary,
-                                ),
-                                const PopupMenuDivider(height: 8),
-                                appPopupMenuItem(
-                                  value: 'delete',
-                                  icon: Icons.delete_outline_rounded,
-                                  label: 'Eliminar',
-                                  destructive: true,
-                                  padding:
-                                      const EdgeInsets.fromLTRB(8, 2, 8, 6),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                        onTap: isLoading
-                            ? null
-                            : () => unawaited(_setActiveVehicle(vehicle.id)),
-                      ),
+                    _VehicleCard(
+                      vehicle: vehicle,
+                      selected: vehicle.id == _activeVehicleId,
+                      isDark: isDark,
+                      enabled: !isLoading,
+                      onSelect: () => unawaited(_setActiveVehicle(vehicle.id)),
+                      onEdit: () => unawaited(_editVehicle(existing: vehicle)),
+                      onDelete: () => unawaited(_deleteVehicle(vehicle.id)),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 10),
                   ],
                 if (_vehicles.isNotEmpty)
                   TextButton(
                     onPressed: isLoading
                         ? null
                         : () => unawaited(_setActiveVehicle(null)),
+                    style: HubStyle.textButtonStyle(),
                     child: const Text('Ningún vehículo activo'),
                   ),
                 const SizedBox(height: 8),
-                FilledButton(
+                FilledButton.icon(
                   onPressed: isLoading ? null : _saveProfile,
-                  child: isLoading
+                  style: HubStyle.filledButtonStyle(enabled: !isLoading),
+                  icon: const Icon(Icons.save_rounded),
+                  label: isLoading
                       ? const SizedBox(
                           height: 20,
                           width: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
                         )
                       : const Text('Guardar perfil'),
                 ),
@@ -356,11 +336,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
           if (user.canChangePassword) ...[
             const SizedBox(height: 32),
-            Text(
-              'Cambiar contraseña',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
+            Text('Cambiar contraseña', style: HubStyle.sectionTitle()),
+            const SizedBox(height: 12),
             Form(
               key: _passwordKey,
               child: Column(
@@ -370,16 +347,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     controller: _currentPassword,
                     obscureText: _obscure,
                     enabled: !isLoading,
-                    decoration: InputDecoration(
+                    style: HubStyle.body(color: HubStyle.title),
+                    decoration: HubStyle.inputDecoration(
                       labelText: 'Contraseña actual',
-                      border: const OutlineInputBorder(),
                       suffixIcon: IconButton(
                         onPressed: () =>
                             setState(() => _obscure = !_obscure),
                         icon: Icon(
                           _obscure
-                              ? Icons.visibility
-                              : Icons.visibility_off,
+                              ? Icons.visibility_rounded
+                              : Icons.visibility_off_rounded,
+                          color: HubStyle.subtitle,
                         ),
                       ),
                     ),
@@ -391,9 +369,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     controller: _newPassword,
                     obscureText: _obscure,
                     enabled: !isLoading,
-                    decoration: const InputDecoration(
+                    style: HubStyle.body(color: HubStyle.title),
+                    decoration: HubStyle.inputDecoration(
                       labelText: 'Nueva contraseña',
-                      border: OutlineInputBorder(),
                     ),
                     validator: AuthValidators.password,
                   ),
@@ -402,9 +380,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     controller: _confirmPassword,
                     obscureText: _obscure,
                     enabled: !isLoading,
-                    decoration: const InputDecoration(
+                    style: HubStyle.body(color: HubStyle.title),
+                    decoration: HubStyle.inputDecoration(
                       labelText: 'Confirmar contraseña',
-                      border: OutlineInputBorder(),
                     ),
                     validator: (v) => AuthValidators.confirmPassword(
                       v,
@@ -414,6 +392,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   const SizedBox(height: 16),
                   OutlinedButton(
                     onPressed: isLoading ? null : _savePassword,
+                    style: HubStyle.outlinedButtonStyle(),
                     child: const Text('Actualizar contraseña'),
                   ),
                 ],
@@ -429,6 +408,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         context,
                         username: user.username!,
                       ),
+              style: HubStyle.outlinedButtonStyle(),
               child: const Text('Ver clave de recuperación'),
             ),
           ],
@@ -438,16 +418,147 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 }
 
-class _VehicleEditorSheet extends StatefulWidget {
-  const _VehicleEditorSheet({this.initial});
+class _VehicleCard extends StatelessWidget {
+  const _VehicleCard({
+    required this.vehicle,
+    required this.selected,
+    required this.isDark,
+    required this.enabled,
+    required this.onSelect,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  final UserVehicle vehicle;
+  final bool selected;
+  final bool isDark;
+  final bool enabled;
+  final VoidCallback onSelect;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final cardColor = isDark
+        ? Theme.of(context).colorScheme.surfaceContainerHighest
+        : Colors.white;
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: isDark ? null : HubStyle.cardShadow,
+        border: selected
+            ? Border.all(color: HubStyle.accent, width: 1.6)
+            : null,
+      ),
+      child: Material(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(16),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: enabled ? onSelect : null,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 4, 12),
+            child: Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? HubStyle.accent
+                        : HubStyle.accent.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    vehicle.kind == VehicleKind.auto
+                        ? Icons.directions_car_rounded
+                        : vehicle.kind == VehicleKind.truck
+                            ? Icons.local_shipping_rounded
+                            : Icons.two_wheeler_rounded,
+                    color: selected ? Colors.white : HubStyle.accent,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        vehicle.displayLabel,
+                        style: HubStyle.sectionTitle(),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${vehicle.kind.label} · ${vehicle.fuelType.label}'
+                        '${vehicle.plate != null ? ' · ${vehicle.plate}' : ''}'
+                        '${selected ? ' · Activo' : ''}',
+                        style: HubStyle.caption(),
+                      ),
+                    ],
+                  ),
+                ),
+                if (vehicle.navigationPuckStyle != null)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 4),
+                    child: VehicleNavigationMarkerPreview(
+                      icon: vehicle.navigationPuckStyle!.icon,
+                      color: vehicle.navigationPuckStyle!.color,
+                      size: 32,
+                    ),
+                  ),
+                PopupMenuButton<String>(
+                  tooltip: 'Opciones del vehículo',
+                  enabled: enabled,
+                  offset: AppPopupMenus.offset,
+                  elevation: AppPopupMenus.elevation,
+                  shadowColor: AppPopupMenus.shadowColor,
+                  surfaceTintColor: AppPopupMenus.surfaceTintOf(context),
+                  color: AppPopupMenus.colorOf(context),
+                  shape: AppPopupMenus.shapeOf(context),
+                  onSelected: (action) {
+                    if (action == 'edit') {
+                      onEdit();
+                    } else if (action == 'delete') {
+                      onDelete();
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    appPopupMenuItem(
+                      value: 'edit',
+                      icon: Icons.edit_outlined,
+                      label: 'Editar',
+                      tint: HubStyle.accent,
+                    ),
+                    const PopupMenuDivider(height: 8),
+                    appPopupMenuItem(
+                      value: 'delete',
+                      icon: Icons.delete_outline_rounded,
+                      label: 'Eliminar',
+                      destructive: true,
+                      padding: const EdgeInsets.fromLTRB(8, 2, 8, 6),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _VehicleEditorScreen extends StatefulWidget {
+  const _VehicleEditorScreen({this.initial});
 
   final UserVehicle? initial;
 
   @override
-  State<_VehicleEditorSheet> createState() => _VehicleEditorSheetState();
+  State<_VehicleEditorScreen> createState() => _VehicleEditorScreenState();
 }
 
-class _VehicleEditorSheetState extends State<_VehicleEditorSheet> {
+class _VehicleEditorScreenState extends State<_VehicleEditorScreen> {
   late final TextEditingController _brand;
   late final TextEditingController _model;
   late final TextEditingController _year;
@@ -518,249 +629,215 @@ class _VehicleEditorSheetState extends State<_VehicleEditorSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final bottom = MediaQuery.viewInsetsOf(context).bottom;
-    final colors = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final suggested = _kind.suggestedMapIcons;
     final otherIcons = VehicleMapIcon.values
         .where((icon) => !suggested.contains(icon))
         .toList();
+    final title =
+        widget.initial == null ? 'Nuevo vehículo' : 'Editar vehículo';
 
-    return Padding(
-      padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + bottom),
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxHeight: (MediaQuery.sizeOf(context).height - bottom - 24)
-              .clamp(160.0, MediaQuery.sizeOf(context).height),
-        ),
-        child: Form(
-          key: _formKey,
-          child: SingleChildScrollView(
-            child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                widget.initial == null ? 'Nuevo vehículo' : 'Editar vehículo',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<VehicleKind>(
-                // ignore: deprecated_member_use
-                value: _kind,
-                decoration: const InputDecoration(
-                  labelText: 'Tipo',
-                  border: OutlineInputBorder(),
-                ),
-                items: [
-                  for (final kind in VehicleKind.values)
-                    DropdownMenuItem(value: kind, child: Text(kind.label)),
-                ],
-                onChanged: (value) {
-                  if (value == null) {
-                    return;
+    return Scaffold(
+      backgroundColor: isDark ? null : HubStyle.surface,
+      appBar: HubStyle.appBar(titleText: title),
+      body: Form(
+        key: _formKey,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+          children: [
+            DropdownButtonFormField<VehicleKind>(
+              // ignore: deprecated_member_use
+              value: _kind,
+              decoration: HubStyle.inputDecoration(labelText: 'Tipo'),
+              items: [
+                for (final kind in VehicleKind.values)
+                  DropdownMenuItem(value: kind, child: Text(kind.label)),
+              ],
+              onChanged: (value) {
+                if (value == null) {
+                  return;
+                }
+                setState(() {
+                  _kind = value;
+                  if (_mapIcon != null &&
+                      !value.suggestedMapIcons.contains(_mapIcon)) {
+                    _mapIcon = value.suggestedMapIcons.first;
+                    _mapColor = VehicleMapColors.defaultFor(_mapIcon!);
                   }
-                  setState(() {
-                    _kind = value;
-                    if (_mapIcon != null &&
-                        !value.suggestedMapIcons.contains(_mapIcon)) {
-                      _mapIcon = value.suggestedMapIcons.first;
-                      _mapColor = VehicleMapColors.defaultFor(_mapIcon!);
-                    }
-                  });
-                },
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<VehicleFuelType>(
-                // ignore: deprecated_member_use
-                value: _fuel,
-                decoration: const InputDecoration(
-                  labelText: 'Combustible',
-                  border: OutlineInputBorder(),
+                });
+              },
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<VehicleFuelType>(
+              // ignore: deprecated_member_use
+              value: _fuel,
+              decoration: HubStyle.inputDecoration(labelText: 'Combustible'),
+              items: [
+                for (final fuel in VehicleFuelType.values)
+                  DropdownMenuItem(value: fuel, child: Text(fuel.label)),
+              ],
+              onChanged: (value) {
+                if (value != null) {
+                  setState(() => _fuel = value);
+                }
+              },
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Icono en el mapa (navegación)',
+              style: HubStyle.sectionTitle(),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Silueta del vehículo en el mapa (cenital). '
+              'Si no eliges ninguno, se usa el punto GPS azul habitual.',
+              style: HubStyle.caption(),
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _MapIconChoice(
+                  selected: _mapIcon == null,
+                  color: const Color(0xFFE5E7EB),
+                  materialIcon: Icons.gps_fixed_rounded,
+                  label: 'Por defecto',
+                  onTap: () => setState(() => _mapIcon = null),
+                  selectedBorder: HubStyle.accent,
                 ),
-                items: [
-                  for (final fuel in VehicleFuelType.values)
-                    DropdownMenuItem(value: fuel, child: Text(fuel.label)),
-                ],
-                onChanged: (value) {
-                  if (value != null) {
-                    setState(() => _fuel = value);
-                  }
-                },
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Icono en el mapa (navegación)',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Silueta del vehículo en el mapa (cenital). '
-                'Si no eliges ninguno, se usa el punto GPS azul habitual.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: colors.onSurfaceVariant,
-                    ),
-              ),
-              const SizedBox(height: 10),
+                for (final icon in suggested)
+                  _MapIconChoice(
+                    selected: _mapIcon == icon,
+                    color: _mapIcon == icon
+                        ? _mapColor
+                        : const Color(0xFF607D8B),
+                    vehicleIcon: icon,
+                    label: icon.label,
+                    onTap: () => setState(() {
+                      final firstPick = _mapIcon == null;
+                      _mapIcon = icon;
+                      if (firstPick) {
+                        _mapColor = VehicleMapColors.defaultFor(icon);
+                      }
+                    }),
+                    selectedBorder: HubStyle.accent,
+                  ),
+                for (final icon in otherIcons)
+                  _MapIconChoice(
+                    selected: _mapIcon == icon,
+                    color: _mapIcon == icon
+                        ? _mapColor
+                        : const Color(0xFF78909C),
+                    vehicleIcon: icon,
+                    label: icon.label,
+                    onTap: () => setState(() {
+                      final firstPick = _mapIcon == null;
+                      _mapIcon = icon;
+                      if (firstPick) {
+                        _mapColor = VehicleMapColors.defaultFor(icon);
+                      }
+                    }),
+                    selectedBorder: HubStyle.accent,
+                  ),
+              ],
+            ),
+            if (_mapIcon != null) ...[
+              const SizedBox(height: 14),
+              Text('Color del vehículo', style: HubStyle.sectionTitle()),
+              const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  _MapIconChoice(
-                    selected: _mapIcon == null,
-                    color: colors.surfaceContainerHighest,
-                    materialIcon: Icons.gps_fixed_rounded,
-                    label: 'Por defecto',
-                    onTap: () => setState(() => _mapIcon = null),
-                    selectedBorder: colors.primary,
-                  ),
-                  for (final icon in suggested)
-                    _MapIconChoice(
-                      selected: _mapIcon == icon,
-                      color: _mapIcon == icon
-                          ? _mapColor
-                          : const Color(0xFF607D8B),
-                      vehicleIcon: icon,
-                      label: icon.label,
-                      onTap: () => setState(() {
-                        final firstPick = _mapIcon == null;
-                        _mapIcon = icon;
-                        if (firstPick) {
-                          _mapColor = VehicleMapColors.defaultFor(icon);
-                        }
-                      }),
-                      selectedBorder: colors.primary,
-                    ),
-                  for (final icon in otherIcons)
-                    _MapIconChoice(
-                      selected: _mapIcon == icon,
-                      color: _mapIcon == icon
-                          ? _mapColor
-                          : const Color(0xFF78909C),
-                      vehicleIcon: icon,
-                      label: icon.label,
-                      onTap: () => setState(() {
-                        final firstPick = _mapIcon == null;
-                        _mapIcon = icon;
-                        if (firstPick) {
-                          _mapColor = VehicleMapColors.defaultFor(icon);
-                        }
-                      }),
-                      selectedBorder: colors.primary,
+                  for (final color in VehicleMapColors.palette)
+                    InkWell(
+                      onTap: () => setState(() => _mapColor = color),
+                      borderRadius: BorderRadius.circular(999),
+                      child: Container(
+                        width: 34,
+                        height: 34,
+                        decoration: BoxDecoration(
+                          color: color,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: _mapColor.toARGB32() == color.toARGB32()
+                                ? HubStyle.title
+                                : Colors.white54,
+                            width: _mapColor.toARGB32() == color.toARGB32()
+                                ? 3
+                                : 1,
+                          ),
+                        ),
+                        child: _mapColor.toARGB32() == color.toARGB32()
+                            ? const Icon(
+                                Icons.check_rounded,
+                                size: 18,
+                                color: Colors.white,
+                              )
+                            : null,
+                      ),
                     ),
                 ],
               ),
-              if (_mapIcon != null) ...[
-                const SizedBox(height: 14),
-                Text(
-                  'Color del vehículo',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    for (final color in VehicleMapColors.palette)
-                      InkWell(
-                        onTap: () => setState(() => _mapColor = color),
-                        borderRadius: BorderRadius.circular(999),
-                        child: Container(
-                          width: 34,
-                          height: 34,
-                          decoration: BoxDecoration(
-                            color: color,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: _mapColor.toARGB32() == color.toARGB32()
-                                  ? colors.onSurface
-                                  : Colors.white54,
-                              width: _mapColor.toARGB32() == color.toARGB32()
-                                  ? 3
-                                  : 1,
-                            ),
-                          ),
-                          child: _mapColor.toARGB32() == color.toARGB32()
-                              ? const Icon(
-                                  Icons.check_rounded,
-                                  size: 18,
-                                  color: Colors.white,
-                                )
-                              : null,
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: VehicleNavigationMarkerPreview(
-                    icon: _mapIcon!,
-                    color: _mapColor,
-                    size: 72,
-                  ),
-                ),
-              ],
               const SizedBox(height: 12),
-              TextFormField(
-                controller: _brand,
-                textCapitalization: TextCapitalization.words,
-                decoration: const InputDecoration(
-                  labelText: 'Marca',
-                  border: OutlineInputBorder(),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: VehicleNavigationMarkerPreview(
+                  icon: _mapIcon!,
+                  color: _mapColor,
+                  size: 72,
                 ),
-                validator: AuthValidators.optionalBikeField,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _model,
-                textCapitalization: TextCapitalization.words,
-                decoration: const InputDecoration(
-                  labelText: 'Modelo',
-                  border: OutlineInputBorder(),
-                ),
-                validator: AuthValidators.optionalBikeField,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _year,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'Año',
-                  border: OutlineInputBorder(),
-                ),
-                validator: AuthValidators.optionalBikeYear,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _color,
-                decoration: const InputDecoration(
-                  labelText: 'Color (descripción)',
-                  border: OutlineInputBorder(),
-                ),
-                validator: AuthValidators.optionalBikeField,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _plate,
-                textCapitalization: TextCapitalization.characters,
-                decoration: const InputDecoration(
-                  labelText: 'Matrícula',
-                  border: OutlineInputBorder(),
-                ),
-                validator: AuthValidators.optionalPlate,
-              ),
-              const SizedBox(height: 16),
-              FilledButton(
-                onPressed: _submit,
-                child: const Text('Guardar vehículo'),
               ),
             ],
-          ),
-        ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _brand,
+              textCapitalization: TextCapitalization.words,
+              style: HubStyle.body(color: HubStyle.title),
+              decoration: HubStyle.inputDecoration(labelText: 'Marca'),
+              validator: AuthValidators.optionalBikeField,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _model,
+              textCapitalization: TextCapitalization.words,
+              style: HubStyle.body(color: HubStyle.title),
+              decoration: HubStyle.inputDecoration(labelText: 'Modelo'),
+              validator: AuthValidators.optionalBikeField,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _year,
+              keyboardType: TextInputType.number,
+              style: HubStyle.body(color: HubStyle.title),
+              decoration: HubStyle.inputDecoration(labelText: 'Año'),
+              validator: AuthValidators.optionalBikeYear,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _color,
+              style: HubStyle.body(color: HubStyle.title),
+              decoration: HubStyle.inputDecoration(
+                labelText: 'Color (descripción)',
+              ),
+              validator: AuthValidators.optionalBikeField,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _plate,
+              textCapitalization: TextCapitalization.characters,
+              style: HubStyle.body(color: HubStyle.title),
+              decoration: HubStyle.inputDecoration(labelText: 'Matrícula'),
+              validator: AuthValidators.optionalPlate,
+            ),
+            const SizedBox(height: 24),
+            FilledButton(
+              onPressed: _submit,
+              style: HubStyle.filledButtonStyle(),
+              child: const Text('Guardar vehículo'),
+            ),
+          ],
         ),
       ),
     );
@@ -826,9 +903,9 @@ class _MapIconChoice extends StatelessWidget {
               textAlign: TextAlign.center,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-                  ),
+              style: HubStyle.caption(
+                color: selected ? HubStyle.title : HubStyle.subtitle,
+              ),
             ),
           ],
         ),

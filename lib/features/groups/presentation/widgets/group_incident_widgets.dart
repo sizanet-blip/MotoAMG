@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:moto_amg/core/theme/hub_style.dart';
 import 'package:moto_amg/core/widgets/keyboard_safe_sheet_body.dart';
 import 'package:moto_amg/features/groups/domain/entities/group_incident.dart';
 import 'package:moto_amg/features/groups/domain/services/critical_emergency_actions.dart';
@@ -885,18 +886,22 @@ Future<bool> confirmGroupIncident(
     useRootNavigator: true,
     barrierDismissible: false,
     builder: (context) => AlertDialog(
-      title: Text('¿Avisar: ${type.label}?'),
+      backgroundColor: HubStyle.surface,
+      title: Text('¿Avisar: ${type.label}?', style: HubStyle.sectionTitle()),
       content: Text(
         type == GroupIncidentType.espera
             ? 'Todo el grupo verá que pedís esperar o reunirnos.'
             : 'Todo el grupo verá el aviso en el mapa. Úsalo solo si hace falta.',
+        style: HubStyle.body(),
       ),
       actions: [
         TextButton(
+          style: HubStyle.textButtonStyle(),
           onPressed: () => Navigator.pop(context, false),
           child: const Text('Cancelar'),
         ),
         FilledButton(
+          style: HubStyle.filledButtonStyle(),
           onPressed: () => Navigator.pop(context, true),
           child: const Text('Avisar'),
         ),
@@ -922,25 +927,24 @@ Future<GroupIncidentSeverity?> pickEmergencySeverity(
           children: [
             Text(
               'Gravedad de la emergencia',
-              style: Theme.of(context).textTheme.titleMedium,
+              style: HubStyle.sectionTitle(),
             ),
             const SizedBox(height: 6),
             Text(
               'Si eliges Urgente · 112 se avisará al grupo y se abrirá el marcador del 112.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+              style: HubStyle.caption(),
             ),
             const SizedBox(height: 12),
             for (final s in GroupIncidentSeverity.values)
               Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: s == GroupIncidentSeverity.critica
-                        ? const Color(0xFFB71C1C)
-                        : const Color(0xFFC62828),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  style: HubStyle.filledButtonStyle().copyWith(
+                    backgroundColor: WidgetStatePropertyAll(
+                      s == GroupIncidentSeverity.critica
+                          ? const Color(0xFFB71C1C)
+                          : const Color(0xFFC62828),
+                    ),
                   ),
                   onPressed: () => Navigator.pop(context, s),
                   child: Text(s.label),

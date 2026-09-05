@@ -1,6 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:moto_amg/core/constants/app_constants.dart';
+import 'package:moto_amg/core/theme/hub_style.dart';
 import 'package:moto_amg/core/widgets/app_brand_title.dart';
 import 'package:moto_amg/features/auth/domain/entities/app_user.dart';
 import 'package:moto_amg/features/auth/presentation/providers/auth_providers.dart';
@@ -91,11 +92,27 @@ class _GuestJoinView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final busy = ref.watch(groupActionControllerProvider).isLoading;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bg = isDark ? Theme.of(context).colorScheme.surface : HubStyle.surface;
+    final onBg = isDark
+        ? Theme.of(context).colorScheme.onSurface
+        : HubStyle.title;
 
     return Scaffold(
+      backgroundColor: bg,
       appBar: AppBar(
+        backgroundColor: bg,
+        foregroundColor: onBg,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        automaticallyImplyLeading: false,
         title: const AppBrandTitle(),
-        actions: const [AccountMenuButton()],
+        actions: const [
+          AccountMenuButton(),
+          SizedBox(width: 8),
+        ],
+        iconTheme: IconThemeData(color: onBg),
       ),
       body: SafeArea(
         child: LayoutBuilder(
@@ -109,24 +126,35 @@ class _GuestJoinView extends ConsumerWidget {
                   children: [
                     Text(
                       'Hola, ${user.displayName}',
-                      style: Theme.of(context).textTheme.headlineSmall,
+                      style: HubStyle.headline(),
                     ),
                     const SizedBox(height: 12),
-                    const Align(
+                    Align(
                       alignment: Alignment.centerLeft,
                       child: Chip(
-                        avatar: Icon(Icons.badge_outlined, size: 18),
-                        label: Text('Cuenta de invitado'),
+                        avatar: Icon(
+                          Icons.badge_outlined,
+                          size: 18,
+                          color: HubStyle.accent,
+                        ),
+                        label: Text(
+                          'Cuenta de invitado',
+                          style: HubStyle.caption(color: HubStyle.title),
+                        ),
+                        backgroundColor: HubStyle.accent.withValues(alpha: 0.12),
+                        side: BorderSide.none,
                       ),
                     ),
                     const SizedBox(height: 12),
-                    const Text(
+                    Text(
                       'Pide el código al que organiza la ruta. Al cerrar sesión se '
                       'borra todo y no se puede recuperar. Si quieres guardar grupos, '
                       'crea una cuenta con usuario o con correo.',
+                      style: HubStyle.body(),
                     ),
                     const SizedBox(height: 32),
                     FilledButton.icon(
+                      style: HubStyle.filledButtonStyle(enabled: !busy),
                       onPressed: busy ? null : () => _joinGroup(context, ref),
                       icon: const Icon(Icons.vpn_key_outlined),
                       label: const Text('Unirme con un código'),
@@ -191,11 +219,23 @@ class _InGroupView extends ConsumerWidget {
     final landscape =
         MediaQuery.orientationOf(context) == Orientation.landscape;
     final canPrepareRoute = groupAsync.valueOrNull?.isAdmin(user.uid) ?? false;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bg = isDark ? Theme.of(context).colorScheme.surface : HubStyle.surface;
+    final onBg = isDark
+        ? Theme.of(context).colorScheme.onSurface
+        : HubStyle.title;
 
     return Scaffold(
+      backgroundColor: bg,
       appBar: AppBar(
+        backgroundColor: bg,
+        foregroundColor: onBg,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
         toolbarHeight: landscape ? 44 : kToolbarHeight,
-                leading: user.isAnonymous
+        iconTheme: IconThemeData(color: onBg),
+        leading: user.isAnonymous
             ? null
             : IconButton(
                 tooltip: 'Mis grupos',
@@ -217,21 +257,26 @@ class _InGroupView extends ConsumerWidget {
                     : (groupName ?? AppConstants.appName),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
+                style: HubStyle.pageTitle(color: onBg),
               )
             : Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(groupName ?? AppConstants.appName),
+                  Text(
+                    groupName ?? AppConstants.appName,
+                    style: HubStyle.pageTitle(color: onBg),
+                  ),
                   if (memberCount > 0)
                     Text(
                       memberCount == 1 ? '1 motero' : '$memberCount moteros',
-                      style: Theme.of(context).textTheme.labelSmall,
+                      style: HubStyle.caption(),
                     ),
                 ],
               ),
         actions: [
           if (canPrepareRoute)
             TextButton.icon(
+              style: HubStyle.textButtonStyle(),
               onPressed: busy
                   ? null
                   : () {
@@ -262,8 +307,9 @@ class _InGroupView extends ConsumerWidget {
                   },
             icon: Badge(
               isLabelVisible: memberCount > 0,
+              backgroundColor: HubStyle.accent,
               label: Text('$memberCount'),
-              child: const Icon(Icons.groups_outlined),
+              child: Icon(Icons.groups_outlined, color: onBg),
             ),
           ),
           const AccountMenuButton(),
@@ -315,18 +361,24 @@ class _GroupLoadError extends StatelessWidget {
           const Spacer(),
           Text(
             'No se pudo abrir el grupo.',
-            style: Theme.of(context).textTheme.titleMedium,
+            style: HubStyle.sectionTitle(),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'Prueba otra vez. Si sigue igual, continúa sin grupo y únete con el código.',
+            style: HubStyle.body(),
             textAlign: TextAlign.center,
           ),
           const Spacer(),
-          FilledButton(onPressed: onRetry, child: const Text('Reintentar')),
+          FilledButton(
+            style: HubStyle.filledButtonStyle(),
+            onPressed: onRetry,
+            child: const Text('Reintentar'),
+          ),
           const SizedBox(height: 12),
           OutlinedButton(
+            style: HubStyle.outlinedButtonStyle(),
             onPressed: onLeave,
             child: const Text('Continuar sin grupo'),
           ),
@@ -348,9 +400,13 @@ class _ClosedGroupView extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text('Este grupo ya está cerrado.'),
+          Text('Este grupo ya está cerrado.', style: HubStyle.body()),
           const Spacer(),
-          FilledButton(onPressed: onLeave, child: const Text('Volver')),
+          FilledButton(
+            style: HubStyle.filledButtonStyle(),
+            onPressed: onLeave,
+            child: const Text('Volver'),
+          ),
         ],
       ),
     );

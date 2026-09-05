@@ -1,4 +1,5 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:moto_amg/core/theme/hub_style.dart';
 import 'package:moto_amg/features/settings/presentation/help/app_help_content.dart';
 
 enum AppHelpDocumentKind { quickGuide, fullManual, faq }
@@ -33,32 +34,26 @@ class AppHelpDocumentScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: AppBar(title: Text(kind.title)),
+      backgroundColor: isDark ? null : HubStyle.surface,
+      appBar: HubStyle.appBar(titleText: kind.title),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
         children: [
-          Text(
-            kind.subtitle,
-            style: textTheme.bodyMedium?.copyWith(
-              color: colors.onSurfaceVariant,
-              height: 1.35,
-            ),
-          ),
+          Text(kind.subtitle, style: HubStyle.body()),
           const SizedBox(height: 16),
           if (kind == AppHelpDocumentKind.faq)
-            ..._faqCards(context)
+            ..._faqCards(isDark)
           else
-            ..._sectionCards(context),
+            ..._sectionCards(isDark),
         ],
       ),
     );
   }
 
-  List<Widget> _sectionCards(BuildContext context) {
+  List<Widget> _sectionCards(bool isDark) {
     final sections = switch (kind) {
       AppHelpDocumentKind.quickGuide => quickGuideSections,
       AppHelpDocumentKind.fullManual => fullManualSections,
@@ -66,16 +61,20 @@ class AppHelpDocumentScreen extends StatelessWidget {
     };
     return [
       for (final section in sections) ...[
-        _SectionCard(title: section.title, body: section.body),
+        _SectionCard(title: section.title, body: section.body, isDark: isDark),
         const SizedBox(height: 10),
       ],
     ];
   }
 
-  List<Widget> _faqCards(BuildContext context) {
+  List<Widget> _faqCards(bool isDark) {
     return [
       for (final item in faqItems) ...[
-        _FaqTile(question: item.question, answer: item.answer),
+        _FaqTile(
+          question: item.question,
+          answer: item.answer,
+          isDark: isDark,
+        ),
         const SizedBox(height: 8),
       ],
     ];
@@ -83,38 +82,38 @@ class AppHelpDocumentScreen extends StatelessWidget {
 }
 
 class _SectionCard extends StatelessWidget {
-  const _SectionCard({required this.title, required this.body});
+  const _SectionCard({
+    required this.title,
+    required this.body,
+    required this.isDark,
+  });
 
   final String title;
   final String body;
+  final bool isDark;
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              body,
-              style: textTheme.bodyMedium?.copyWith(
-                color: colors.onSurfaceVariant,
-                height: 1.45,
-              ),
-            ),
-          ],
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: isDark ? null : HubStyle.cardShadow,
+      ),
+      child: Material(
+        color: isDark
+            ? Theme.of(context).colorScheme.surfaceContainerHighest
+            : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: HubStyle.sectionTitle()),
+              const SizedBox(height: 8),
+              Text(body, style: HubStyle.body()),
+            ],
+          ),
         ),
       ),
     );
@@ -122,38 +121,46 @@ class _SectionCard extends StatelessWidget {
 }
 
 class _FaqTile extends StatelessWidget {
-  const _FaqTile({required this.question, required this.answer});
+  const _FaqTile({
+    required this.question,
+    required this.answer,
+    required this.isDark,
+  });
 
   final String question;
   final String answer;
+  final bool isDark;
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-
-    return Card(
-      margin: EdgeInsets.zero,
-      clipBehavior: Clip.antiAlias,
-      child: ExpansionTile(
-        tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        title: Text(
-          question,
-          style: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
-        ),
-        children: [
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              answer,
-              style: textTheme.bodyMedium?.copyWith(
-                color: colors.onSurfaceVariant,
-                height: 1.45,
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: isDark ? null : HubStyle.cardShadow,
+      ),
+      child: Material(
+        color: isDark
+            ? Theme.of(context).colorScheme.surfaceContainerHighest
+            : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        clipBehavior: Clip.antiAlias,
+        child: Theme(
+          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+          child: ExpansionTile(
+            tilePadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            iconColor: HubStyle.accent,
+            collapsedIconColor: HubStyle.subtitle,
+            title: Text(question, style: HubStyle.sectionTitle()),
+            children: [
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(answer, style: HubStyle.body()),
               ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

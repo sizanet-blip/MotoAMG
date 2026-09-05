@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:moto_amg/core/constants/navigation_constants.dart';
+import 'package:moto_amg/core/theme/hub_style.dart';
 import 'package:moto_amg/core/utils/distance_format.dart';
 import 'package:moto_amg/core/utils/external_navigation.dart';
 import 'package:moto_amg/core/utils/gps_status.dart';
@@ -39,7 +40,6 @@ import 'package:moto_amg/features/navigation/presentation/providers/navigation_p
 import 'package:moto_amg/features/navigation/presentation/screens/navigation_hub_screen.dart';
 import 'package:moto_amg/features/navigation/presentation/helpers/enrich_route_limits_before_navigation.dart';
 import 'package:moto_amg/features/navigation/presentation/screens/navigation_hud_screen.dart';
-import 'package:moto_amg/features/navigation/presentation/theme/navigation_hud_theme.dart';
 import 'package:moto_amg/features/navigation/presentation/widgets/navigation_map_my_location_button.dart';
 import 'package:moto_amg/features/navigation/presentation/widgets/navigation_map_zoom_controls.dart';
 import 'package:moto_amg/features/navigation/presentation/widgets/offline_map_banner.dart';
@@ -518,13 +518,17 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
                     ],
                     if (locationsAsync.hasError) ...[
                       const SizedBox(height: 8),
-                      Material(
-                        color: Theme.of(context).colorScheme.errorContainer,
-                        borderRadius: BorderRadius.circular(8),
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFEE2E2),
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: HubStyle.cardShadow,
+                        ),
                         child: Padding(
-                          padding: const EdgeInsets.all(8),
+                          padding: const EdgeInsets.all(10),
                           child: Text(
                             'No se ven las motos del grupo. ${locationsAsync.error}',
+                            style: HubStyle.caption(color: HubStyle.title),
                           ),
                         ),
                       ),
@@ -666,7 +670,6 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
             child: IntercomControlsBar(
               groupId: widget.groupId,
               compact: true,
-              dark: true,
             ),
           ),
         if (landscape)
@@ -676,22 +679,26 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onLongPress: () {},
-              child: Material(
-                color: NavigationHudTheme.panel.withValues(alpha: 0.92),
-                elevation: 4,
-                borderRadius: BorderRadius.circular(14),
-                clipBehavior: Clip.antiAlias,
-                child: IntrinsicHeight(
-                  child: SizedBox(
-                    width: 48,
-                    child: GroupIncidentSessionPanel(
-                      groupId: widget.groupId,
-                      user: widget.user,
-                      compact: true,
-                      vertical: true,
-                      embedded: true,
-                      showBanner: false,
-                      drivingMode: true,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: HubStyle.surface.withValues(alpha: 0.97),
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: HubStyle.cardShadow,
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: IntrinsicHeight(
+                    child: SizedBox(
+                      width: 48,
+                      child: GroupIncidentSessionPanel(
+                        groupId: widget.groupId,
+                        user: widget.user,
+                        compact: true,
+                        vertical: true,
+                        embedded: true,
+                        showBanner: false,
+                        drivingMode: true,
+                      ),
                     ),
                   ),
                 ),
@@ -707,13 +714,12 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
               top: false,
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(6, 0, 6, 4),
-                child: Material(
-                  elevation: 6,
-                  color: Theme.of(context)
-                      .colorScheme
-                      .surface
-                      .withValues(alpha: 0.97),
-                  borderRadius: BorderRadius.circular(12),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: HubStyle.surface.withValues(alpha: 0.97),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: HubStyle.cardShadow,
+                  ),
                   child: Padding(
                     padding: const EdgeInsets.all(4),
                     child: Column(
@@ -1638,16 +1644,20 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('¿Quitar la ruta del grupo?'),
-        content: const Text(
+        backgroundColor: HubStyle.surface,
+        title: Text('¿Quitar la ruta del grupo?', style: HubStyle.sectionTitle()),
+        content: Text(
           'El grupo dejará de ver esta ruta en el mapa.',
+          style: HubStyle.body(),
         ),
         actions: [
           TextButton(
+            style: HubStyle.textButtonStyle(),
             onPressed: () => Navigator.pop(context, false),
             child: const Text('Cancelar'),
           ),
           FilledButton(
+            style: HubStyle.filledButtonStyle(),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Quitar'),
           ),
@@ -1706,18 +1716,19 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
       return const SizedBox.shrink();
     }
 
-    final colors = Theme.of(context).colorScheme;
     final dest = sharedRoute?.destinationDisplay.trim() ?? '';
     final shortDest = dest.isEmpty
         ? 'Ruta del grupo'
         : (dest.length > 42 ? '${dest.substring(0, 40)}…' : dest);
 
-    return Material(
-      elevation: 2,
-      color: offline
-          ? colors.inverseSurface.withValues(alpha: 0.94)
-          : colors.primaryContainer.withValues(alpha: 0.92),
-      borderRadius: BorderRadius.circular(8),
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: offline
+            ? const Color(0xFF1F2937).withValues(alpha: 0.94)
+            : HubStyle.accent.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: HubStyle.cardShadow,
+      ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         child: Row(
@@ -1725,7 +1736,7 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
             Icon(
               offline ? Icons.wifi_off_rounded : Icons.map_outlined,
               size: 16,
-              color: offline ? colors.onInverseSurface : colors.onPrimaryContainer,
+              color: offline ? Colors.white : HubStyle.accent,
             ),
             const SizedBox(width: 8),
             Expanded(
@@ -1737,13 +1748,9 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
                     : 'Destino: $shortDest',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: offline
-                          ? colors.onInverseSurface
-                          : colors.onPrimaryContainer,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 12,
-                    ),
+                style: HubStyle.caption(
+                  color: offline ? Colors.white : HubStyle.title,
+                ).copyWith(fontWeight: FontWeight.w600),
               ),
             ),
             if (offline)
@@ -1756,7 +1763,7 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
                   );
                 },
                 style: TextButton.styleFrom(
-                  foregroundColor: colors.onInverseSurface,
+                  foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(horizontal: 6),
                   minimumSize: Size.zero,
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -2116,10 +2123,12 @@ class _MapLegend extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      elevation: 1,
-      borderRadius: BorderRadius.circular(8),
-      color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.94),
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: HubStyle.surface.withValues(alpha: 0.96),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: HubStyle.cardShadow,
+      ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         child: Row(
@@ -2155,7 +2164,7 @@ class _LegendDot extends StatelessWidget {
           child: const SizedBox(width: 10, height: 10),
         ),
         const SizedBox(width: 6),
-        Text(label, style: const TextStyle(fontSize: 12)),
+        Text(label, style: HubStyle.caption(color: HubStyle.title)),
       ],
     );
   }
@@ -2169,10 +2178,12 @@ class _WaitingBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      elevation: 1,
-      borderRadius: BorderRadius.circular(8),
-      color: Theme.of(context).colorScheme.tertiaryContainer,
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: HubStyle.accent.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: HubStyle.cardShadow,
+      ),
       child: Padding(
         padding: EdgeInsets.symmetric(
           horizontal: 10,
@@ -2182,10 +2193,9 @@ class _WaitingBanner extends StatelessWidget {
           names.length == 1
               ? '1 motero aún no manda GPS'
               : '${names.length} moteros aún no mandan GPS',
-          style: TextStyle(
-            fontSize: compact ? 11 : 12,
-            color: Theme.of(context).colorScheme.onTertiaryContainer,
-          ),
+          style: HubStyle.caption(
+            color: HubStyle.title,
+          ).copyWith(fontSize: compact ? 11 : 12),
         ),
       ),
     );
@@ -2228,7 +2238,6 @@ class _GroupMapQuickActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
     final tiles = <Widget>[
       if (onPrepareRoute != null)
         _QuickActionTile(
@@ -2309,10 +2318,12 @@ class _GroupMapQuickActions extends StatelessWidget {
       );
     }
 
-    return Material(
-      elevation: 6,
-      borderRadius: BorderRadius.circular(16),
-      color: colors.surface.withValues(alpha: 0.96),
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: HubStyle.surface.withValues(alpha: 0.97),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: HubStyle.cardShadow,
+      ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
         child: row,
@@ -2340,11 +2351,10 @@ class _QuickActionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
     final bg = emphasized
-        ? colors.primaryContainer
-        : colors.surfaceContainerHighest;
-    final fg = emphasized ? colors.onPrimaryContainer : colors.onSurfaceVariant;
+        ? HubStyle.accent.withValues(alpha: 0.14)
+        : const Color(0xFFF3F4F6);
+    final fg = emphasized ? HubStyle.accent : HubStyle.subtitle;
 
     Widget circle = Material(
       color: bg,
@@ -2358,14 +2368,21 @@ class _QuickActionTile extends StatelessWidget {
                 final selected = await showModalBottomSheet<int>(
                   context: context,
                   showDragHandle: true,
+                  backgroundColor: HubStyle.surface,
                   builder: (ctx) => SafeArea(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         for (var i = 0; i < menuItems.length; i++)
                           ListTile(
-                            leading: Icon(menuItems[i].icon),
-                            title: Text(menuItems[i].label),
+                            leading: Icon(
+                              menuItems[i].icon,
+                              color: HubStyle.accent,
+                            ),
+                            title: Text(
+                              menuItems[i].label,
+                              style: HubStyle.body(color: HubStyle.title),
+                            ),
                             onTap: () => Navigator.pop(ctx, i),
                           ),
                         const SizedBox(height: 8),
@@ -2390,11 +2407,11 @@ class _QuickActionTile extends StatelessWidget {
                   top: 4,
                   child: CircleAvatar(
                     radius: 8,
-                    backgroundColor: colors.error,
+                    backgroundColor: HubStyle.accent,
                     child: Text(
                       badge!,
-                      style: TextStyle(
-                        color: colors.onError,
+                      style: const TextStyle(
+                        color: Colors.white,
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
                       ),
@@ -2417,11 +2434,7 @@ class _QuickActionTile extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: colors.onSurfaceVariant,
-                fontWeight: FontWeight.w600,
-                fontSize: 11,
-              ),
+          style: HubStyle.caption(color: HubStyle.subtitle),
         ),
       ],
     );
@@ -2445,10 +2458,11 @@ class _GroupMapRoundButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final button = Material(
       color: emphasized
-          ? NavigationHudTheme.accent.withValues(alpha: 0.95)
-          : NavigationHudTheme.panel.withValues(alpha: 0.92),
+          ? HubStyle.accent
+          : HubStyle.surface.withValues(alpha: 0.97),
       shape: const CircleBorder(),
       elevation: 3,
+      shadowColor: Colors.black.withValues(alpha: 0.12),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         customBorder: const CircleBorder(),
@@ -2458,7 +2472,7 @@ class _GroupMapRoundButton extends StatelessWidget {
           height: 44,
           child: Icon(
             icon,
-            color: emphasized ? Colors.white : NavigationHudTheme.textPrimary,
+            color: emphasized ? Colors.white : HubStyle.title,
             size: 22,
           ),
         ),

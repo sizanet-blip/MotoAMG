@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:moto_amg/core/theme/hub_style.dart';
 
 /// Panel inferior sobre el mapa que se puede ocultar y mostrar.
 ///
@@ -112,23 +113,14 @@ class _CollapsibleMapBottomPanelState extends State<CollapsibleMapBottomPanel> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        widget.title,
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleMedium
-                            ?.copyWith(fontWeight: FontWeight.w700),
-                      ),
+                      Text(widget.title, style: HubStyle.sectionTitle()),
                       if (!_expanded && widget.subtitle != null) ...[
                         const SizedBox(height: 2),
                         Text(
                           widget.subtitle!,
                           maxLines: widget.sidePanel ? 2 : 1,
                           overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodySmall
-                              ?.copyWith(color: colors.onSurfaceVariant),
+                          style: HubStyle.caption(),
                         ),
                       ],
                     ],
@@ -183,10 +175,12 @@ class _CollapsibleMapBottomPanelState extends State<CollapsibleMapBottomPanel> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Material(
       elevation: 10,
-      color: colors.surface,
+      color: isDark ? colors.surface : HubStyle.surface,
+      shadowColor: Colors.black.withValues(alpha: 0.18),
       borderRadius: _panelRadius,
       clipBehavior: Clip.antiAlias,
       child: SafeArea(

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:moto_amg/core/utils/spain_data_freshness.dart';
 import 'package:moto_amg/core/utils/distance_format.dart';
 import 'package:moto_amg/core/utils/navigation_duration_format.dart';
+import 'package:moto_amg/core/theme/hub_style.dart';
 import 'package:moto_amg/core/widgets/map_quick_action_tile.dart';
 import 'package:moto_amg/features/auth/domain/entities/app_user.dart';
 import 'package:moto_amg/features/groups/presentation/providers/group_providers.dart';
@@ -284,17 +285,21 @@ class _RoutePreviewScreenState extends ConsumerState<RoutePreviewScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('¿Quitar la ruta del grupo?'),
-        content: const Text(
+        backgroundColor: HubStyle.surface,
+        title: Text('¿Quitar la ruta del grupo?', style: HubStyle.sectionTitle()),
+        content: Text(
           'El grupo dejará de ver esta ruta en el mapa. '
           'Podrás compartir otra más adelante.',
+          style: HubStyle.body(),
         ),
         actions: [
           TextButton(
+            style: HubStyle.textButtonStyle(),
             onPressed: () => Navigator.pop(context, false),
             child: const Text('Cancelar'),
           ),
           FilledButton(
+            style: HubStyle.filledButtonStyle(),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Quitar'),
           ),
@@ -976,16 +981,12 @@ class _RoutePreviewSheet extends StatelessWidget {
               message: 'Iniciar la navegación con la ruta seleccionada',
               child: FilledButton(
                 onPressed: enriching ? null : onStart,
-                style: FilledButton.styleFrom(
-                  minimumSize: Size.fromHeight(dense ? 44 : 48),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+                style: HubStyle.filledButtonStyle(enabled: !enriching).copyWith(
+                  minimumSize: WidgetStatePropertyAll(
+                    Size.fromHeight(dense ? 44 : 48),
                   ),
                 ),
-                child: const Text(
-                  'Empezar navegación',
-                  style: TextStyle(fontWeight: FontWeight.w700),
-                ),
+                child: const Text('Empezar navegación'),
               ),
             ),
           ],

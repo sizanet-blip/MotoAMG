@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:moto_amg/core/theme/hub_style.dart';
 import 'package:moto_amg/core/utils/distance_format.dart';
 import 'package:moto_amg/core/utils/gps_status.dart';
 import 'package:moto_amg/features/auth/domain/entities/app_user.dart';
@@ -135,15 +136,9 @@ class GroupPackListSheet extends ConsumerWidget {
             child: Row(
               children: [
                 Expanded(
-                  child: Text(
-                    'Pelotón',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
+                  child: Text('Pelotón', style: HubStyle.sectionTitle()),
                 ),
-                Text(
-                  '${rows.length}',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
+                Text('${rows.length}', style: HubStyle.sectionTitle()),
               ],
             ),
           ),

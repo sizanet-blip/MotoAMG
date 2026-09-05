@@ -1,5 +1,5 @@
 ﻿import 'package:flutter/material.dart';
-import 'package:moto_amg/features/navigation/presentation/theme/navigation_hud_theme.dart';
+import 'package:moto_amg/core/theme/hub_style.dart';
 
 class NavigationStatusBar extends StatelessWidget {
   const NavigationStatusBar({
@@ -65,6 +65,7 @@ class NavigationStatusBar extends StatelessWidget {
           value: speedLimitKmh?.toString() ?? '—',
           unit: 'km/h',
           compact: compact,
+          onDark: overspeed,
         ),
         _Divider(overspeed: overspeed, compact: compact),
         _StatBlock(
@@ -72,6 +73,7 @@ class NavigationStatusBar extends StatelessWidget {
           value: etaText,
           unit: remainingText,
           compact: compact,
+          onDark: overspeed,
         ),
         _Divider(overspeed: overspeed, compact: compact),
         _StatBlock(
@@ -79,6 +81,7 @@ class NavigationStatusBar extends StatelessWidget {
           value: distanceLabel,
           unit: '',
           compact: compact,
+          onDark: overspeed,
         ),
       ],
     );
@@ -96,13 +99,11 @@ class NavigationStatusBar extends StatelessWidget {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 220),
       decoration: BoxDecoration(
-        color: overspeed
-            ? const Color(0xFF3B1010)
-            : NavigationHudTheme.panel,
+        color: overspeed ? const Color(0xFF3B1010) : HubStyle.surface,
         borderRadius: BorderRadius.vertical(
           top: Radius.circular(compact ? 14 : 24),
         ),
-        boxShadow: const [NavigationHudTheme.panelShadow],
+        boxShadow: HubStyle.cardShadow,
         border: overspeed
             ? Border(
                 top: BorderSide(
@@ -152,33 +153,33 @@ class _SideStatusPanel extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-            _SideStat(
-              label: overspeed ? 'Exceso' : 'Velocidad',
-              value: '${speedKmh.round()}',
-              unit: 'km/h',
-              emphasize: overspeed,
-              danger: overspeed,
-            ),
-            const _SideDivider(),
-            _SideStat(
-              label: 'Límite',
-              value: speedLimitKmh?.toString() ?? '—',
-              unit: 'km/h',
-            ),
-            const _SideDivider(),
-            _SideStat(
-              label: 'Llegada',
-              value: etaText,
-              unit: remainingText,
-            ),
-            const _SideDivider(),
-            _SideStat(
-              label: 'Restante',
-              value: distanceLabel,
-              unit: '',
-            ),
-          ],
-        ),
+          _SideStat(
+            label: overspeed ? 'Exceso' : 'Velocidad',
+            value: '${speedKmh.round()}',
+            unit: 'km/h',
+            emphasize: overspeed,
+            danger: overspeed,
+          ),
+          const _SideDivider(),
+          _SideStat(
+            label: 'Límite',
+            value: speedLimitKmh?.toString() ?? '—',
+            unit: 'km/h',
+          ),
+          const _SideDivider(),
+          _SideStat(
+            label: 'Llegada',
+            value: etaText,
+            unit: remainingText,
+          ),
+          const _SideDivider(),
+          _SideStat(
+            label: 'Restante',
+            value: distanceLabel,
+            unit: '',
+          ),
+        ],
+      ),
     );
   }
 }
@@ -203,11 +204,10 @@ class _SideStat extends StatelessWidget {
     final valueColor = danger
         ? const Color(0xFFFF5252)
         : emphasize
-            ? NavigationHudTheme.warning
-            : NavigationHudTheme.textPrimary;
-    final labelColor = danger
-        ? const Color(0xFFFF8A80)
-        : NavigationHudTheme.textSecondary;
+            ? const Color(0xFFB45309)
+            : HubStyle.title;
+    final labelColor =
+        danger ? const Color(0xFFFF8A80) : HubStyle.subtitle;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
@@ -215,8 +215,7 @@ class _SideStat extends StatelessWidget {
         children: [
           Text(
             label,
-            style: TextStyle(
-              color: labelColor,
+            style: HubStyle.caption(color: labelColor).copyWith(
               fontSize: 9,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.2,
@@ -226,8 +225,7 @@ class _SideStat extends StatelessWidget {
           Text(
             value,
             textAlign: TextAlign.center,
-            style: TextStyle(
-              color: valueColor,
+            style: HubStyle.sectionTitle(color: valueColor).copyWith(
               fontSize: emphasize ? 18 : 15,
               fontWeight: FontWeight.w800,
               height: 1.05,
@@ -238,8 +236,7 @@ class _SideStat extends StatelessWidget {
             Text(
               unit,
               textAlign: TextAlign.center,
-              style: TextStyle(
-                color: labelColor,
+              style: HubStyle.caption(color: labelColor).copyWith(
                 fontSize: 9,
                 fontWeight: danger ? FontWeight.w600 : FontWeight.w400,
               ),
@@ -260,7 +257,7 @@ class _SideDivider extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Container(
         height: 1,
-        color: NavigationHudTheme.panelElevated,
+        color: HubStyle.subtitle.withValues(alpha: 0.18),
       ),
     );
   }
@@ -279,6 +276,7 @@ class _SpeedBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final onDark = overspeed;
     return Expanded(
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 220),
@@ -299,10 +297,11 @@ class _SpeedBlock extends StatelessWidget {
           children: [
             Text(
               overspeed ? 'Exceso' : 'Velocidad',
-              style: TextStyle(
-                color: overspeed
+              style: HubStyle.caption(
+                color: onDark
                     ? const Color(0xFFFF8A80)
-                    : NavigationHudTheme.textSecondary,
+                    : HubStyle.subtitle,
+              ).copyWith(
                 fontSize: compact ? 9 : 11,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 0.2,
@@ -314,7 +313,7 @@ class _SpeedBlock extends StatelessWidget {
               style: TextStyle(
                 color: overspeed
                     ? const Color(0xFFFF5252)
-                    : NavigationHudTheme.textPrimary,
+                    : HubStyle.title,
                 fontSize: compact
                     ? (overspeed ? 20.0 : 16.0)
                     : (overspeed ? 26.0 : 20.0),
@@ -325,10 +324,11 @@ class _SpeedBlock extends StatelessWidget {
             SizedBox(height: compact ? 0 : 2),
             Text(
               'km/h',
-              style: TextStyle(
-                color: overspeed
+              style: HubStyle.caption(
+                color: onDark
                     ? const Color(0xFFFF8A80)
-                    : NavigationHudTheme.textSecondary,
+                    : HubStyle.subtitle,
+              ).copyWith(
                 fontSize: compact ? 9 : 11,
                 fontWeight: overspeed ? FontWeight.w600 : FontWeight.w400,
               ),
@@ -355,7 +355,7 @@ class _Divider extends StatelessWidget {
       margin: EdgeInsets.symmetric(horizontal: compact ? 2 : 4),
       color: overspeed
           ? const Color(0xFFFF5252).withValues(alpha: 0.35)
-          : NavigationHudTheme.panelElevated,
+          : HubStyle.subtitle.withValues(alpha: 0.18),
     );
   }
 }
@@ -366,22 +366,26 @@ class _StatBlock extends StatelessWidget {
     required this.value,
     required this.unit,
     this.compact = false,
+    this.onDark = false,
   });
 
   final String label;
   final String value;
   final String unit;
   final bool compact;
+  final bool onDark;
 
   @override
   Widget build(BuildContext context) {
+    final primary = onDark ? Colors.white : HubStyle.title;
+    final secondary =
+        onDark ? Colors.white.withValues(alpha: 0.75) : HubStyle.subtitle;
     return Expanded(
       child: Column(
         children: [
           Text(
             label,
-            style: TextStyle(
-              color: NavigationHudTheme.textSecondary,
+            style: HubStyle.caption(color: secondary).copyWith(
               fontSize: compact ? 9 : 11,
               fontWeight: FontWeight.w600,
               letterSpacing: 0.2,
@@ -390,8 +394,7 @@ class _StatBlock extends StatelessWidget {
           SizedBox(height: compact ? 1 : 4),
           Text(
             value,
-            style: TextStyle(
-              color: NavigationHudTheme.textPrimary,
+            style: HubStyle.sectionTitle(color: primary).copyWith(
               fontSize: compact ? 15 : 20,
               fontWeight: FontWeight.w700,
               height: 1.1,
@@ -401,8 +404,7 @@ class _StatBlock extends StatelessWidget {
             SizedBox(height: compact ? 0 : 2),
             Text(
               unit,
-              style: TextStyle(
-                color: NavigationHudTheme.textSecondary,
+              style: HubStyle.caption(color: secondary).copyWith(
                 fontSize: compact ? 9 : 11,
               ),
               textAlign: TextAlign.center,

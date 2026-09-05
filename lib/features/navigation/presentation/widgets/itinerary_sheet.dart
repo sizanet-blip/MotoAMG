@@ -1,6 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:moto_amg/core/constants/navigation_constants.dart';
+import 'package:moto_amg/core/theme/hub_style.dart';
 import 'package:moto_amg/core/widgets/map_quick_action_tile.dart';
 import 'package:moto_amg/features/auth/domain/entities/user_vehicle.dart';
 import 'package:moto_amg/features/auth/presentation/providers/auth_providers.dart';
@@ -37,7 +38,6 @@ class ItinerarySheet extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
     final stops = itinerary.stops;
     final landscape =
         MediaQuery.orientationOf(context) == Orientation.landscape;
@@ -82,18 +82,18 @@ class ItinerarySheet extends ConsumerWidget {
 
     final fieldDecoration = InputDecoration(
       filled: true,
-      fillColor: colors.surfaceContainerHighest.withValues(alpha: 0.5),
+      fillColor: const Color(0xFFF9FAFB),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide.none,
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide.none,
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: colors.primary, width: 1.5),
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: HubStyle.accent, width: 1.5),
       ),
       isDense: true,
       contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
@@ -207,9 +207,7 @@ class ItinerarySheet extends ConsumerWidget {
                   child: Text(
                     'Elige origen y destino en el mapa o con búsqueda.',
                     textAlign: TextAlign.center,
-                    style: textTheme.bodyMedium?.copyWith(
-                      color: colors.onSurfaceVariant,
-                    ),
+                    style: HubStyle.body(),
                   ),
                 )
               else
@@ -247,7 +245,7 @@ class ItinerarySheet extends ConsumerWidget {
                           ? const Color(0xFF2E7D32)
                           : isDest
                               ? const Color(0xFFC62828)
-                              : colors.primary;
+                              : HubStyle.accent;
                       return Padding(
                         key: ValueKey(stop.id),
                         padding: const EdgeInsets.only(bottom: 4),
@@ -292,9 +290,7 @@ class ItinerarySheet extends ConsumerWidget {
                                       _shortLabel(stop.label),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style: textTheme.bodyMedium?.copyWith(
-                                        fontWeight: FontWeight.w500,
-                                      ),
+                                      style: HubStyle.body(color: HubStyle.title),
                                     ),
                                   ),
                                   IconButton(
@@ -338,10 +334,11 @@ class ItinerarySheet extends ConsumerWidget {
                     : 'Calcular la ruta entre origen y destino',
                 child: FilledButton(
                   onPressed: busy || !itinerary.canPlan ? null : onPlanRoute,
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size.fromHeight(44),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+                  style: HubStyle.filledButtonStyle(
+                    enabled: !busy && itinerary.canPlan,
+                  ).copyWith(
+                    minimumSize: const WidgetStatePropertyAll(
+                      Size.fromHeight(44),
                     ),
                   ),
                   child: busy
@@ -357,7 +354,6 @@ class ItinerarySheet extends ConsumerWidget {
                           itinerary.hasIntermediateStops
                               ? 'Ver circuito'
                               : 'Ver ruta',
-                          style: const TextStyle(fontWeight: FontWeight.w700),
                         ),
                 ),
               ),

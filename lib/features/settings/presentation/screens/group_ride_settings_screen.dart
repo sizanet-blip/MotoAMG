@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:moto_amg/core/theme/hub_style.dart';
 import 'package:moto_amg/core/utils/distance_format.dart';
 import 'package:moto_amg/features/groups/data/repositories/group_pack_alert_repository.dart';
 import 'package:moto_amg/features/groups/presentation/providers/group_providers.dart';
@@ -14,21 +15,19 @@ class GroupRideSettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final prefs = ref.watch(groupPackAlertProvider);
     final controller = ref.read(groupPackAlertProvider.notifier);
-    final colors = Theme.of(context).colorScheme;
     final mutedNow = prefs.isPackAlertsMutedAt(DateTime.now());
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Grupo en ruta')),
+      backgroundColor: isDark ? null : HubStyle.surface,
+      appBar: HubStyle.appBar(titleText: 'Grupo en ruta'),
       body: ListView(
         padding: const EdgeInsets.only(bottom: 32),
         children: [
           const SizedBox(height: 8),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: Text(
-              'Motos en el mapa',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
+            child: Text('Motos en el mapa', style: HubStyle.sectionTitle()),
           ),
           SwitchListTile(
             secondary: const Icon(Icons.groups_outlined),
@@ -41,6 +40,8 @@ class GroupRideSettingsScreen extends ConsumerWidget {
             value: prefs.showGroupOnNavigation,
             onChanged: (value) =>
                 unawaited(controller.setShowGroupOnNavigation(value)),
+            activeThumbColor: HubStyle.accent,
+            activeTrackColor: HubStyle.accent.withValues(alpha: 0.45),
           ),
           SwitchListTile(
             secondary: const Icon(Icons.navigation_outlined),
@@ -52,16 +53,13 @@ class GroupRideSettingsScreen extends ConsumerWidget {
             value: prefs.preferExternalNavigation,
             onChanged: (value) =>
                 unawaited(controller.setPreferExternalNavigation(value)),
+            activeThumbColor: HubStyle.accent,
+            activeTrackColor: HubStyle.accent.withValues(alpha: 0.45),
           ),
           const Divider(height: 24),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: Text(
-              'Qué motos mostrar',
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: colors.onSurfaceVariant,
-                  ),
-            ),
+            child: Text('Qué motos mostrar', style: HubStyle.caption()),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -88,18 +86,13 @@ class GroupRideSettingsScreen extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
             child: Text(
               prefs.mateDisplayMode.subtitle,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: colors.onSurfaceVariant,
-                  ),
+              style: HubStyle.caption(),
             ),
           ),
           const Divider(height: 32),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: Text(
-              'Avisos del pelotón',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
+            child: Text('Avisos del pelotón', style: HubStyle.sectionTitle()),
           ),
           SwitchListTile(
             secondary: const Icon(Icons.campaign_outlined),
@@ -110,6 +103,8 @@ class GroupRideSettingsScreen extends ConsumerWidget {
             ),
             value: prefs.enabled,
             onChanged: (value) => unawaited(controller.setEnabled(value)),
+            activeThumbColor: HubStyle.accent,
+            activeTrackColor: HubStyle.accent.withValues(alpha: 0.45),
           ),
           if (prefs.enabled) ...[
             if (mutedNow)
@@ -120,6 +115,7 @@ class GroupRideSettingsScreen extends ConsumerWidget {
                   'Hasta ${_formatMuteUntil(prefs.packAlertsMutedUntil!)}',
                 ),
                 trailing: TextButton(
+                  style: HubStyle.textButtonStyle(),
                   onPressed: () =>
                       unawaited(controller.clearPackAlertsMute()),
                   child: const Text('Reactivar'),
@@ -153,10 +149,7 @@ class GroupRideSettingsScreen extends ConsumerWidget {
               ),
               trailing: Text(
                 formatRideDistance(prefs.behindMeters),
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: colors.primary,
-                      fontWeight: FontWeight.w700,
-                    ),
+                style: HubStyle.sectionTitle(color: HubStyle.accent),
               ),
             ),
             Slider(
@@ -168,6 +161,7 @@ class GroupRideSettingsScreen extends ConsumerWidget {
               max: GroupPackAlertPreferences.maxBehindMeters,
               divisions: 36,
               label: formatRideDistance(prefs.behindMeters),
+              activeColor: HubStyle.accent,
               onChanged: (value) =>
                   unawaited(controller.setBehindMeters(value)),
             ),
@@ -178,10 +172,7 @@ class GroupRideSettingsScreen extends ConsumerWidget {
               ),
               trailing: Text(
                 formatRideDistance(prefs.farMeters),
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: colors.primary,
-                      fontWeight: FontWeight.w700,
-                    ),
+                style: HubStyle.sectionTitle(color: HubStyle.accent),
               ),
             ),
             Slider(
@@ -194,12 +185,14 @@ class GroupRideSettingsScreen extends ConsumerWidget {
               max: 6000,
               divisions: 40,
               label: formatRideDistance(prefs.farMeters),
+              activeColor: HubStyle.accent,
               onChanged: (value) => unawaited(controller.setFarMeters(value)),
             ),
           ],
           Align(
             alignment: Alignment.centerRight,
             child: TextButton(
+              style: HubStyle.textButtonStyle(),
               onPressed: () => unawaited(controller.reset()),
               child: const Text('Restablecer'),
             ),

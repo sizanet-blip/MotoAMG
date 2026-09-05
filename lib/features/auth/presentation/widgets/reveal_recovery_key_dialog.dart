@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:moto_amg/core/theme/hub_style.dart';
 import 'package:moto_amg/features/auth/domain/exceptions/auth_exceptions.dart';
 import 'package:moto_amg/features/auth/presentation/providers/auth_providers.dart';
 import 'package:moto_amg/features/auth/presentation/utils/auth_validators.dart';
@@ -75,16 +76,18 @@ class _RevealRecoveryKeyDialogState
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
+      backgroundColor: HubStyle.surface,
       scrollable: true,
-      title: const Text('Ver clave de recuperación'),
+      title: Text('Ver clave de recuperación', style: HubStyle.sectionTitle()),
       content: Form(
         key: _formKey,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
+            Text(
               'Pon tu contraseña para ver la clave. Guárdala: si la olvidas '
               'no hay otra forma de recuperar la cuenta.',
+              style: HubStyle.body(),
             ),
             const SizedBox(height: 16),
             TextFormField(
@@ -92,9 +95,8 @@ class _RevealRecoveryKeyDialogState
               enabled: !_busy,
               obscureText: _obscure,
               autofillHints: const [AutofillHints.password],
-              decoration: InputDecoration(
+              decoration: HubStyle.inputDecoration(
                 labelText: 'Contraseña',
-                border: const OutlineInputBorder(),
                 suffixIcon: IconButton(
                   tooltip: _obscure ? 'Mostrar' : 'Ocultar',
                   onPressed: () => setState(() => _obscure = !_obscure),
@@ -111,16 +113,21 @@ class _RevealRecoveryKeyDialogState
       ),
       actions: [
         TextButton(
+          style: HubStyle.textButtonStyle(),
           onPressed: _busy ? null : () => Navigator.pop(context),
           child: const Text('Cancelar'),
         ),
         FilledButton(
+          style: HubStyle.filledButtonStyle(enabled: !_busy),
           onPressed: _busy ? null : _submit,
           child: _busy
               ? const SizedBox(
                   height: 20,
                   width: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
                 )
               : const Text('Ver clave'),
         ),

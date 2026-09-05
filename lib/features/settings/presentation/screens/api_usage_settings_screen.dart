@@ -2,6 +2,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:moto_amg/core/api_usage/api_usage_tracker.dart';
 import 'package:moto_amg/core/constants/navigation_constants.dart';
+import 'package:moto_amg/core/theme/hub_style.dart';
 import 'package:moto_amg/features/navigation/presentation/providers/navigation_providers.dart';
 import 'package:moto_amg/features/settings/presentation/providers/settings_providers.dart';
 import 'package:moto_amg/features/settings/presentation/screens/tomtom_route_preview_screen.dart';
@@ -17,62 +18,83 @@ class ApiUsageSettingsScreen extends ConsumerWidget {
     final tomtom = tracker.statsFor(MotoAmgApi.tomtomSnapToRoads);
     final lastRoute = tracker.lastTomTomRoute;
     final keyConfigured = NavigationConstants.tomtomApiKey.trim().isNotEmpty;
-    final theme = Theme.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Uso de APIs'),
+      backgroundColor: isDark ? null : HubStyle.surface,
+      appBar: HubStyle.appBar(
+        titleText: 'Uso de APIs',
         actions: [
           TextButton(
+            style: HubStyle.textButtonStyle(),
             onPressed: () => tracker.reset(),
             child: const Text('Reiniciar'),
           ),
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
         children: [
           Text(
             'TomTom mejora los límites de velocidad al empezar a navegar. '
             'Por defecto está desactivado (solo OSM/DGT).',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+            style: HubStyle.body(),
           ),
           const SizedBox(height: 12),
-          Card(
-            child: SwitchListTile(
-              secondary: const Icon(Icons.speed_rounded),
-              title: const Text('Límites TomTom'),
-              subtitle: Text(
-                tomtomPrefs.enabled
-                    ? 'Activo: se llama al confirmar «Empezar navegación»'
-                    : 'Desactivado: límites solo OSM/DGT',
+          DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: isDark ? null : HubStyle.cardShadow,
+            ),
+            child: Material(
+              color: isDark ? colors.surfaceContainerHighest : Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              clipBehavior: Clip.antiAlias,
+              child: SwitchListTile(
+                secondary: Container(
+                  width: 44,
+                  height: 44,
+                  decoration: const BoxDecoration(
+                    color: HubStyle.accent,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.speed_rounded,
+                    color: Colors.white,
+                    size: 22,
+                  ),
+                ),
+                title: Text('Límites TomTom', style: HubStyle.sectionTitle()),
+                subtitle: Text(
+                  tomtomPrefs.enabled
+                      ? 'Activo: se llama al confirmar «Empezar navegación»'
+                      : 'Desactivado: límites solo OSM/DGT',
+                  style: HubStyle.caption(),
+                ),
+                value: tomtomPrefs.enabled,
+                activeThumbColor: HubStyle.accent,
+                activeTrackColor: HubStyle.accent.withValues(alpha: 0.45),
+                onChanged: keyConfigured
+                    ? (value) => ref
+                        .read(tomtomPreferencesProvider.notifier)
+                        .setEnabled(value)
+                    : null,
               ),
-              value: tomtomPrefs.enabled,
-              onChanged: keyConfigured
-                  ? (value) => ref
-                      .read(tomtomPreferencesProvider.notifier)
-                      .setEnabled(value)
-                  : null,
             ),
           ),
           if (!keyConfigured) ...[
             const SizedBox(height: 8),
             Text(
               'Los límites TomTom no están disponibles en esta versión de la app.',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.error,
-              ),
+              style: HubStyle.caption(color: colors.error),
             ),
           ],
           const SizedBox(height: 20),
           Text(
             'Contadores de esta sesión (desde que abriste la app). '
             'El cupo oficial lo ves en el panel de TomTom.',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+            style: HubStyle.body(),
           ),
           const SizedBox(height: 16),
           _ApiCard(
@@ -83,10 +105,12 @@ class ApiUsageSettingsScreen extends ConsumerWidget {
                 : 'No disponible en esta versión',
             enabledInSettings: tomtomPrefs.enabled,
             stats: tomtom,
+            isDark: isDark,
           ),
           if (lastRoute != null) ...[
             const SizedBox(height: 12),
-            FilledButton.tonalIcon(
+            FilledButton.icon(
+              style: HubStyle.filledButtonStyle(),
               onPressed: () {
                 Navigator.of(context).push(
                   MaterialPageRoute<void>(
@@ -104,9 +128,7 @@ class ApiUsageSettingsScreen extends ConsumerWidget {
               '${lastRoute.route.originDisplay} → ${lastRoute.route.destinationDisplay} · '
               '${lastRoute.segmentCount} tramos · '
               'consultada a las ${_formatTime(lastRoute.enrichedAt)}',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
+              style: HubStyle.caption(),
             ),
           ] else ...[
             const SizedBox(height: 12),
@@ -114,9 +136,7 @@ class ApiUsageSettingsScreen extends ConsumerWidget {
               'Cuando empieces a navegar con TomTom activado, podrás revisar '
               'aquí la ruta, comparar MotoAMG con TomTom y ver diferencias '
               'sin volver a consultar la API.',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
+              style: HubStyle.caption(),
             ),
           ],
         ],
@@ -139,6 +159,7 @@ class _ApiCard extends StatelessWidget {
     required this.configuredLabel,
     required this.enabledInSettings,
     required this.stats,
+    required this.isDark,
   });
 
   final String title;
@@ -146,16 +167,17 @@ class _ApiCard extends StatelessWidget {
   final String configuredLabel;
   final bool enabledInSettings;
   final ApiUsageStats stats;
+  final bool isDark;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final colors = Theme.of(context).colorScheme;
     final last = stats.last;
     final statusColor = switch (last?.outcome) {
       ApiCallOutcome.success => Colors.green.shade700,
-      ApiCallOutcome.failure => theme.colorScheme.error,
-      ApiCallOutcome.skipped => theme.colorScheme.onSurfaceVariant,
-      null => theme.colorScheme.onSurfaceVariant,
+      ApiCallOutcome.failure => colors.error,
+      ApiCallOutcome.skipped => HubStyle.subtitle,
+      null => HubStyle.subtitle,
     };
     final statusText = switch (last?.outcome) {
       ApiCallOutcome.success => 'Última: OK',
@@ -164,59 +186,64 @@ class _ApiCard extends StatelessWidget {
       null => 'Aún no se ha llamado',
     };
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title, style: theme.textTheme.titleMedium),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Icon(
-                  configured ? Icons.check_circle_outline : Icons.warning_amber,
-                  size: 18,
-                  color: configured
-                      ? Colors.green.shade700
-                      : theme.colorScheme.error,
-                ),
-                const SizedBox(width: 8),
-                Expanded(child: Text(configuredLabel)),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              enabledInSettings
-                  ? 'Preferencia: activado'
-                  : 'Preferencia: desactivado',
-              style: theme.textTheme.bodySmall,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'OK: ${stats.successCount}  ·  Fallos: ${stats.failureCount}  ·  '
-              'Omitidas: ${stats.skippedCount}',
-            ),
-            const SizedBox(height: 8),
-            Text(
-              statusText,
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                color: statusColor,
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: isDark ? null : HubStyle.cardShadow,
+      ),
+      child: Material(
+        color: isDark ? colors.surfaceContainerHighest : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: HubStyle.sectionTitle()),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(
+                    configured
+                        ? Icons.check_circle_outline
+                        : Icons.warning_amber,
+                    size: 18,
+                    color: configured ? Colors.green.shade700 : colors.error,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(configuredLabel, style: HubStyle.body()),
+                  ),
+                ],
               ),
-            ),
-            if (last?.message != null) ...[
-              const SizedBox(height: 4),
-              Text(last!.message!),
-            ],
-            if (last != null) ...[
-              const SizedBox(height: 4),
+              const SizedBox(height: 8),
               Text(
-                _formatTime(last.at),
-                style: theme.textTheme.bodySmall,
+                enabledInSettings
+                    ? 'Preferencia: activado'
+                    : 'Preferencia: desactivado',
+                style: HubStyle.caption(),
               ),
+              const SizedBox(height: 12),
+              Text(
+                'OK: ${stats.successCount}  ·  Fallos: ${stats.failureCount}  ·  '
+                'Omitidas: ${stats.skippedCount}',
+                style: HubStyle.body(),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                statusText,
+                style: HubStyle.sectionTitle(color: statusColor),
+              ),
+              if (last?.message != null) ...[
+                const SizedBox(height: 4),
+                Text(last!.message!, style: HubStyle.body()),
+              ],
+              if (last != null) ...[
+                const SizedBox(height: 4),
+                Text(_formatTime(last.at), style: HubStyle.caption()),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );

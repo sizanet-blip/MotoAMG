@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:moto_amg/core/theme/hub_style.dart';
 import 'package:moto_amg/core/widgets/keyboard_safe_sheet_body.dart';
 import 'package:moto_amg/features/navigation/domain/entities/route_preferences.dart';
 import 'package:moto_amg/features/navigation/presentation/providers/navigation_providers.dart';
@@ -121,9 +122,7 @@ class RoutePreferencesBar extends ConsumerWidget {
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
                 child: Text(
                   'Estilo de ruta',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                  style: HubStyle.sectionTitle(),
                 ),
               ),
               Padding(
@@ -132,20 +131,21 @@ class RoutePreferencesBar extends ConsumerWidget {
                   'Combina vías rápidas/secundarias y pide alternativas. '
                   'En Secundarias / Solo secundarias se elige la opción con '
                   'más giros entre las que devuelve Valhalla.',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
+                  style: HubStyle.caption(),
                 ),
               ),
               for (final level in RouteCurvatureLevel.values)
                 ListTile(
-                  title: Text(level.label),
-                  subtitle: Text(level.shortHint),
+                  title: Text(
+                    level.label,
+                    style: HubStyle.body(color: HubStyle.title),
+                  ),
+                  subtitle: Text(level.shortHint, style: HubStyle.caption()),
                   selected: prefs.curvature == level,
                   trailing: prefs.curvature == level
-                      ? Icon(
+                      ? const Icon(
                           Icons.check_circle,
-                          color: Theme.of(context).colorScheme.primary,
+                          color: HubStyle.accent,
                         )
                       : const Icon(Icons.circle_outlined),
                   onTap: () {
@@ -186,9 +186,7 @@ class RoutePreferencesBar extends ConsumerWidget {
                     padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
                     child: Text(
                       'Evitaciones',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
+                      style: HubStyle.sectionTitle(),
                     ),
                   ),
                   SwitchListTile(

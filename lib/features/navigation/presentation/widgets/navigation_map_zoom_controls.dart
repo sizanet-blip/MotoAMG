@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
+import 'package:moto_amg/core/theme/hub_style.dart';
 
 /// Botones + / − para acercar y alejar el mapa.
 class NavigationMapZoomControls extends StatelessWidget {
@@ -22,11 +23,10 @@ class NavigationMapZoomControls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-
     return Material(
       elevation: 3,
-      color: colors.surface.withValues(alpha: 0.96),
+      shadowColor: Colors.black.withValues(alpha: 0.12),
+      color: HubStyle.surface.withValues(alpha: 0.97),
       borderRadius: BorderRadius.circular(12),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -35,17 +35,17 @@ class NavigationMapZoomControls extends StatelessWidget {
           IconButton(
             tooltip: 'Acercar',
             onPressed: () => _zoomBy(1),
-            icon: const Icon(Icons.add),
+            icon: const Icon(Icons.add, color: HubStyle.title),
           ),
           Divider(
             height: 1,
             thickness: 1,
-            color: colors.outlineVariant.withValues(alpha: 0.7),
+            color: HubStyle.subtitle.withValues(alpha: 0.2),
           ),
           IconButton(
             tooltip: 'Alejar',
             onPressed: () => _zoomBy(-1),
-            icon: const Icon(Icons.remove),
+            icon: const Icon(Icons.remove, color: HubStyle.title),
           ),
         ],
       ),

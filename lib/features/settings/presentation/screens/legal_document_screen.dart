@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:moto_amg/core/constants/app_constants.dart';
+import 'package:moto_amg/core/theme/hub_style.dart';
 
 enum LegalDocumentKind { privacy, terms }
 
@@ -45,7 +46,7 @@ Contactos de emergencia
 • Nombre y teléfono que configures se guardan en tu dispositivo (almacenamiento local). MotoAMG no envía SMS ni WhatsApp automáticamente: tú decides si avisar a esas personas tras una emergencia urgente.
 
 Datos en el dispositivo
-• Preferencias (tema, avisos, intercom, pantalla al navegar, recordatorios de radares, etc.), cachés de mapas offline, inventarios de radares y gasolineras descargados, y datos técnicos de sesión.
+• Preferencias (avisos, intercom, apariencia del mapa, pantalla al navegar, recordatorios de radares, etc.), cachés de mapas offline, inventarios de radares y gasolineras descargados, y datos técnicos de sesión.
 
 Datos técnicos y estabilidad
 • Información básica del dispositivo y registros de fallo (p. ej. Firebase Crashlytics) para mejorar la estabilidad. No usamos esa información para publicidad personalizada.
@@ -197,16 +198,20 @@ $developer
       LegalDocumentKind.privacy => 'Política de privacidad',
       LegalDocumentKind.terms => 'Términos de uso',
     };
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: AppBar(title: Text(title)),
+      backgroundColor: isDark ? null : HubStyle.surface,
+      appBar: HubStyle.appBar(titleText: title),
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
         child: Text(
           _body(kind).trim(),
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                height: 1.45,
-              ),
+          style: HubStyle.body(
+            color: isDark
+                ? Theme.of(context).colorScheme.onSurface
+                : HubStyle.title,
+          ).copyWith(height: 1.45),
         ),
       ),
     );

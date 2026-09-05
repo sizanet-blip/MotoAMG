@@ -1,140 +1,51 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:moto_amg/core/theme/hub_style.dart';
 import 'package:moto_amg/core/utils/spain_data_freshness.dart';
+import 'package:moto_amg/features/intercom/presentation/screens/intercom_settings_screen.dart';
 import 'package:moto_amg/features/navigation/data/datasources/spain_fuel_datasource.dart';
 import 'package:moto_amg/features/navigation/data/datasources/spain_radar_datasource.dart';
 import 'package:moto_amg/features/navigation/data/repositories/map_appearance_repository.dart';
 import 'package:moto_amg/features/navigation/presentation/providers/navigation_providers.dart';
-import 'package:moto_amg/core/theme/app_color_theme.dart';
-import 'package:moto_amg/core/theme/app_color_theme_provider.dart';
 import 'package:moto_amg/features/settings/presentation/screens/about_app_screen.dart';
 import 'package:moto_amg/features/settings/presentation/screens/alert_preferences_screen.dart';
 import 'package:moto_amg/features/settings/presentation/screens/api_usage_settings_screen.dart';
 import 'package:moto_amg/features/settings/presentation/screens/app_help_screen.dart';
-import 'package:moto_amg/features/settings/presentation/screens/app_theme_settings_screen.dart';
 import 'package:moto_amg/features/settings/presentation/screens/emergency_contacts_settings_screen.dart';
 import 'package:moto_amg/features/settings/presentation/screens/fuel_cache_settings_screen.dart';
-import 'package:moto_amg/features/intercom/presentation/screens/intercom_settings_screen.dart';
 import 'package:moto_amg/features/settings/presentation/screens/group_ride_settings_screen.dart';
 import 'package:moto_amg/features/settings/presentation/screens/hud_safety_settings_screen.dart';
 import 'package:moto_amg/features/settings/presentation/screens/map_appearance_settings_screen.dart';
 import 'package:moto_amg/features/settings/presentation/screens/offline_maps_settings_screen.dart';
 import 'package:moto_amg/features/settings/presentation/screens/radar_cache_settings_screen.dart';
 
-/// Hub de configuración de la app. Aquí se irán añadiendo más opciones.
+/// Hub de configuración de la app.
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final appearance = ref.watch(mapAppearanceProvider);
-    final colorTheme = ref.watch(appColorThemeProvider);
     final fuelStatus = ref.watch(spainFuelCacheStatusProvider).asData?.value;
     final radarStatus = ref.watch(spainRadarCacheStatusProvider).asData?.value;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Configuración')),
+      backgroundColor: isDark ? null : HubStyle.surface,
+      appBar: HubStyle.appBar(titleText: 'Configuración'),
       body: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
         children: [
+          Text('Apariencia', style: HubStyle.caption()),
           const SizedBox(height: 8),
-          ListTile(
-            leading: const Icon(Icons.palette_outlined),
-            title: const Text('Tema de la app'),
-            subtitle: Text(colorTheme.label),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => const AppThemeSettingsScreen(),
-                ),
-              );
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.notifications_active_outlined),
-            title: const Text('Avisos de navegación'),
-            subtitle: const Text(
-              'Radares, gasolineras, peajes, curvas y distancias',
-            ),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => const AlertPreferencesScreen(),
-                ),
-              );
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.sports_motorsports_outlined),
-            title: const Text('Pantalla al navegar'),
-            subtitle: const Text(
-              'Que no se apague (grupo y ruta), más brillo y botones grandes',
-            ),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => const HudSafetySettingsScreen(),
-                ),
-              );
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.groups_outlined),
-            title: const Text('Grupo en ruta'),
-            subtitle: const Text(
-              'Qué motos ver, botón en navegación y avisos si alguien se queda',
-            ),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => const GroupRideSettingsScreen(),
-                ),
-              );
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.headset_mic_outlined),
-            title: const Text('Intercom'),
-            subtitle: const Text(
-              'Hablar y oír por defecto (el canal lo activa el creador del grupo)',
-            ),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => const IntercomSettingsScreen(),
-                ),
-              );
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.contact_emergency_outlined),
-            title: const Text('Contacto de emergencia'),
-            subtitle: const Text(
-              'Aviso manual por SMS o WhatsApp tras Urgente · 112',
-            ),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => const EmergencyContactsSettingsScreen(),
-                ),
-              );
-            },
-          ),
-          ListTile(
-            leading: Icon(switch (appearance.mode) {
+          _SettingsTile(
+            icon: switch (appearance.mode) {
               MapAppearanceMode.auto => Icons.brightness_auto_rounded,
               MapAppearanceMode.day => Icons.light_mode_rounded,
               MapAppearanceMode.night => Icons.dark_mode_rounded,
-            }),
-            title: const Text('Mapa día / noche'),
-            subtitle: Text(
-              '${appearance.mode.label} · ${appearance.mode.subtitle}',
-            ),
-            trailing: const Icon(Icons.chevron_right),
+            },
+            title: 'Mapa día / noche',
+            subtitle: '${appearance.mode.label} · ${appearance.mode.subtitle}',
             onTap: () {
               Navigator.of(context).push(
                 MaterialPageRoute<void>(
@@ -143,11 +54,83 @@ class SettingsScreen extends ConsumerWidget {
               );
             },
           ),
-          ListTile(
-            leading: const Icon(Icons.map_outlined),
-            title: const Text('Mapas offline'),
-            subtitle: const Text('Descargar regiones para navegar sin cobertura'),
-            trailing: const Icon(Icons.chevron_right),
+          const SizedBox(height: 20),
+          Text('Navegación y grupo', style: HubStyle.caption()),
+          const SizedBox(height: 8),
+          _SettingsTile(
+            icon: Icons.notifications_active_outlined,
+            title: 'Avisos de navegación',
+            subtitle: 'Radares, gasolineras, peajes, curvas y distancias',
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const AlertPreferencesScreen(),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 10),
+          _SettingsTile(
+            icon: Icons.sports_motorsports_outlined,
+            title: 'Pantalla al navegar',
+            subtitle:
+                'Que no se apague (grupo y ruta), más brillo y botones grandes',
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const HudSafetySettingsScreen(),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 10),
+          _SettingsTile(
+            icon: Icons.groups_outlined,
+            title: 'Grupo en ruta',
+            subtitle:
+                'Qué motos ver, botón en navegación y avisos si alguien se queda',
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const GroupRideSettingsScreen(),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 10),
+          _SettingsTile(
+            icon: Icons.headset_mic_outlined,
+            title: 'Intercom',
+            subtitle:
+                'Hablar y oír por defecto (el canal lo activa el creador del grupo)',
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const IntercomSettingsScreen(),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 10),
+          _SettingsTile(
+            icon: Icons.contact_emergency_outlined,
+            title: 'Contacto de emergencia',
+            subtitle: 'Aviso manual por SMS o WhatsApp tras Urgente · 112',
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const EmergencyContactsSettingsScreen(),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 20),
+          Text('Datos offline', style: HubStyle.caption()),
+          const SizedBox(height: 8),
+          _SettingsTile(
+            icon: Icons.map_outlined,
+            title: 'Mapas offline',
+            subtitle: 'Descargar regiones para navegar sin cobertura',
             onTap: () {
               Navigator.of(context).push(
                 MaterialPageRoute<void>(
@@ -156,11 +139,11 @@ class SettingsScreen extends ConsumerWidget {
               );
             },
           ),
-          ListTile(
-            leading: const Icon(Icons.speed_outlined),
-            title: const Text('Radares offline'),
-            subtitle: Text(_radarCacheSubtitle(radarStatus)),
-            trailing: const Icon(Icons.chevron_right),
+          const SizedBox(height: 10),
+          _SettingsTile(
+            icon: Icons.speed_outlined,
+            title: 'Radares offline',
+            subtitle: _radarCacheSubtitle(radarStatus),
             onTap: () {
               Navigator.of(context).push(
                 MaterialPageRoute<void>(
@@ -169,11 +152,11 @@ class SettingsScreen extends ConsumerWidget {
               );
             },
           ),
-          ListTile(
-            leading: const Icon(Icons.local_gas_station_outlined),
-            title: const Text('Gasolineras offline'),
-            subtitle: Text(_fuelCacheSubtitle(fuelStatus)),
-            trailing: const Icon(Icons.chevron_right),
+          const SizedBox(height: 10),
+          _SettingsTile(
+            icon: Icons.local_gas_station_outlined,
+            title: 'Gasolineras offline',
+            subtitle: _fuelCacheSubtitle(fuelStatus),
             onTap: () {
               Navigator.of(context).push(
                 MaterialPageRoute<void>(
@@ -182,14 +165,13 @@ class SettingsScreen extends ConsumerWidget {
               );
             },
           ),
-          const Divider(height: 32),
-          ListTile(
-            leading: const Icon(Icons.help_outline),
-            title: const Text('Ayuda'),
-            subtitle: const Text(
-              'Guía rápida, manual completo y preguntas frecuentes',
-            ),
-            trailing: const Icon(Icons.chevron_right),
+          const SizedBox(height: 20),
+          Text('Ayuda y cuenta', style: HubStyle.caption()),
+          const SizedBox(height: 8),
+          _SettingsTile(
+            icon: Icons.help_outline_rounded,
+            title: 'Ayuda',
+            subtitle: 'Guía rápida, manual completo y preguntas frecuentes',
             onTap: () {
               Navigator.of(context).push(
                 MaterialPageRoute<void>(
@@ -198,15 +180,13 @@ class SettingsScreen extends ConsumerWidget {
               );
             },
           ),
-          ListTile(
-            leading: const Icon(Icons.cloud_outlined),
-            title: const Text('Uso de APIs'),
-            subtitle: Text(
-              ref.watch(tomtomPreferencesProvider).enabled
-                  ? 'TomTom límites: activado · contadores de sesión'
-                  : 'TomTom límites: desactivado · contadores de sesión',
-            ),
-            trailing: const Icon(Icons.chevron_right),
+          const SizedBox(height: 10),
+          _SettingsTile(
+            icon: Icons.cloud_outlined,
+            title: 'Uso de APIs',
+            subtitle: ref.watch(tomtomPreferencesProvider).enabled
+                ? 'TomTom límites: activado · contadores de sesión'
+                : 'TomTom límites: desactivado · contadores de sesión',
             onTap: () {
               Navigator.of(context).push(
                 MaterialPageRoute<void>(
@@ -215,11 +195,11 @@ class SettingsScreen extends ConsumerWidget {
               );
             },
           ),
-          ListTile(
-            leading: const Icon(Icons.info_outline),
-            title: const Text('Acerca de MotoAMG'),
-            subtitle: const Text('Versión, contacto y legal'),
-            trailing: const Icon(Icons.chevron_right),
+          const SizedBox(height: 10),
+          _SettingsTile(
+            icon: Icons.info_outline_rounded,
+            title: 'Acerca de MotoAMG',
+            subtitle: 'Versión, contacto y legal',
             onTap: () {
               Navigator.of(context).push(
                 MaterialPageRoute<void>(
@@ -228,7 +208,6 @@ class SettingsScreen extends ConsumerWidget {
               );
             },
           ),
-          const SizedBox(height: 16),
         ],
       ),
     );
@@ -266,5 +245,72 @@ class SettingsScreen extends ConsumerWidget {
       }
     }
     return '$prefix$total radares · ${formatSpainDataAge(newest)}';
+  }
+}
+
+class _SettingsTile extends StatelessWidget {
+  const _SettingsTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: isDark ? null : HubStyle.cardShadow,
+      ),
+      child: Material(
+        color: isDark
+            ? Theme.of(context).colorScheme.surfaceContainerHighest
+            : HubStyle.surface,
+        borderRadius: BorderRadius.circular(16),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 14, 8, 14),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: const BoxDecoration(
+                    color: HubStyle.accent,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, color: Colors.white, size: 22),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title, style: HubStyle.sectionTitle()),
+                      const SizedBox(height: 2),
+                      Text(subtitle, style: HubStyle.caption()),
+                    ],
+                  ),
+                ),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: HubStyle.accent,
+                  size: 26,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

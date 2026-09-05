@@ -1,6 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:moto_amg/core/theme/hub_style.dart';
 import 'package:moto_amg/core/utils/spain_data_freshness.dart';
 import 'package:moto_amg/features/navigation/data/datasources/spain_radar_datasource.dart';
 import 'package:moto_amg/features/navigation/presentation/providers/navigation_providers.dart';
@@ -56,7 +57,7 @@ class _RadarCacheSettingsScreenState
     final download = ref.watch(radarCacheDownloadProvider);
     final reminder = ref.watch(radarUpdateReminderProvider);
     final busy = download.downloading;
-    final colors = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     ref.listen(radarUpdateReminderProvider, (previous, next) {
       if (previous?.intervalDays != next.intervalDays &&
@@ -76,7 +77,8 @@ class _RadarCacheSettingsScreenState
     });
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Radares offline')),
+      backgroundColor: isDark ? null : HubStyle.surface,
+      appBar: HubStyle.appBar(titleText: 'Radares offline'),
       body: statusAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, _) => Center(
@@ -85,12 +87,14 @@ class _RadarCacheSettingsScreenState
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
+                Text(
                   'No se pudo leer la caché de radares.',
                   textAlign: TextAlign.center,
+                  style: HubStyle.body(),
                 ),
                 const SizedBox(height: 12),
                 FilledButton(
+                  style: HubStyle.filledButtonStyle(),
                   onPressed: () =>
                       ref.invalidate(spainRadarCacheStatusProvider),
                   child: const Text('Reintentar'),
@@ -113,18 +117,16 @@ class _RadarCacheSettingsScreenState
             osmFetchedAt: status.osmFetchedAt,
           );
           return ListView(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
             children: [
               Text(
                 'Descarga el inventario de España desde el servidor MotoAMG '
                 '(DGT, SCT y OpenStreetMap). Con Wi‑Fi es rápido y luego '
                 'puedes usarlo en las rutas sin cobertura.',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: colors.onSurfaceVariant,
-                    ),
+                style: HubStyle.body(),
               ),
               const SizedBox(height: 16),
-              _StatusCard(status: status),
+              _StatusCard(status: status, isDark: isDark),
               if (status.isReady && stale) ...[
                 const SizedBox(height: 12),
                 _StaleWarning(message: staleMessage),
@@ -135,20 +137,23 @@ class _RadarCacheSettingsScreenState
                   value: download.progress?.fraction,
                   minHeight: 6,
                   borderRadius: BorderRadius.circular(99),
+                  color: HubStyle.accent,
                 ),
                 const SizedBox(height: 8),
                 Text(
                   download.progress?.label ?? 'Descargando…',
-                  style: Theme.of(context).textTheme.bodySmall,
+                  style: HubStyle.caption(),
                 ),
                 const SizedBox(height: 12),
                 OutlinedButton(
+                  style: HubStyle.outlinedButtonStyle(),
                   onPressed: () =>
                       ref.read(radarCacheDownloadProvider.notifier).cancel(),
                   child: const Text('Cancelar'),
                 ),
               ] else
                 FilledButton.icon(
+                  style: HubStyle.filledButtonStyle(),
                   onPressed: () =>
                       ref.read(radarCacheDownloadProvider.notifier).download(),
                   icon: const Icon(Icons.download),
@@ -160,22 +165,15 @@ class _RadarCacheSettingsScreenState
               Text(
                 'El fichero lo genera el servidor a diario. '
                 'Actualízalo de vez en cuando para tener datos recientes.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: colors.onSurfaceVariant,
-                    ),
+                style: HubStyle.caption(),
               ),
               const SizedBox(height: 24),
-              Text(
-                'Aviso al abrir la app',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
+              Text('Aviso al abrir la app', style: HubStyle.sectionTitle()),
               const SizedBox(height: 4),
               Text(
                 'Si los radares llevan varios días sin actualizar, te lo '
                 'recordamos al entrar (una vez por sesión).',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: colors.onSurfaceVariant,
-                    ),
+                style: HubStyle.caption(),
               ),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
@@ -185,6 +183,8 @@ class _RadarCacheSettingsScreenState
                 onChanged: (value) => ref
                     .read(radarUpdateReminderProvider.notifier)
                     .setEnabled(value),
+                activeThumbColor: HubStyle.accent,
+                activeTrackColor: HubStyle.accent.withValues(alpha: 0.45),
               ),
               TextField(
                 controller: _daysController,
@@ -194,10 +194,9 @@ class _RadarCacheSettingsScreenState
                   FilteringTextInputFormatter.digitsOnly,
                   LengthLimitingTextInputFormatter(3),
                 ],
-                decoration: InputDecoration(
+                decoration: HubStyle.inputDecoration(
                   labelText: 'Avisar cada (días)',
                   hintText: 'Ej. 14',
-                  border: const OutlineInputBorder(),
                   helperText:
                       'Entre ${RadarUpdateReminderPreferences.minIntervalDays} y '
                       '${RadarUpdateReminderPreferences.maxIntervalDays}',
@@ -209,6 +208,7 @@ class _RadarCacheSettingsScreenState
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
+                  style: HubStyle.textButtonStyle(),
                   onPressed: reminder.enabled ? _commitDays : null,
                   child: const Text('Aplicar días'),
                 ),
@@ -222,48 +222,55 @@ class _RadarCacheSettingsScreenState
 }
 
 class _StatusCard extends StatelessWidget {
-  const _StatusCard({required this.status});
+  const _StatusCard({required this.status, required this.isDark});
 
   final SpainRadarCacheStatus status;
+  final bool isDark;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    return Material(
-      color: colors.surfaceContainerHighest,
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        child: Column(
-          children: [
-            _StatusRow(
-              icon: status.hasOfficial
-                  ? Icons.download_done
-                  : Icons.cloud_off_outlined,
-              title: 'Oficiales (DGT / SCT)',
-              detail: status.hasOfficial
-                  ? '${status.officialCount} radares · '
-                      '${formatSpainDataAge(status.officialFetchedAt)}'
-                  : 'Sin descargar',
-              stale: status.hasOfficial &&
-                  isSpainRadarDataStale(status.officialFetchedAt),
-              ok: status.hasOfficial,
-            ),
-            const Divider(height: 20),
-            _StatusRow(
-              icon: status.hasOsm
-                  ? Icons.download_done
-                  : Icons.cloud_off_outlined,
-              title: 'OpenStreetMap España',
-              detail: status.hasOsm
-                  ? '${status.osmCount} radares · '
-                      '${formatSpainDataAge(status.osmFetchedAt)}'
-                  : 'Sin descargar',
-              stale:
-                  status.hasOsm && isSpainRadarDataStale(status.osmFetchedAt),
-              ok: status.hasOsm,
-            ),
-          ],
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: isDark ? null : HubStyle.cardShadow,
+      ),
+      child: Material(
+        color: isDark ? colors.surfaceContainerHighest : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Column(
+            children: [
+              _StatusRow(
+                icon: status.hasOfficial
+                    ? Icons.download_done
+                    : Icons.cloud_off_outlined,
+                title: 'Oficiales (DGT / SCT)',
+                detail: status.hasOfficial
+                    ? '${status.officialCount} radares · '
+                        '${formatSpainDataAge(status.officialFetchedAt)}'
+                    : 'Sin descargar',
+                stale: status.hasOfficial &&
+                    isSpainRadarDataStale(status.officialFetchedAt),
+                ok: status.hasOfficial,
+              ),
+              const Divider(height: 20),
+              _StatusRow(
+                icon: status.hasOsm
+                    ? Icons.download_done
+                    : Icons.cloud_off_outlined,
+                title: 'OpenStreetMap España',
+                detail: status.hasOsm
+                    ? '${status.osmCount} radares · '
+                        '${formatSpainDataAge(status.osmFetchedAt)}'
+                    : 'Sin descargar',
+                stale:
+                    status.hasOsm && isSpainRadarDataStale(status.osmFetchedAt),
+                ok: status.hasOsm,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -290,19 +297,19 @@ class _StatusRow extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     return Row(
       children: [
-        Icon(icon, color: ok ? colors.primary : colors.onSurfaceVariant),
+        Icon(icon, color: ok ? HubStyle.accent : colors.onSurfaceVariant),
         const SizedBox(width: 10),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: Theme.of(context).textTheme.titleSmall),
+              Text(title, style: HubStyle.sectionTitle()),
               const SizedBox(height: 2),
               Text(
                 detail,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: stale ? colors.error : colors.onSurfaceVariant,
-                    ),
+                style: HubStyle.caption(
+                  color: stale ? colors.error : null,
+                ),
               ),
             ],
           ),
@@ -333,9 +340,7 @@ class _StaleWarning extends StatelessWidget {
             Expanded(
               child: Text(
                 message,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: colors.onErrorContainer,
-                    ),
+                style: HubStyle.caption(color: colors.onErrorContainer),
               ),
             ),
           ],

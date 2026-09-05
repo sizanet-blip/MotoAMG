@@ -2,11 +2,11 @@
 
 import 'package:flutter/material.dart';
 import 'package:moto_amg/core/constants/navigation_constants.dart';
+import 'package:moto_amg/core/theme/hub_style.dart';
 import 'package:moto_amg/core/utils/distance_format.dart';
 import 'package:moto_amg/features/navigation/data/services/route_guidance_service.dart';
 import 'package:moto_amg/features/navigation/domain/entities/navigation_maneuver.dart';
 import 'package:moto_amg/features/navigation/domain/services/maneuver_significance.dart';
-import 'package:moto_amg/features/navigation/presentation/theme/navigation_hud_theme.dart';
 
 /// Etiqueta corta de acción (la calle va aparte).
 String maneuverHudAction(NavigationManeuver m) {
@@ -75,18 +75,20 @@ class NavigationManeuverCard extends StatelessWidget {
     final hasStreet = street != null && street.isNotEmpty;
     final urgency = maneuverBannerUrgency(remainingMeters);
 
+    final imminent = urgency == ManeuverBannerUrgency.imminent;
     final panelColor = switch (urgency) {
-      ManeuverBannerUrgency.imminent => const Color(0xFF1B3A5C),
-      ManeuverBannerUrgency.approaching =>
-        NavigationHudTheme.panel.withValues(alpha: 0.96),
-      ManeuverBannerUrgency.normal =>
-        NavigationHudTheme.panel.withValues(alpha: 0.94),
+      ManeuverBannerUrgency.imminent => const Color(0xFF0B4A6E),
+      ManeuverBannerUrgency.approaching => HubStyle.surface,
+      ManeuverBannerUrgency.normal => HubStyle.surface,
     };
     final accent = switch (urgency) {
-      ManeuverBannerUrgency.imminent => NavigationHudTheme.warning,
-      ManeuverBannerUrgency.approaching => NavigationHudTheme.accentStrong,
-      ManeuverBannerUrgency.normal => NavigationHudTheme.accentStrong,
+      ManeuverBannerUrgency.imminent => const Color(0xFFF59E0B),
+      ManeuverBannerUrgency.approaching => HubStyle.accent,
+      ManeuverBannerUrgency.normal => HubStyle.accent,
     };
+    final textPrimary = imminent ? Colors.white : HubStyle.title;
+    final textSecondary =
+        imminent ? Colors.white.withValues(alpha: 0.8) : HubStyle.subtitle;
     final iconSize = switch (urgency) {
       ManeuverBannerUrgency.imminent => compact ? 40.0 : 56.0,
       ManeuverBannerUrgency.approaching => compact ? 36.0 : 50.0,
@@ -104,23 +106,23 @@ class NavigationManeuverCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: panelColor,
         borderRadius: BorderRadius.circular(compact ? 12 : 16),
-        border: urgency == ManeuverBannerUrgency.imminent
+        border: imminent
             ? Border.all(
-                color: NavigationHudTheme.warning,
+                color: const Color(0xFFF59E0B),
                 width: compact ? 1 : 1.6,
               )
-            : null,
+            : Border.all(color: HubStyle.accent.withValues(alpha: 0.18)),
         boxShadow: [
           BoxShadow(
-            color: urgency == ManeuverBannerUrgency.imminent
+            color: imminent
                 ? (compact
                     ? const Color(0x33F9A825)
                     : const Color(0x66F9A825))
-                : const Color(0x55000000),
-            blurRadius: urgency == ManeuverBannerUrgency.imminent
+                : Colors.black.withValues(alpha: 0.08),
+            blurRadius: imminent
                 ? (compact ? 6 : 16)
-                : (compact ? 8 : 12),
-            offset: Offset(0, compact ? 2 : 4),
+                : (compact ? 8 : 18),
+            offset: Offset(0, compact ? 2 : 6),
           ),
         ],
       ),
@@ -149,8 +151,7 @@ class NavigationManeuverCard extends StatelessWidget {
                 children: [
                   Text(
                     formatRideDistance(distance),
-                    style: TextStyle(
-                      color: NavigationHudTheme.textPrimary,
+                    style: HubStyle.sectionTitle(color: textPrimary).copyWith(
                       fontSize: distanceSize,
                       fontWeight: FontWeight.w800,
                       height: 1.05,
@@ -159,8 +160,7 @@ class NavigationManeuverCard extends StatelessWidget {
                   ),
                   Text(
                     action,
-                    style: TextStyle(
-                      color: NavigationHudTheme.textPrimary,
+                    style: HubStyle.body(color: textPrimary).copyWith(
                       fontSize: compact ? 13 : 15,
                       fontWeight: FontWeight.w700,
                       height: 1.15,
@@ -171,8 +171,7 @@ class NavigationManeuverCard extends StatelessWidget {
                   if (hasStreet)
                     Text(
                       street,
-                      style: TextStyle(
-                        color: NavigationHudTheme.textSecondary,
+                      style: HubStyle.caption(color: textSecondary).copyWith(
                         fontSize: compact ? 11 : 13,
                         fontWeight: FontWeight.w600,
                         height: 1.2,
@@ -183,8 +182,7 @@ class NavigationManeuverCard extends StatelessWidget {
                   if (!compact && showNext && nextManeuver != null)
                     Text(
                       '→ ${maneuverHudAction(nextManeuver!)}',
-                      style: const TextStyle(
-                        color: NavigationHudTheme.textSecondary,
+                      style: HubStyle.caption(color: textSecondary).copyWith(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                         height: 1.25,
@@ -284,7 +282,7 @@ class _RoundaboutIcon extends StatelessWidget {
             child: Text(
               '$exit',
               style: TextStyle(
-                color: NavigationHudTheme.accentStrong,
+                color: HubStyle.accent,
                 fontSize: size * 0.24,
                 fontWeight: FontWeight.w900,
                 height: 1,

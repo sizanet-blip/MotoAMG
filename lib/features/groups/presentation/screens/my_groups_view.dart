@@ -244,24 +244,34 @@ class MyGroupsView extends ConsumerWidget {
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(isOwner ? '¿Eliminar el grupo?' : '¿Salir del grupo?'),
+        backgroundColor: HubStyle.surface,
+        title: Text(
+          isOwner ? '¿Eliminar el grupo?' : '¿Salir del grupo?',
+          style: HubStyle.sectionTitle(),
+        ),
         content: Text(
           isOwner
               ? 'Se borrará «${membership.name}» (${membership.code}) para todos.'
               : 'Dejarás de ver «${membership.name}» en este club.',
+          style: HubStyle.body(),
         ),
         actions: [
           TextButton(
+            style: HubStyle.textButtonStyle(),
             onPressed: () => Navigator.pop(context, false),
             child: const Text('Cancelar'),
           ),
           FilledButton(
             style: isOwner
-                ? FilledButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.error,
-                    foregroundColor: Theme.of(context).colorScheme.onError,
+                ? HubStyle.filledButtonStyle().copyWith(
+                    backgroundColor: WidgetStatePropertyAll(
+                      Theme.of(context).colorScheme.error,
+                    ),
+                    foregroundColor: WidgetStatePropertyAll(
+                      Theme.of(context).colorScheme.onError,
+                    ),
                   )
-                : null,
+                : HubStyle.filledButtonStyle(),
             onPressed: () => Navigator.pop(context, true),
             child: Text(isOwner ? 'Eliminar' : 'Salir'),
           ),

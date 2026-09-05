@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:moto_amg/core/theme/hub_style.dart';
 import 'package:moto_amg/features/groups/presentation/providers/group_providers.dart';
 import 'package:moto_amg/features/intercom/domain/entities/intercom_session_state.dart';
 import 'package:moto_amg/features/intercom/presentation/providers/intercom_providers.dart';
@@ -30,13 +31,14 @@ class IntercomControlsBar extends ConsumerWidget {
     final colors = Theme.of(context).colorScheme;
     final bg = dark
         ? Colors.black.withValues(alpha: 0.55)
-        : colors.surface.withValues(alpha: 0.92);
-    final fg = dark ? Colors.white : colors.onSurface;
+        : HubStyle.surface.withValues(alpha: 0.97);
+    final fg = dark ? Colors.white : HubStyle.title;
 
     return Material(
       color: bg,
       borderRadius: BorderRadius.circular(12),
       elevation: dark ? 0 : 1,
+      shadowColor: Colors.black.withValues(alpha: 0.12),
       child: Padding(
         padding: EdgeInsets.symmetric(
           horizontal: compact ? 8 : 10,
@@ -61,10 +63,9 @@ class IntercomControlsBar extends ConsumerWidget {
                             ? 'Habla: ${session.remoteSpeakerNames.join(', ')}'
                             : 'Intercom')
                         : session.statusLabel,
-                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                          color: fg,
-                          fontWeight: FontWeight.w600,
-                        ),
+                    style: HubStyle.caption(color: fg).copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -73,7 +74,7 @@ class IntercomControlsBar extends ConsumerWidget {
                   Icon(
                     Icons.graphic_eq,
                     size: 16,
-                    color: dark ? const Color(0xFF69F0AE) : colors.primary,
+                    color: dark ? const Color(0xFF69F0AE) : HubStyle.accent,
                   ),
               ],
             ),
@@ -135,15 +136,15 @@ class IntercomControlsBar extends ConsumerWidget {
   ) {
     return switch (status) {
       IntercomConnectionStatus.connected =>
-        dark ? const Color(0xFF69F0AE) : colors.primary,
+        dark ? const Color(0xFF69F0AE) : HubStyle.accent,
       IntercomConnectionStatus.error ||
       IntercomConnectionStatus.unavailable =>
         dark ? const Color(0xFFFF8A80) : colors.error,
       IntercomConnectionStatus.connecting ||
       IntercomConnectionStatus.reconnecting =>
-        dark ? const Color(0xFFFFD54F) : colors.tertiary,
+        dark ? const Color(0xFFFFD54F) : const Color(0xFFB45309),
       IntercomConnectionStatus.idle =>
-        dark ? Colors.white70 : colors.onSurfaceVariant,
+        dark ? Colors.white70 : HubStyle.subtitle,
     };
   }
 }
@@ -167,15 +168,13 @@ class _MuteChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final selectedBg = dark
         ? Colors.white.withValues(alpha: 0.18)
-        : Theme.of(context).colorScheme.primaryContainer;
+        : HubStyle.accent.withValues(alpha: 0.14);
     final unselectedBg = dark
         ? Colors.white.withValues(alpha: 0.08)
-        : Theme.of(context).colorScheme.surfaceContainerHighest;
+        : const Color(0xFFF3F4F6);
     final fg = dark
         ? Colors.white
-        : (selected
-            ? Theme.of(context).colorScheme.onPrimaryContainer
-            : Theme.of(context).colorScheme.onSurface);
+        : (selected ? HubStyle.accent : HubStyle.subtitle);
 
     return Material(
       color: selected ? selectedBg : unselectedBg,
@@ -192,10 +191,9 @@ class _MuteChip extends StatelessWidget {
               const SizedBox(width: 6),
               Text(
                 label,
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      color: fg,
-                      fontWeight: FontWeight.w700,
-                    ),
+                style: HubStyle.body(color: fg).copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ],
           ),

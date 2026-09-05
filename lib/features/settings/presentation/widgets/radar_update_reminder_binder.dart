@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:moto_amg/core/theme/hub_style.dart';
 import 'package:moto_amg/core/utils/spain_data_freshness.dart';
 import 'package:moto_amg/features/navigation/presentation/providers/navigation_providers.dart';
 import 'package:moto_amg/features/settings/presentation/providers/settings_providers.dart';
@@ -85,19 +86,26 @@ class _RadarUpdateReminderBinderState
       final action = await showDialog<_ReminderAction>(
         context: context,
         builder: (context) => AlertDialog(
-          title: Text(missing ? 'Descargar radares' : 'Actualizar radares'),
-          content: Text(message),
+          backgroundColor: HubStyle.surface,
+          title: Text(
+            missing ? 'Descargar radares' : 'Actualizar radares',
+            style: HubStyle.sectionTitle(),
+          ),
+          content: Text(message, style: HubStyle.body()),
           actions: [
             TextButton(
+              style: HubStyle.textButtonStyle(),
               onPressed: () => Navigator.pop(context, _ReminderAction.later),
               child: const Text('Más tarde'),
             ),
             TextButton(
+              style: HubStyle.textButtonStyle(),
               onPressed: () =>
                   Navigator.pop(context, _ReminderAction.openSettings),
               child: const Text('Configuración'),
             ),
             FilledButton(
+              style: HubStyle.filledButtonStyle(),
               onPressed: () =>
                   Navigator.pop(context, _ReminderAction.updateNow),
               child: Text(missing ? 'Descargar' : 'Actualizar'),

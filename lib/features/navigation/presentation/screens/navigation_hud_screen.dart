@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:moto_amg/core/constants/navigation_constants.dart';
+import 'package:moto_amg/core/theme/hub_style.dart';
 import 'package:moto_amg/core/utils/distance_format.dart';
 import 'package:moto_amg/core/utils/gps_status.dart';
 import 'package:moto_amg/core/utils/navigation_bearing.dart';
@@ -38,7 +39,6 @@ import 'package:moto_amg/features/navigation/domain/exceptions/navigation_except
 import 'package:moto_amg/features/navigation/domain/exceptions/navigation_user_message.dart';
 import 'package:moto_amg/features/navigation/presentation/providers/navigation_providers.dart';
 import 'package:moto_amg/features/navigation/presentation/theme/fuel_brand_style.dart';
-import 'package:moto_amg/features/navigation/presentation/theme/navigation_hud_theme.dart';
 import 'package:moto_amg/features/navigation/presentation/widgets/map_network_resume_binder.dart';
 import 'package:moto_amg/features/navigation/presentation/widgets/navigation_map_view.dart';
 import 'package:moto_amg/features/navigation/presentation/widgets/offline_map_banner.dart';
@@ -1827,7 +1827,6 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
                   child: IntercomControlsBar(
                     groupId: groupId!,
                     compact: true,
-                    dark: true,
                   ),
                 ),
               if (landscape && !_arrived) ...[
@@ -1840,12 +1839,14 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
                     children: [
                       SizedBox(
                         width: 268,
-                        child: Material(
-                          elevation: 6,
-                          color: overspeed
-                              ? const Color(0xFF3B1010).withValues(alpha: 0.96)
-                              : NavigationHudTheme.panel.withValues(alpha: 0.96),
-                          borderRadius: BorderRadius.circular(14),
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: overspeed
+                                ? const Color(0xFF3B1010).withValues(alpha: 0.96)
+                                : HubStyle.surface.withValues(alpha: 0.97),
+                            borderRadius: BorderRadius.circular(14),
+                            boxShadow: HubStyle.cardShadow,
+                          ),
                           child: NavigationStatusBar(
                             compact: true,
                             embedded: true,
@@ -1959,7 +1960,6 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
                           child: IntercomControlsBar(
                             groupId: groupId!,
                             compact: true,
-                            dark: true,
                           ),
                         ),
                       if ((groupId ?? '').isNotEmpty && !_arrived)
@@ -2196,21 +2196,25 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
   Widget _buildLandscapeIncidentRail(String groupId) {
     return SizedBox(
       width: 48,
-      child: Material(
-      color: NavigationHudTheme.panel.withValues(alpha: 0.9),
-      elevation: 4,
-      borderRadius: BorderRadius.circular(12),
-      clipBehavior: Clip.antiAlias,
-      child: GroupIncidentSessionPanel(
-        compact: true,
-        vertical: true,
-        embedded: true,
-        drivingMode: true,
-        showBanner: false,
-        groupId: groupId,
-        user: widget.user,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: HubStyle.surface.withValues(alpha: 0.97),
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: HubStyle.cardShadow,
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: GroupIncidentSessionPanel(
+            compact: true,
+            vertical: true,
+            embedded: true,
+            drivingMode: true,
+            showBanner: false,
+            groupId: groupId,
+            user: widget.user,
+          ),
+        ),
       ),
-    ),
     );
   }
 
@@ -2395,9 +2399,10 @@ class _SimulationSpeedSlider extends StatelessWidget {
   Widget build(BuildContext context) {
     final label = '${speedKmh.round()}';
     return Material(
-      color: NavigationHudTheme.panelElevated,
+      color: HubStyle.surface,
       borderRadius: BorderRadius.circular(compact ? 10 : 20),
       elevation: compact ? 0 : 2,
+      shadowColor: Colors.black.withValues(alpha: 0.12),
       child: Padding(
         padding: EdgeInsets.fromLTRB(compact ? 4 : 8, 0, compact ? 4 : 10, 0),
         child: Row(
@@ -2405,7 +2410,7 @@ class _SimulationSpeedSlider extends StatelessWidget {
             Icon(
               Icons.speed_rounded,
               size: compact ? 12 : 14,
-              color: NavigationHudTheme.textPrimary,
+              color: HubStyle.accent,
             ),
             Expanded(
               child: SliderTheme(
@@ -2417,12 +2422,10 @@ class _SimulationSpeedSlider extends StatelessWidget {
                   overlayShape: RoundSliderOverlayShape(
                     overlayRadius: compact ? 10 : 12,
                   ),
-                  activeTrackColor: NavigationHudTheme.textPrimary,
-                  inactiveTrackColor:
-                      NavigationHudTheme.textPrimary.withValues(alpha: 0.25),
-                  thumbColor: NavigationHudTheme.textPrimary,
-                  overlayColor:
-                      NavigationHudTheme.textPrimary.withValues(alpha: 0.12),
+                  activeTrackColor: HubStyle.accent,
+                  inactiveTrackColor: HubStyle.accent.withValues(alpha: 0.25),
+                  thumbColor: HubStyle.accent,
+                  overlayColor: HubStyle.accent.withValues(alpha: 0.12),
                 ),
                 child: Slider(
                   value: speedKmh.clamp(
@@ -2439,17 +2442,14 @@ class _SimulationSpeedSlider extends StatelessWidget {
             if (!compact)
               Text(
                 '$label km/h',
-                style: const TextStyle(
-                  color: NavigationHudTheme.textPrimary,
-                  fontSize: 11,
+                style: HubStyle.caption(color: HubStyle.title).copyWith(
                   fontWeight: FontWeight.w700,
                 ),
               )
             else
               Text(
                 label,
-                style: const TextStyle(
-                  color: NavigationHudTheme.textPrimary,
+                style: HubStyle.caption(color: HubStyle.title).copyWith(
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
                 ),
@@ -2481,10 +2481,12 @@ class _LandscapeSimBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: NavigationHudTheme.panel.withValues(alpha: 0.94),
-      borderRadius: BorderRadius.circular(14),
-      elevation: 6,
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: HubStyle.surface.withValues(alpha: 0.97),
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: HubStyle.cardShadow,
+      ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(4, 3, 4, 3),
         child: Row(
@@ -2542,9 +2544,9 @@ class _LandscapeSimIconButton extends StatelessWidget {
       constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
       style: IconButton.styleFrom(
         backgroundColor: emphasized
-            ? NavigationHudTheme.warning
-            : NavigationHudTheme.panelElevated,
-        foregroundColor: NavigationHudTheme.textPrimary,
+            ? HubStyle.accent
+            : const Color(0xFFF3F4F6),
+        foregroundColor: emphasized ? Colors.white : HubStyle.title,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
       onPressed: onTap,
@@ -2569,11 +2571,10 @@ class _CompactSimChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: emphasized
-          ? NavigationHudTheme.warning
-          : NavigationHudTheme.panelElevated,
+      color: emphasized ? HubStyle.accent : const Color(0xFFF3F4F6),
       borderRadius: BorderRadius.circular(20),
       elevation: 2,
+      shadowColor: Colors.black.withValues(alpha: 0.12),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(20),
@@ -2582,15 +2583,17 @@ class _CompactSimChip extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 16, color: NavigationHudTheme.textPrimary),
+              Icon(
+                icon,
+                size: 16,
+                color: emphasized ? Colors.white : HubStyle.title,
+              ),
               const SizedBox(width: 4),
               Text(
                 label,
-                style: const TextStyle(
-                  color: NavigationHudTheme.textPrimary,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: HubStyle.caption(
+                  color: emphasized ? Colors.white : HubStyle.title,
+                ).copyWith(fontWeight: FontWeight.w600),
               ),
             ],
           ),
@@ -2621,14 +2624,17 @@ class _HelmetModeBar extends StatelessWidget {
             child: SizedBox(
               height: 64,
               child: FilledButton.icon(
-                style: FilledButton.styleFrom(
-                  backgroundColor: muted
-                      ? NavigationHudTheme.warning
-                      : NavigationHudTheme.panelElevated,
-                  foregroundColor: NavigationHudTheme.textPrimary,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+                style: HubStyle.filledButtonStyle().copyWith(
+                  backgroundColor: WidgetStatePropertyAll(
+                    muted ? const Color(0xFFB45309) : HubStyle.accent,
                   ),
+                  foregroundColor: const WidgetStatePropertyAll(Colors.white),
+                  shape: WidgetStatePropertyAll(
+                    RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  minimumSize: const WidgetStatePropertyAll(Size.fromHeight(64)),
                 ),
                 onPressed: onToggleMute,
                 icon: Icon(
@@ -2637,9 +2643,8 @@ class _HelmetModeBar extends StatelessWidget {
                 ),
                 label: Text(
                   muted ? 'Activar voz' : 'Silenciar',
-                  style: const TextStyle(
+                  style: HubStyle.sectionTitle(color: Colors.white).copyWith(
                     fontSize: 18,
-                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
@@ -2659,11 +2664,10 @@ class _HelmetModeBar extends StatelessWidget {
                 ),
                 onPressed: onCancel,
                 icon: const Icon(Icons.close_rounded, size: 28),
-                label: const Text(
+                label: Text(
                   'Cancelar',
-                  style: TextStyle(
+                  style: HubStyle.sectionTitle(color: Colors.white).copyWith(
                     fontSize: 18,
-                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
@@ -2687,10 +2691,11 @@ class _WeakGpsBanner extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        color: NavigationHudTheme.panel.withValues(alpha: 0.9),
+        color: HubStyle.surface.withValues(alpha: 0.97),
         border: Border.all(
-          color: NavigationHudTheme.warning.withValues(alpha: 0.65),
+          color: const Color(0xFFB45309).withValues(alpha: 0.65),
         ),
+        boxShadow: HubStyle.cardShadow,
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
@@ -2700,13 +2705,12 @@ class _WeakGpsBanner extends StatelessWidget {
             Icon(
               lost ? Icons.gps_off_rounded : Icons.gps_not_fixed_rounded,
               size: 18,
-              color: NavigationHudTheme.warning,
+              color: const Color(0xFFB45309),
             ),
             const SizedBox(width: 8),
             Text(
               lost ? 'Sin señal GPS' : 'Señal GPS baja',
-              style: const TextStyle(
-                color: NavigationHudTheme.textPrimary,
+              style: HubStyle.body(color: HubStyle.title).copyWith(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
               ),
@@ -3106,9 +3110,9 @@ class _ArrivalCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: NavigationHudTheme.panel,
-        borderRadius: BorderRadius.circular(NavigationHudTheme.panelRadius),
-        boxShadow: const [NavigationHudTheme.panelShadow],
+        color: HubStyle.surface,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: HubStyle.cardShadow,
       ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
@@ -3122,7 +3126,7 @@ class _ArrivalCard extends StatelessWidget {
                   width: 52,
                   height: 52,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF2E7D32),
+                    color: HubStyle.accent,
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: const Icon(
@@ -3132,26 +3136,18 @@ class _ArrivalCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 14),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         'Has llegado',
-                        style: TextStyle(
-                          color: NavigationHudTheme.textPrimary,
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                          height: 1.1,
-                        ),
+                        style: HubStyle.headline().copyWith(fontSize: 22),
                       ),
-                      SizedBox(height: 4),
+                      const SizedBox(height: 4),
                       Text(
                         'Fin de la ruta',
-                        style: TextStyle(
-                          color: NavigationHudTheme.textSecondary,
-                          fontSize: 14,
-                        ),
+                        style: HubStyle.body(),
                       ),
                     ],
                   ),
@@ -3162,11 +3158,7 @@ class _ArrivalCard extends StatelessWidget {
               const SizedBox(height: 12),
               Text(
                 destinationLabel,
-                style: const TextStyle(
-                  color: NavigationHudTheme.textSecondary,
-                  fontSize: 14,
-                  height: 1.3,
-                ),
+                style: HubStyle.body(),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -3174,11 +3166,7 @@ class _ArrivalCard extends StatelessWidget {
             const SizedBox(height: 14),
             FilledButton(
               onPressed: onDone,
-              style: FilledButton.styleFrom(
-                backgroundColor: NavigationHudTheme.accentStrong,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-              ),
+              style: HubStyle.filledButtonStyle(),
               child: const Text('Listo'),
             ),
           ],
@@ -3207,10 +3195,11 @@ class _HudRoundButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final button = Material(
       color: emphasized
-          ? NavigationHudTheme.accent.withValues(alpha: 0.95)
-          : NavigationHudTheme.panel.withValues(alpha: 0.92),
+          ? HubStyle.accent
+          : HubStyle.surface.withValues(alpha: 0.97),
       shape: const CircleBorder(),
       elevation: 3,
+      shadowColor: Colors.black.withValues(alpha: 0.12),
       child: InkWell(
         customBorder: const CircleBorder(),
         onTap: onTap,
@@ -3220,9 +3209,7 @@ class _HudRoundButton extends StatelessWidget {
           height: 56,
           child: Icon(
             icon,
-            color: emphasized
-                ? Colors.white
-                : NavigationHudTheme.textPrimary,
+            color: emphasized ? Colors.white : HubStyle.title,
             size: 26,
           ),
         ),
@@ -3260,8 +3247,10 @@ class _OffRouteBanner extends StatelessWidget {
                 : 'Fuera de ruta · recalculando automáticamente'));
 
     return Material(
-      color: NavigationHudTheme.panelElevated.withValues(alpha: 0.96),
+      color: HubStyle.surface.withValues(alpha: 0.97),
       borderRadius: BorderRadius.circular(12),
+      elevation: 2,
+      shadowColor: Colors.black.withValues(alpha: 0.12),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: Row(
@@ -3272,35 +3261,35 @@ class _OffRouteBanner extends StatelessWidget {
                 height: 18,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  color: NavigationHudTheme.warning,
+                  color: HubStyle.accent,
                 ),
               )
             else
               Icon(
                 offline ? Icons.wifi_off_rounded : Icons.alt_route_rounded,
                 size: 20,
-                color: NavigationHudTheme.warning,
+                color: const Color(0xFFB45309),
               ),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
                 message,
-                style: const TextStyle(
+                style: HubStyle.body(color: HubStyle.title).copyWith(
                   fontWeight: FontWeight.w600,
                   fontSize: 13,
-                  color: NavigationHudTheme.textPrimary,
                 ),
               ),
             ),
             if (onRetry != null && error != null && !rerouting)
               TextButton(
+                style: HubStyle.textButtonStyle(),
                 onPressed: onRetry,
                 child: const Text('Reintentar'),
               ),
             IconButton(
               visualDensity: VisualDensity.compact,
               onPressed: onDismiss,
-              icon: const Icon(Icons.close, size: 18),
+              icon: const Icon(Icons.close, size: 18, color: HubStyle.title),
             ),
           ],
         ),

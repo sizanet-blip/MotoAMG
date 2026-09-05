@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:moto_amg/core/theme/hub_style.dart';
 import 'package:moto_amg/features/navigation/data/repositories/map_appearance_repository.dart';
 import 'package:moto_amg/features/navigation/presentation/providers/navigation_providers.dart';
 
@@ -10,25 +11,25 @@ class MapAppearanceSettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final appearance = ref.watch(mapAppearanceProvider);
-    final colors = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Mapa día / noche')),
+      backgroundColor: isDark ? null : HubStyle.surface,
+      appBar: HubStyle.appBar(titleText: 'Mapa día / noche'),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
         children: [
           Text(
             'Elige el aspecto del mapa en navegación. '
             'La preferencia se guarda en este dispositivo.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: colors.onSurfaceVariant,
-                ),
+            style: HubStyle.body(),
           ),
           const SizedBox(height: 16),
           for (final mode in MapAppearanceMode.values) ...[
             _ModeCard(
               mode: mode,
               selected: appearance.mode == mode,
+              isDark: isDark,
               onTap: () =>
                   ref.read(mapAppearanceProvider.notifier).setMode(mode),
             ),
@@ -37,36 +38,39 @@ class MapAppearanceSettingsScreen extends ConsumerWidget {
           const SizedBox(height: 8),
           DecoratedBox(
             decoration: BoxDecoration(
-              color: colors.surfaceContainerHighest.withValues(alpha: 0.55),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: isDark ? null : HubStyle.cardShadow,
             ),
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(
-                    Icons.info_outline_rounded,
-                    size: 20,
-                    color: colors.primary,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'Modo automático: calcula amanecer y atardecer según la fecha '
-                      'y tu posición GPS (cambia entre verano e invierno).\n\n'
-                      'El mapa nocturno necesita internet (estilo suave, no negro puro).\n'
-                      'Los mapas offline descargados solo están en versión clara: '
-                      'sin cobertura verás ese mapa aunque hayas elegido noche.\n\n'
-                      'También puedes cambiarlo mientras navegas, con el botón '
-                      'de sol/luna de la esquina superior derecha.',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: colors.onSurfaceVariant,
-                            height: 1.35,
-                          ),
+            child: Material(
+              color: isDark
+                  ? Theme.of(context).colorScheme.surfaceContainerHighest
+                  : Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(
+                      Icons.info_outline_rounded,
+                      size: 20,
+                      color: HubStyle.accent,
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Modo automático: calcula amanecer y atardecer según la fecha '
+                        'y tu posición GPS (cambia entre verano e invierno).\n\n'
+                        'El mapa nocturno necesita internet (estilo suave, no negro puro).\n'
+                        'Los mapas offline descargados solo están en versión clara: '
+                        'sin cobertura verás ese mapa aunque hayas elegido noche.\n\n'
+                        'También puedes cambiarlo mientras navegas, con el botón '
+                        'de sol/luna de la esquina superior derecha.',
+                        style: HubStyle.caption(),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -80,11 +84,13 @@ class _ModeCard extends StatelessWidget {
   const _ModeCard({
     required this.mode,
     required this.selected,
+    required this.isDark,
     required this.onTap,
   });
 
   final MapAppearanceMode mode;
   final bool selected;
+  final bool isDark;
   final VoidCallback onTap;
 
   IconData get _icon => switch (mode) {
@@ -109,58 +115,63 @@ class _ModeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return Material(
-      color: selected
-          ? colors.primaryContainer.withValues(alpha: 0.55)
-          : colors.surfaceContainerHighest.withValues(alpha: 0.35),
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 12, 8, 12),
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 22,
-                backgroundColor: selected
-                    ? colors.primary
-                    : colors.surfaceContainerHighest,
-                foregroundColor:
-                    selected ? colors.onPrimary : colors.onSurfaceVariant,
-                child: Icon(_icon, size: 22),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      mode.label,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w800,
-                          ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _detail,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: colors.onSurfaceVariant,
-                            height: 1.3,
-                          ),
-                    ),
-                  ],
+    final cardColor = isDark
+        ? Theme.of(context).colorScheme.surfaceContainerHighest
+        : Colors.white;
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: isDark ? null : HubStyle.cardShadow,
+        border: selected
+            ? Border.all(color: HubStyle.accent, width: 1.6)
+            : null,
+      ),
+      child: Material(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(16),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 14, 8, 14),
+            child: Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? HubStyle.accent
+                        : HubStyle.accent.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    _icon,
+                    color: selected ? Colors.white : HubStyle.accent,
+                    size: 24,
+                  ),
                 ),
-              ),
-              Radio<MapAppearanceMode>(
-                value: mode,
-                // ignore: deprecated_member_use
-                groupValue: selected ? mode : null,
-                // ignore: deprecated_member_use
-                onChanged: (_) => onTap(),
-              ),
-            ],
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(mode.label, style: HubStyle.sectionTitle()),
+                      const SizedBox(height: 4),
+                      Text(_detail, style: HubStyle.caption()),
+                    ],
+                  ),
+                ),
+                Icon(
+                  selected
+                      ? Icons.check_circle_rounded
+                      : Icons.radio_button_unchecked_rounded,
+                  color: HubStyle.accent,
+                  size: 26,
+                ),
+              ],
+            ),
           ),
         ),
       ),

@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:moto_amg/core/theme/hub_style.dart';
 import 'package:moto_amg/features/auth/domain/entities/app_user.dart';
 import 'package:moto_amg/features/auth/presentation/providers/auth_providers.dart';
 import 'package:moto_amg/features/clubs/presentation/screens/join_club_screen.dart';
@@ -20,11 +21,12 @@ class ClubEntryScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final colors = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Tu club'),
+      backgroundColor: isDark ? null : HubStyle.surface,
+      appBar: HubStyle.appBar(
+        titleText: 'Clubes o peña',
         automaticallyImplyLeading: canDismiss,
         actions: [
           if (!canDismiss)
@@ -32,85 +34,138 @@ class ClubEntryScreen extends ConsumerWidget {
               tooltip: 'Cerrar sesión',
               onPressed: () =>
                   ref.read(authActionControllerProvider.notifier).signOut(),
-              icon: const Icon(Icons.logout),
+              icon: const Icon(Icons.logout_rounded),
             ),
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(24, 24, 24, 40),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 40),
         children: [
           Text(
-            canDismiss ? 'Únete a un club' : '¿Cómo quieres entrar?',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+            canDismiss ? 'Únete a la comunidad' : '¿Cómo quieres entrar?',
+            style: HubStyle.headline(),
           ),
           const SizedBox(height: 8),
           Text(
             canDismiss
                 ? 'Puedes seguir usando la navegación individual. '
-                    'Si te unes o registras un club, tendrás grupos de ruta.'
-                : 'MotoAMG funciona por clubs. Elige una opción.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: colors.onSurfaceVariant,
-                  height: 1.35,
-                ),
+                    'Si te unes o registras una peña, tendrás grupos de ruta.'
+                : 'Puedes unirte a una peña existente con un código de '
+                    'invitación o solicitar la creación de una nueva peña.',
+            style: HubStyle.body(),
           ),
           const SizedBox(height: 28),
-          Card(
-            child: ListTile(
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 12,
-              ),
-              leading: CircleAvatar(
-                backgroundColor: colors.primaryContainer,
-                child: Icon(Icons.link, color: colors.onPrimaryContainer),
-              ),
-              title: const Text(
-                'Me han invitado a un club',
-                style: TextStyle(fontWeight: FontWeight.w700),
-              ),
-              subtitle: const Text('Usa el enlace o el código que te han pasado'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => JoinClubScreen(user: user),
-                  ),
-                );
-              },
-            ),
+          _ClubOptionCard(
+            icon: Icons.confirmation_number_outlined,
+            title: 'Unirme con código de invitación',
+            subtitle:
+                'Introduce el código de invitación para unirte a una peña existente.',
+            isDark: isDark,
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => JoinClubScreen(user: user),
+                ),
+              );
+            },
           ),
           const SizedBox(height: 12),
-          Card(
-            child: ListTile(
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 12,
-              ),
-              leading: CircleAvatar(
-                backgroundColor: colors.secondaryContainer,
-                child: Icon(Icons.groups, color: colors.onSecondaryContainer),
-              ),
-              title: const Text(
-                'Quiero registrar mi club',
-                style: TextStyle(fontWeight: FontWeight.w700),
-              ),
-              subtitle: const Text(
-                'Enviaremos la solicitud; te avisaremos al aprobarla',
-              ),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => RegisterClubScreen(user: user),
-                  ),
-                );
-              },
-            ),
+          _ClubOptionCard(
+            icon: Icons.groups_rounded,
+            title: 'Solicitar alta de peña',
+            subtitle:
+                'Solicita la creación de una nueva peña y empieza a organizar rodadas.',
+            isDark: isDark,
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => RegisterClubScreen(user: user),
+                ),
+              );
+            },
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ClubOptionCard extends StatelessWidget {
+  const _ClubOptionCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.isDark,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final bool isDark;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final cardColor = isDark
+        ? Theme.of(context).colorScheme.surfaceContainerHighest
+        : Colors.white;
+    final titleColor =
+        isDark ? Theme.of(context).colorScheme.onSurface : HubStyle.title;
+    final subtitleColor = isDark
+        ? Theme.of(context).colorScheme.onSurfaceVariant
+        : HubStyle.subtitle;
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: isDark ? null : HubStyle.cardShadow,
+      ),
+      child: Material(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(16),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 16, 8, 16),
+            child: Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: const BoxDecoration(
+                    color: HubStyle.accent,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, color: Colors.white, size: 24),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: HubStyle.sectionTitle(color: titleColor),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: HubStyle.caption(color: subtitleColor),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: HubStyle.accent,
+                  size: 26,
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

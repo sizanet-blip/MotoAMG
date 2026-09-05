@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:moto_amg/core/constants/app_constants.dart';
 import 'package:moto_amg/core/onboarding/app_onboarding_provider.dart';
+import 'package:moto_amg/core/theme/hub_style.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 /// Primera vez: explica y solicita permisos esenciales antes del login.
@@ -96,8 +97,7 @@ class _PermissionsOnboardingScreenState
     if (status.isDenied) {
       status = await Permission.locationWhenInUse.request();
     }
-    if (status.isGranted &&
-        defaultTargetPlatform == TargetPlatform.iOS) {
+    if (status.isGranted && defaultTargetPlatform == TargetPlatform.iOS) {
       var always = await Permission.locationAlways.status;
       if (always.isDenied) {
         always = await Permission.locationAlways.request();
@@ -143,13 +143,11 @@ class _PermissionsOnboardingScreenState
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-
     return Scaffold(
+      backgroundColor: HubStyle.surface,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -169,31 +167,25 @@ class _PermissionsOnboardingScreenState
               Text(
                 'Prepara MotoAMG',
                 textAlign: TextAlign.center,
-                style: textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+                style: HubStyle.headline(),
               ),
               const SizedBox(height: 8),
               Text(
                 'Para ver tu moto en el mapa y seguir la ruta con el grupo '
                 'necesitamos un par de permisos. Solo te lo pedimos una vez.',
                 textAlign: TextAlign.center,
-                style: textTheme.bodyMedium?.copyWith(
-                  color: colors.onSurfaceVariant,
-                  height: 1.4,
-                ),
+                style: HubStyle.body(),
               ),
               const SizedBox(height: 28),
               _PermissionStepCard(
-                icon: Icons.location_on_outlined,
+                icon: Icons.location_on_rounded,
                 title: 'Ubicación',
-                description:
-                    defaultTargetPlatform == TargetPlatform.iOS
-                        ? 'Muestra dónde estás en el mapa y comparte tu '
-                            'posición con el pelotón, también con la pantalla '
-                            'bloqueada (elige «Siempre» cuando iOS lo pida).'
-                        : 'Muestra dónde estás en el mapa y comparte tu posición '
-                            'con el pelotón mientras circulas.',
+                description: defaultTargetPlatform == TargetPlatform.iOS
+                    ? 'Muestra dónde estás en el mapa y comparte tu '
+                        'posición con el pelotón, también con la pantalla '
+                        'bloqueada (elige «Siempre» cuando iOS lo pida).'
+                    : 'Muestra dónde estás en el mapa y comparte tu posición '
+                        'con el pelotón mientras circulas.',
                 granted: _locationGranted,
                 checking: _checking,
                 actionLabel: _locationGranted
@@ -204,7 +196,7 @@ class _PermissionsOnboardingScreenState
               if (_needsNotificationStep) ...[
                 const SizedBox(height: 12),
                 _PermissionStepCard(
-                  icon: Icons.notifications_outlined,
+                  icon: Icons.notifications_rounded,
                   title: 'Notificaciones',
                   description:
                       'Mientras navegas, Android muestra un aviso fijo para '
@@ -221,7 +213,7 @@ class _PermissionsOnboardingScreenState
               if (_isAndroid) ...[
                 const SizedBox(height: 12),
                 _PermissionStepCard(
-                  icon: Icons.battery_alert_outlined,
+                  icon: Icons.battery_charging_full_rounded,
                   title: 'Batería (recomendado)',
                   description:
                       'En Samsung, Xiaomi y otras marcas conviene excluir '
@@ -236,14 +228,39 @@ class _PermissionsOnboardingScreenState
                   onAction: _openBatterySettings,
                 ),
               ],
-              const SizedBox(height: 32),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.lock_outline_rounded,
+                    size: 16,
+                    color: HubStyle.accent.withValues(alpha: 0.9),
+                  ),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      'Tu privacidad es importante. No compartimos tu información.',
+                      textAlign: TextAlign.center,
+                      style: HubStyle.caption(color: HubStyle.accent),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
               FilledButton(
                 onPressed: _canContinue && !_completing ? _finish : null,
+                style: HubStyle.filledButtonStyle(
+                  enabled: _canContinue && !_completing,
+                ),
                 child: _completing
                     ? const SizedBox(
                         width: 22,
                         height: 22,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
                       )
                     : const Text('Continuar'),
               ),
@@ -252,8 +269,8 @@ class _PermissionsOnboardingScreenState
                 Text(
                   'Concede los permisos obligatorios para seguir.',
                   textAlign: TextAlign.center,
-                  style: textTheme.bodySmall?.copyWith(
-                    color: colors.error,
+                  style: HubStyle.caption(
+                    color: Theme.of(context).colorScheme.error,
                   ),
                 ),
               ],
@@ -288,18 +305,15 @@ class _PermissionStepCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-    final statusColor = granted ? colors.primary : colors.onSurfaceVariant;
-
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: colors.surfaceContainerHighest.withValues(alpha: 0.55),
-        borderRadius: BorderRadius.circular(14),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: HubStyle.cardShadow,
         border: Border.all(
           color: granted
-              ? colors.primary.withValues(alpha: 0.45)
-              : colors.outlineVariant.withValues(alpha: 0.5),
+              ? HubStyle.accent.withValues(alpha: 0.45)
+              : const Color(0xFFE5E7EB),
         ),
       ),
       child: Padding(
@@ -310,7 +324,15 @@ class _PermissionStepCard extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(icon, color: statusColor, size: 24),
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: HubStyle.accent.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, color: HubStyle.accent, size: 22),
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -319,48 +341,59 @@ class _PermissionStepCard extends StatelessWidget {
                       Row(
                         children: [
                           Expanded(
-                            child: Text(
-                              title,
-                              style: textTheme.titleSmall?.copyWith(
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
+                            child: Text(title, style: HubStyle.sectionTitle()),
                           ),
-                          if (optional)
-                            Text(
-                              'Opcional',
-                              style: textTheme.labelSmall?.copyWith(
-                                color: colors.onSurfaceVariant,
+                          if (optional && !granted)
+                            Text('Opcional', style: HubStyle.caption())
+                          else if (granted)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: HubStyle.accent.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Text(
+                                'Concedido',
+                                style: HubStyle.caption(color: HubStyle.accent),
                               ),
                             ),
                         ],
                       ),
                       const SizedBox(height: 6),
-                      Text(
-                        description,
-                        style: textTheme.bodySmall?.copyWith(
-                          color: colors.onSurfaceVariant,
-                          height: 1.35,
-                        ),
-                      ),
+                      Text(description, style: HubStyle.caption()),
                     ],
                   ),
                 ),
                 const SizedBox(width: 8),
                 Icon(
-                  granted ? Icons.check_circle : Icons.radio_button_unchecked,
-                  color: statusColor,
+                  granted
+                      ? Icons.check_circle_rounded
+                      : Icons.radio_button_unchecked_rounded,
+                  color: granted ? HubStyle.accent : HubStyle.subtitle,
                   size: 22,
                 ),
               ],
             ),
             const SizedBox(height: 14),
             if (checking)
-              const LinearProgressIndicator(minHeight: 3)
+              const LinearProgressIndicator(
+                minHeight: 3,
+                color: HubStyle.accent,
+              )
+            else if (onAction != null)
+              OutlinedButton.icon(
+                onPressed: onAction,
+                style: HubStyle.outlinedButtonStyle(),
+                icon: Icon(granted ? Icons.check_rounded : Icons.arrow_forward_rounded),
+                label: Text(actionLabel),
+              )
             else
               FilledButton.tonalIcon(
-                onPressed: onAction,
-                icon: Icon(granted ? Icons.check : Icons.arrow_forward),
+                onPressed: null,
+                icon: const Icon(Icons.check_rounded),
                 label: Text(actionLabel),
               ),
           ],

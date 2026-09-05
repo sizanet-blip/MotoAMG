@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:moto_amg/core/constants/navigation_constants.dart';
+import 'package:moto_amg/core/theme/hub_style.dart';
 import 'package:moto_amg/features/navigation/domain/entities/geocoding_place.dart';
 import 'package:moto_amg/features/navigation/domain/entities/geo_point.dart';
 import 'package:moto_amg/features/navigation/domain/exceptions/navigation_exceptions.dart';
@@ -265,12 +266,12 @@ class _DestinationSearchFieldState extends ConsumerState<DestinationSearchField>
         IconButton(
           tooltip: 'Mi ubicación',
           onPressed: widget.enabled ? widget.onUseGps : null,
-          icon: Icon(Icons.my_location, color: colors.primary),
+          icon: const Icon(Icons.my_location, color: HubStyle.accent),
         ),
       );
     }
     if (_selected != null) {
-      actions.add(Icon(Icons.check_circle, color: colors.primary, size: 22));
+      actions.add(const Icon(Icons.check_circle, color: HubStyle.accent, size: 22));
       actions.add(
         IconButton(
           tooltip: 'Borrar',
@@ -331,18 +332,17 @@ class _DestinationSearchFieldState extends ConsumerState<DestinationSearchField>
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
+    final colors = Theme.of(context).colorScheme;
     final borderColor = _selected != null
-        ? colors.primary.withValues(alpha: 0.6)
-        : colors.outlineVariant;
+        ? HubStyle.accent.withValues(alpha: 0.6)
+        : const Color(0xFFD1D5DB);
     final helper = _helperText(colors);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Material(
-          color: colors.surfaceContainerLowest,
+          color: const Color(0xFFF9FAFB),
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
@@ -372,15 +372,19 @@ class _DestinationSearchFieldState extends ConsumerState<DestinationSearchField>
                     unawaited(_runSearch(query, thorough: true));
                   }
                 },
-                style: theme.textTheme.bodyLarge,
+                style: HubStyle.body(color: HubStyle.title),
                 decoration: InputDecoration(
                   labelText: widget.labelText,
                   hintText: widget.hintText,
+                  labelStyle: HubStyle.caption(),
+                  hintStyle: HubStyle.caption(
+                    color: HubStyle.subtitle.withValues(alpha: 0.7),
+                  ),
                   border: InputBorder.none,
                   enabledBorder: InputBorder.none,
                   focusedBorder: InputBorder.none,
                   contentPadding: const EdgeInsets.fromLTRB(16, 14, 4, 10),
-                  prefixIcon: Icon(widget.prefixIcon, color: colors.primary),
+                  prefixIcon: Icon(widget.prefixIcon, color: HubStyle.accent),
                   suffixIcon: _suffixIcon(colors),
                   suffixIconConstraints: const BoxConstraints(minWidth: 44),
                 ),
@@ -395,9 +399,7 @@ class _DestinationSearchFieldState extends ConsumerState<DestinationSearchField>
                   child: Text(
                     '${_suggestions.length} resultado'
                     '${_suggestions.length == 1 ? '' : 's'}',
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      color: colors.onSurfaceVariant,
-                    ),
+                    style: HubStyle.caption(),
                   ),
                 ),
                 for (var i = 0; i < _suggestions.length; i++)
@@ -421,9 +423,7 @@ class _DestinationSearchFieldState extends ConsumerState<DestinationSearchField>
             padding: const EdgeInsets.symmetric(horizontal: 4),
             child: Text(
               helper,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: _helperColor(colors),
-              ),
+              style: HubStyle.caption(color: _helperColor(colors)),
             ),
           ),
         ],
@@ -451,8 +451,7 @@ class _SuggestionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
+    final colors = Theme.of(context).colorScheme;
     final favorite = isFavorite == true;
 
     return Column(
@@ -477,7 +476,7 @@ class _SuggestionTile extends StatelessWidget {
                       place.displayLine,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodyMedium,
+                      style: HubStyle.body(color: HubStyle.title),
                     ),
                   ),
                 ),
@@ -489,7 +488,7 @@ class _SuggestionTile extends StatelessWidget {
                     onPressed: enabled ? onToggleFavorite : null,
                     icon: Icon(
                       favorite ? Icons.star_rounded : Icons.star_border_rounded,
-                      color: favorite ? colors.primary : colors.onSurfaceVariant,
+                      color: favorite ? HubStyle.accent : colors.onSurfaceVariant,
                     ),
                   ),
               ],

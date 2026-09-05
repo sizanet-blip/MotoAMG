@@ -1,6 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:moto_amg/core/theme/hub_style.dart';
 import 'package:moto_amg/features/auth/presentation/providers/auth_providers.dart';
 
 class RecoveryKeyScreen extends ConsumerStatefulWidget {
@@ -20,15 +21,16 @@ class _RecoveryKeyScreenState extends ConsumerState<RecoveryKeyScreen> {
     return PopScope(
       canPop: false,
       child: Scaffold(
-        appBar: AppBar(
+        backgroundColor: HubStyle.surface,
+        appBar: HubStyle.appBar(
+          titleText: 'Guarda tu clave',
           automaticallyImplyLeading: false,
-          title: const Text('Guarda tu clave'),
         ),
         body: SafeArea(
           child: LayoutBuilder(
             builder: (context, constraints) {
               return SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
                 child: ConstrainedBox(
                   constraints:
                       BoxConstraints(minHeight: constraints.maxHeight - 48),
@@ -38,25 +40,39 @@ class _RecoveryKeyScreenState extends ConsumerState<RecoveryKeyScreen> {
                       Text(
                         'Esta clave es la única forma de recuperar la cuenta si '
                         'olvidas la contraseña (no hay correo).',
-                        style: Theme.of(context).textTheme.bodyLarge,
+                        style: HubStyle.body(color: HubStyle.title),
                       ),
                       const SizedBox(height: 8),
                       Text(
                         'Apúntala en papel o en un gestor de contraseñas. '
                         'No la enseñes a nadie. Solo se muestra ahora.',
-                        style: Theme.of(context).textTheme.bodyMedium,
+                        style: HubStyle.body(),
                       ),
                       const SizedBox(height: 24),
-                      SelectableText(
-                        widget.recoveryKey,
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context)
-                            .textTheme
-                            .headlineSmall
-                            ?.copyWith(
-                              fontWeight: FontWeight.bold,
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: HubStyle.cardShadow,
+                          border: Border.all(
+                            color: HubStyle.accent.withValues(alpha: 0.35),
+                          ),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 20,
+                          ),
+                          child: SelectableText(
+                            widget.recoveryKey,
+                            textAlign: TextAlign.center,
+                            style: HubStyle.headline(color: HubStyle.accent)
+                                .copyWith(
+                              fontSize: 22,
                               letterSpacing: 1.2,
                             ),
+                          ),
+                        ),
                       ),
                       const SizedBox(height: 16),
                       OutlinedButton.icon(
@@ -71,21 +87,37 @@ class _RecoveryKeyScreenState extends ConsumerState<RecoveryKeyScreen> {
                             const SnackBar(content: Text('Clave copiada.')),
                           );
                         },
-                        icon: const Icon(Icons.copy),
+                        style: HubStyle.outlinedButtonStyle(),
+                        icon: const Icon(Icons.copy_rounded),
                         label: const Text('Copiar clave'),
                       ),
                       const SizedBox(height: 32),
-                      CheckboxListTile(
-                        value: _saved,
-                        onChanged: (value) =>
-                            setState(() => _saved = value ?? false),
-                        contentPadding: EdgeInsets.zero,
-                        controlAffinity: ListTileControlAffinity.leading,
-                        title: const Text(
-                          'He guardado la clave en un sitio seguro',
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: HubStyle.cardShadow,
+                          border: Border.all(
+                            color: _saved
+                                ? HubStyle.accent.withValues(alpha: 0.45)
+                                : const Color(0xFFE5E7EB),
+                          ),
+                        ),
+                        child: CheckboxListTile(
+                          value: _saved,
+                          activeColor: HubStyle.accent,
+                          onChanged: (value) =>
+                              setState(() => _saved = value ?? false),
+                          contentPadding:
+                              const EdgeInsets.fromLTRB(8, 4, 12, 4),
+                          controlAffinity: ListTileControlAffinity.leading,
+                          title: Text(
+                            'He guardado la clave en un sitio seguro',
+                            style: HubStyle.body(color: HubStyle.title),
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 12),
                       FilledButton(
                         onPressed: _saved
                             ? () {
@@ -99,6 +131,7 @@ class _RecoveryKeyScreenState extends ConsumerState<RecoveryKeyScreen> {
                                 }
                               }
                             : null,
+                        style: HubStyle.filledButtonStyle(enabled: _saved),
                         child: const Text('Continuar'),
                       ),
                     ],

@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:moto_amg/core/theme/hub_style.dart';
 import 'package:moto_amg/features/auth/domain/entities/app_user.dart';
 import 'package:moto_amg/features/auth/presentation/providers/auth_providers.dart';
 import 'package:moto_amg/features/clubs/domain/entities/moto_club.dart';
@@ -112,7 +113,8 @@ class _ClubPendingScreenState extends ConsumerState<ClubPendingScreen> {
   Widget build(BuildContext context) {
     final requestAsync = ref.watch(pendingClubRequestProvider);
     final liveAsync = ref.watch(liveUserProvider(widget.user.uid));
-    final colors = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final errorColor = Theme.of(context).colorScheme.error;
 
     ref.listen(liveUserProvider(widget.user.uid), (previous, next) {
       next.whenData(_syncFromLiveUser);
@@ -121,38 +123,46 @@ class _ClubPendingScreenState extends ConsumerState<ClubPendingScreen> {
 
     // Si el panel ya puso el club en el usuario, AuthGate saldrá solo.
     if (widget.user.isInClub && !widget.user.hasPendingClubRequest) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+      return Scaffold(
+        backgroundColor: isDark ? null : HubStyle.surface,
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Pendiente de aprobación'),
+      backgroundColor: isDark ? null : HubStyle.surface,
+      appBar: HubStyle.appBar(
+        titleText: 'Pendiente de aprobación',
+        automaticallyImplyLeading: false,
         actions: [
           IconButton(
             tooltip: 'Cerrar sesión',
             onPressed: () =>
                 ref.read(authActionControllerProvider.notifier).signOut(),
-            icon: const Icon(Icons.logout),
+            icon: const Icon(Icons.logout_rounded),
           ),
         ],
       ),
       body: requestAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
+        error: (e, _) => Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text('Error: $e', style: HubStyle.body()),
+          ),
+        ),
         data: (request) {
           if (request == null) {
             return _CenteredMessage(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const CircularProgressIndicator(),
+                  const CircularProgressIndicator(color: HubStyle.accent),
                   const SizedBox(height: 20),
                   Text(
                     'Actualizando estado de tu solicitud…',
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: colors.onSurfaceVariant),
+                    style: HubStyle.body(),
                   ),
                 ],
               ),
@@ -171,15 +181,17 @@ class _ClubPendingScreenState extends ConsumerState<ClubPendingScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.error_outline, size: 56, color: colors.error),
+                    Icon(Icons.error_outline, size: 56, color: errorColor),
                     const SizedBox(height: 16),
                     Text(
                       _activateError!,
                       textAlign: TextAlign.center,
+                      style: HubStyle.body(color: HubStyle.title),
                     ),
                     const SizedBox(height: 20),
                     FilledButton(
                       onPressed: () => _activateApproved(clubId),
+                      style: HubStyle.filledButtonStyle(),
                       child: const Text('Reintentar'),
                     ),
                   ],
@@ -190,12 +202,12 @@ class _ClubPendingScreenState extends ConsumerState<ClubPendingScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const CircularProgressIndicator(),
+                  const CircularProgressIndicator(color: HubStyle.accent),
                   const SizedBox(height: 20),
                   Text(
                     'Club aprobado. Activando…',
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: colors.onSurfaceVariant),
+                    style: HubStyle.body(),
                   ),
                 ],
               ),
@@ -206,14 +218,12 @@ class _ClubPendingScreenState extends ConsumerState<ClubPendingScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.cancel_outlined, size: 56, color: colors.error),
+                  Icon(Icons.cancel_outlined, size: 56, color: errorColor),
                   const SizedBox(height: 20),
                   Text(
                     'Solicitud no aprobada',
                     textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
+                    style: HubStyle.sectionTitle(),
                   ),
                   if (request.reviewNote != null &&
                       request.reviewNote!.trim().isNotEmpty) ...[
@@ -221,7 +231,7 @@ class _ClubPendingScreenState extends ConsumerState<ClubPendingScreen> {
                     Text(
                       request.reviewNote!,
                       textAlign: TextAlign.center,
-                      style: TextStyle(color: colors.onSurfaceVariant),
+                      style: HubStyle.body(),
                     ),
                   ],
                   const SizedBox(height: 28),
@@ -229,11 +239,15 @@ class _ClubPendingScreenState extends ConsumerState<ClubPendingScreen> {
                     onPressed: _busyDismiss
                         ? null
                         : () => _dismissRejected(request.id),
+                    style: HubStyle.filledButtonStyle(enabled: !_busyDismiss),
                     child: _busyDismiss
                         ? const SizedBox(
                             width: 22,
                             height: 22,
-                            child: CircularProgressIndicator(strokeWidth: 2),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
                           )
                         : const Text('Volver a intentar'),
                   ),
@@ -245,23 +259,30 @@ class _ClubPendingScreenState extends ConsumerState<ClubPendingScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.hourglass_top, size: 56, color: colors.primary),
+                Container(
+                  width: 72,
+                  height: 72,
+                  decoration: const BoxDecoration(
+                    color: HubStyle.accent,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.hourglass_top_rounded,
+                    size: 36,
+                    color: Colors.white,
+                  ),
+                ),
                 const SizedBox(height: 20),
                 Text(
                   'Pendiente de aprobación',
                   textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                  style: HubStyle.sectionTitle(),
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'Tu club «${request.clubName}» está en revisión.',
+                  'Tu peña «${request.clubName}» está en revisión.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: colors.onSurfaceVariant,
-                    height: 1.35,
-                  ),
+                  style: HubStyle.body(),
                 ),
               ],
             ),

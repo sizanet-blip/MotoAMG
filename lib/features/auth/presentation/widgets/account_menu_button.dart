@@ -1,6 +1,7 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:moto_amg/core/constants/app_constants.dart';
+import 'package:moto_amg/core/theme/hub_style.dart';
 import 'package:moto_amg/core/widgets/app_popup_menu.dart';
 import 'package:moto_amg/features/auth/domain/entities/app_user.dart';
 import 'package:moto_amg/features/auth/presentation/providers/auth_providers.dart';
@@ -26,7 +27,6 @@ class AccountMenuButton extends ConsumerWidget {
     final username = user?.username?.trim().isNotEmpty == true
         ? user!.username!.trim()
         : (user?.isUsernameAccount == true ? user!.displayName.trim() : '');
-    final colors = Theme.of(context).colorScheme;
 
     return PopupMenuButton<String>(
       tooltip: 'Cuenta',
@@ -38,15 +38,15 @@ class AccountMenuButton extends ConsumerWidget {
       shape: AppPopupMenus.shapeOf(context),
       padding: EdgeInsets.zero,
       icon: icon != null
-          ? Icon(icon, color: colors.onSurface)
+          ? Icon(icon, color: HubStyle.title)
           : Builder(
               builder: (context) {
                 final photoUrl = user?.photoUrl;
                 final hasPhoto = photoUrl != null && photoUrl.isNotEmpty;
                 return CircleAvatar(
                   radius: 16,
-                  backgroundColor: colors.primaryContainer,
-                  foregroundColor: colors.onPrimaryContainer,
+                  backgroundColor: HubStyle.accent.withValues(alpha: 0.14),
+                  foregroundColor: HubStyle.accent,
                   backgroundImage: hasPhoto ? NetworkImage(photoUrl) : null,
                   child: hasPhoto
                       ? null
@@ -89,20 +89,20 @@ class AccountMenuButton extends ConsumerWidget {
           value: 'profile',
           icon: Icons.badge_outlined,
           label: 'Mi perfil',
-          tint: colors.primary,
+          tint: HubStyle.accent,
         ),
         appPopupMenuItem(
           value: 'settings',
           icon: Icons.settings_outlined,
           label: 'Configuración',
-          tint: colors.tertiary,
+          tint: HubStyle.accent,
         ),
         if (username.isNotEmpty)
           appPopupMenuItem(
             value: 'recovery',
             icon: Icons.key_outlined,
             label: 'Clave de recuperación',
-            tint: colors.secondary,
+            tint: HubStyle.accent,
           ),
         const PopupMenuDivider(height: 8),
         appPopupMenuItem(
@@ -128,7 +128,6 @@ class _AccountMenuHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
     final name = (user?.displayName.trim().isNotEmpty == true)
         ? user!.displayName.trim()
         : (isGuest ? 'Invitado' : 'Cuenta');
@@ -146,17 +145,14 @@ class _AccountMenuHeader extends StatelessWidget {
       children: [
         CircleAvatar(
           radius: 20,
-          backgroundColor: colors.primary,
-          foregroundColor: colors.onPrimary,
+          backgroundColor: HubStyle.accent,
+          foregroundColor: Colors.white,
           backgroundImage: hasPhoto ? NetworkImage(photoUrl) : null,
           child: hasPhoto
               ? null
               : Text(
                   name.isNotEmpty ? name[0].toUpperCase() : '?',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 16,
-                  ),
+                  style: HubStyle.sectionTitle(color: Colors.white),
                 ),
         ),
         const SizedBox(width: 12),
@@ -168,18 +164,14 @@ class _AccountMenuHeader extends StatelessWidget {
                 name,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
+                style: HubStyle.sectionTitle(),
               ),
               const SizedBox(height: 2),
               Text(
                 subtitle,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: colors.onSurfaceVariant,
-                    ),
+                style: HubStyle.caption(),
               ),
             ],
           ),

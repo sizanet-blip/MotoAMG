@@ -121,6 +121,7 @@ abstract final class HubStyle {
     required String titleText,
     List<Widget>? actions,
     Widget? leading,
+    bool automaticallyImplyLeading = true,
   }) {
     return AppBar(
       backgroundColor: surface,
@@ -129,6 +130,7 @@ abstract final class HubStyle {
       elevation: 0,
       scrolledUnderElevation: 0,
       leading: leading,
+      automaticallyImplyLeading: automaticallyImplyLeading,
       title: Text(titleText, style: pageTitle()),
       actions: actions,
       iconTheme: const IconThemeData(color: HubStyle.title),

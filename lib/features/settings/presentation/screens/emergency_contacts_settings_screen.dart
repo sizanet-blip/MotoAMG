@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:moto_amg/core/theme/hub_style.dart';
 import 'package:moto_amg/features/settings/data/repositories/emergency_contacts_repository.dart';
 import 'package:moto_amg/features/settings/presentation/providers/settings_providers.dart';
 
@@ -18,25 +19,26 @@ class _EmergencyContactsSettingsScreenState
   Widget build(BuildContext context) {
     final prefs = ref.watch(emergencyContactsProvider);
     final contacts = prefs.contacts;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Contacto de emergencia')),
+      backgroundColor: isDark ? null : HubStyle.surface,
+      appBar: HubStyle.appBar(titleText: 'Contacto de emergencia'),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
         children: [
           Text(
             'Personas de fuera del grupo (familia, pareja…). '
             'Tras marcar Urgente · 112 puedes avisarles a mano por SMS o WhatsApp. '
             'No se envía nada solo.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+            style: HubStyle.body(),
           ),
           const SizedBox(height: 16),
           for (var i = 0; i < contacts.length; i++) ...[
             _ContactCard(
               index: i,
               contact: contacts[i],
+              isDark: isDark,
               onSave: (c) => ref
                   .read(emergencyContactsProvider.notifier)
                   .upsertContact(i, c),
@@ -47,6 +49,7 @@ class _EmergencyContactsSettingsScreenState
           ],
           if (contacts.length < EmergencyContactsPreferences.maxContacts)
             OutlinedButton.icon(
+              style: HubStyle.outlinedButtonStyle(),
               onPressed: () async {
                 final created = await _editContact(
                   context,
@@ -72,12 +75,14 @@ class _ContactCard extends StatelessWidget {
   const _ContactCard({
     required this.index,
     required this.contact,
+    required this.isDark,
     required this.onSave,
     required this.onDelete,
   });
 
   final int index;
   final EmergencyContact contact;
+  final bool isDark;
   final Future<void> Function(EmergencyContact contact) onSave;
   final VoidCallback onDelete;
 
@@ -86,36 +91,62 @@ class _ContactCard extends StatelessWidget {
     final label = contact.name.trim().isEmpty
         ? 'Contacto ${index + 1}'
         : contact.name.trim();
-    return Card(
-      child: ListTile(
-        leading: const Icon(Icons.contact_phone_outlined),
-        title: Text(label),
-        subtitle: Text(
-          contact.phone.trim().isEmpty ? 'Sin teléfono' : contact.phone.trim(),
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              tooltip: 'Editar',
-              onPressed: () async {
-                final edited = await _editContact(
-                  context,
-                  title: 'Editar contacto',
-                  initial: contact,
-                );
-                if (edited != null) {
-                  await onSave(edited);
-                }
-              },
-              icon: const Icon(Icons.edit_outlined),
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: isDark ? null : HubStyle.cardShadow,
+      ),
+      child: Material(
+        color: isDark
+            ? Theme.of(context).colorScheme.surfaceContainerHighest
+            : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        clipBehavior: Clip.antiAlias,
+        child: ListTile(
+          leading: Container(
+            width: 44,
+            height: 44,
+            decoration: const BoxDecoration(
+              color: HubStyle.accent,
+              shape: BoxShape.circle,
             ),
-            IconButton(
-              tooltip: 'Eliminar',
-              onPressed: onDelete,
-              icon: const Icon(Icons.delete_outline),
+            child: const Icon(
+              Icons.contact_phone_outlined,
+              color: Colors.white,
+              size: 22,
             ),
-          ],
+          ),
+          title: Text(label, style: HubStyle.sectionTitle()),
+          subtitle: Text(
+            contact.phone.trim().isEmpty
+                ? 'Sin teléfono'
+                : contact.phone.trim(),
+            style: HubStyle.caption(),
+          ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                tooltip: 'Editar',
+                onPressed: () async {
+                  final edited = await _editContact(
+                    context,
+                    title: 'Editar contacto',
+                    initial: contact,
+                  );
+                  if (edited != null) {
+                    await onSave(edited);
+                  }
+                },
+                icon: const Icon(Icons.edit_outlined, color: HubStyle.accent),
+              ),
+              IconButton(
+                tooltip: 'Eliminar',
+                onPressed: onDelete,
+                icon: const Icon(Icons.delete_outline),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -183,10 +214,10 @@ class _EditContactPageState extends State<_EditContactPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title),
-      ),
+      backgroundColor: isDark ? null : HubStyle.surface,
+      appBar: HubStyle.appBar(titleText: widget.title),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
@@ -198,10 +229,9 @@ class _EditContactPageState extends State<_EditContactPage> {
                 autofocus: true,
                 textCapitalization: TextCapitalization.words,
                 textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(
+                decoration: HubStyle.inputDecoration(
                   labelText: 'Nombre',
                   hintText: 'Ej. María',
-                  border: OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 16),
@@ -210,19 +240,20 @@ class _EditContactPageState extends State<_EditContactPage> {
                 keyboardType: TextInputType.phone,
                 textInputAction: TextInputAction.done,
                 onSubmitted: (_) => _submit(),
-                decoration: const InputDecoration(
+                decoration: HubStyle.inputDecoration(
                   labelText: 'Teléfono',
                   hintText: 'Ej. 600123456 o +34600123456',
-                  border: OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 24),
               FilledButton(
+                style: HubStyle.filledButtonStyle(),
                 onPressed: _submit,
                 child: const Text('Guardar'),
               ),
               const SizedBox(height: 8),
               TextButton(
+                style: HubStyle.textButtonStyle(),
                 onPressed: () => Navigator.pop(context),
                 child: const Text('Cancelar'),
               ),

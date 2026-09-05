@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:moto_amg/core/theme/hub_style.dart';
 import 'package:moto_amg/features/navigation/domain/entities/navigation_route.dart';
 import 'package:moto_amg/features/navigation/presentation/providers/navigation_providers.dart';
 import 'package:moto_amg/features/settings/presentation/providers/settings_providers.dart';
@@ -24,27 +25,27 @@ Future<NavigationRoute> enrichRouteLimitsBeforeNavigation({
     context: context,
     barrierDismissible: false,
     builder: (ctx) {
-      final colors = Theme.of(ctx).colorScheme;
       return PopScope(
         canPop: false,
         child: AlertDialog(
-          title: const Text('Preparando navegación'),
+          backgroundColor: HubStyle.surface,
+          title: Text('Preparando navegación', style: HubStyle.sectionTitle()),
           content: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SizedBox(
+              const SizedBox(
                 width: 28,
                 height: 28,
                 child: CircularProgressIndicator(
                   strokeWidth: 3,
-                  color: colors.primary,
+                  color: HubStyle.accent,
                 ),
               ),
               const SizedBox(width: 20),
               Expanded(
                 child: Text(
                   'Actualizando límites de velocidad de la ruta…',
-                  style: Theme.of(ctx).textTheme.bodyMedium,
+                  style: HubStyle.body(),
                 ),
               ),
             ],

@@ -3,7 +3,6 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:moto_amg/core/constants/app_constants.dart';
 import 'package:moto_amg/core/theme/app_theme.dart';
-import 'package:moto_amg/core/theme/app_color_theme_provider.dart';
 import 'package:moto_amg/features/onboarding/presentation/widgets/app_bootstrap.dart';
 import 'package:moto_amg/features/navigation/presentation/providers/navigation_providers.dart';
 
@@ -27,7 +26,6 @@ class _MotoAmgRoot extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     ref.watch(androidGraphicsCompatProvider);
-    final palette = ref.watch(appColorThemeProvider);
     return MaterialApp(
       title: AppConstants.appName,
       debugShowCheckedModeBanner: false,
@@ -38,8 +36,8 @@ class _MotoAmgRoot extends ConsumerWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      theme: AppTheme.light(palette),
-      darkTheme: AppTheme.dark(palette),
+      theme: AppTheme.light,
+      darkTheme: AppTheme.dark,
       themeMode: ThemeMode.system,
       home: const AppBootstrap(),
     );

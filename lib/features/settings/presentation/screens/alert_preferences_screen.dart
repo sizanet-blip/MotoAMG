@@ -1,6 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:moto_amg/core/constants/navigation_constants.dart';
+import 'package:moto_amg/core/theme/hub_style.dart';
 import 'package:moto_amg/features/navigation/domain/entities/alert_preferences.dart';
 import 'package:moto_amg/features/navigation/presentation/providers/navigation_providers.dart';
 
@@ -12,12 +13,15 @@ class AlertPreferencesScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final prefs = ref.watch(alertPreferencesProvider);
     final notifier = ref.read(alertPreferencesProvider.notifier);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Avisos de navegación'),
+      backgroundColor: isDark ? null : HubStyle.surface,
+      appBar: HubStyle.appBar(
+        titleText: 'Avisos de navegación',
         actions: [
           TextButton(
+            style: HubStyle.textButtonStyle(),
             onPressed: () async {
               await notifier.reset();
               if (context.mounted) {
@@ -31,94 +35,95 @@ class AlertPreferencesScreen extends ConsumerWidget {
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(0, 8, 0, 24),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-            child: Text(
-              'Activa lo que necesites y entra en cada tipo para afinar mapa, voz y distancias.',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-            ),
+          Text(
+            'Activa lo que necesites y entra en cada tipo para afinar mapa, voz y distancias.',
+            style: HubStyle.body(),
           ),
+          const SizedBox(height: 12),
           _AlertTypeHubTile(
             icon: Icons.speed_outlined,
             title: 'Radares',
             summary: _radarSummary(prefs),
             enabled: prefs.radarsEnabled,
+            isDark: isDark,
             onEnabledChanged: (v) =>
                 notifier.update((p) => p.copyWith(radarsEnabled: v)),
             onOpenDetail: () => _openDetail(context, _AlertCategory.radars),
           ),
+          const SizedBox(height: 10),
           _AlertTypeHubTile(
             icon: Icons.local_gas_station_outlined,
             title: 'Gasolineras',
             summary: _fuelSummary(prefs),
             enabled: prefs.fuelEnabled,
+            isDark: isDark,
             onEnabledChanged: (v) =>
                 notifier.update((p) => p.copyWith(fuelEnabled: v)),
             onOpenDetail: () => _openDetail(context, _AlertCategory.fuel),
           ),
+          const SizedBox(height: 10),
           _AlertTypeHubTile(
             icon: Icons.toll_outlined,
             title: 'Peajes',
             summary: _tollSummary(prefs),
             enabled: prefs.tollsEnabled,
+            isDark: isDark,
             onEnabledChanged: (v) =>
                 notifier.update((p) => p.copyWith(tollsEnabled: v)),
             onOpenDetail: () => _openDetail(context, _AlertCategory.tolls),
           ),
+          const SizedBox(height: 10),
           _AlertTypeHubTile(
             icon: Icons.turn_sharp_right,
             title: 'Curvas pronunciadas',
             summary: _curveSummary(prefs),
             enabled: prefs.curvesEnabled,
+            isDark: isDark,
             onEnabledChanged: (v) =>
                 notifier.update((p) => p.copyWith(curvesEnabled: v)),
             onOpenDetail: () => _openDetail(context, _AlertCategory.curves),
           ),
+          const SizedBox(height: 10),
           _AlertTypeHubTile(
             icon: Icons.speed,
             title: 'Límite de velocidad',
             summary: _speedLimitSummary(prefs),
             enabled: prefs.speedLimitAlertEnabled,
+            isDark: isDark,
             onEnabledChanged: (v) =>
                 notifier.update((p) => p.copyWith(speedLimitAlertEnabled: v)),
             onOpenDetail: () =>
                 _openDetail(context, _AlertCategory.speedLimit),
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: Theme.of(context)
-                    .colorScheme
-                    .surfaceContainerHighest
-                    .withValues(alpha: 0.55),
-                borderRadius: BorderRadius.circular(12),
-              ),
+          const SizedBox(height: 20),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: isDark ? null : HubStyle.cardShadow,
+            ),
+            child: Material(
+              color: isDark
+                  ? Theme.of(context).colorScheme.surfaceContainerHighest
+                  : Colors.white,
+              borderRadius: BorderRadius.circular(16),
               child: Padding(
                 padding: const EdgeInsets.all(12),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(
+                    const Icon(
                       Icons.info_outline_rounded,
                       size: 20,
-                      color: Theme.of(context).colorScheme.primary,
+                      color: HubStyle.accent,
                     ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         'Los avisos aparecen en el mapa y en la pantalla al navegar. '
                         'La voz es opcional para cada tipo.',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant,
-                              height: 1.35,
-                            ),
+                        style: HubStyle.caption(),
                       ),
                     ),
                   ],
@@ -186,10 +191,11 @@ class _AlertTypeDetailScreen extends ConsumerWidget {
     final prefs = ref.watch(alertPreferencesProvider);
     final notifier = ref.read(alertPreferencesProvider.notifier);
     final enabled = _isEnabled(prefs);
-    final colors = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: AppBar(title: Text(_title)),
+      backgroundColor: isDark ? null : HubStyle.surface,
+      appBar: HubStyle.appBar(titleText: _title),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(0, 8, 0, 24),
         children: [
@@ -206,6 +212,8 @@ class _AlertTypeDetailScreen extends ConsumerWidget {
             ),
             value: enabled,
             onChanged: (v) => notifier.update((p) => _setEnabled(p, v)),
+            activeThumbColor: HubStyle.accent,
+            activeTrackColor: HubStyle.accent.withValues(alpha: 0.45),
           ),
           if (!enabled)
             Padding(
@@ -213,9 +221,7 @@ class _AlertTypeDetailScreen extends ConsumerWidget {
               child: Text(
                 'Este tipo de aviso está desactivado. Puedes volver atrás o '
                 'activarlo con el interruptor de arriba.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: colors.onSurfaceVariant,
-                    ),
+                style: HubStyle.caption(),
               ),
             )
           else if (category == _AlertCategory.speedLimit) ...[
@@ -223,12 +229,8 @@ class _AlertTypeDetailScreen extends ConsumerWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               child: Text(
-                'MARGEN SOBRE EL LÍMITE',
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: colors.primary,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.5,
-                    ),
+                'Margen sobre el límite',
+                style: HubStyle.sectionTitle(color: HubStyle.accent),
               ),
             ),
             Padding(
@@ -236,9 +238,7 @@ class _AlertTypeDetailScreen extends ConsumerWidget {
               child: Text(
                 'Avisa cuando vayas más rápido que el límite + este margen. '
                 'Con 0 km/h avisa en cuanto lo superas.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: colors.onSurfaceVariant,
-                    ),
+                style: HubStyle.caption(),
               ),
             ),
             Padding(
@@ -272,6 +272,8 @@ class _AlertTypeDetailScreen extends ConsumerWidget {
               onChanged: (v) => notifier.update(
                 (p) => p.copyWith(speedLimitSoundEnabled: v),
               ),
+              activeThumbColor: HubStyle.accent,
+              activeTrackColor: HubStyle.accent.withValues(alpha: 0.45),
             ),
           ] else ...[
             const Divider(height: 24),
@@ -361,9 +363,7 @@ class _AlertTypeDetailScreen extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
             child: Text(
               'Elige qué curvas quieres ver y oír. Por defecto: cerrada y muy cerrada.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+              style: HubStyle.caption(),
             ),
           ),
           _CompactSwitchTile(
@@ -550,6 +550,7 @@ class _AlertTypeHubTile extends StatelessWidget {
     required this.title,
     required this.summary,
     required this.enabled,
+    required this.isDark,
     required this.onEnabledChanged,
     required this.onOpenDetail,
   });
@@ -558,64 +559,76 @@ class _AlertTypeHubTile extends StatelessWidget {
   final String title;
   final String summary;
   final bool enabled;
+  final bool isDark;
   final ValueChanged<bool> onEnabledChanged;
   final VoidCallback onOpenDetail;
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return Material(
-      color: colors.surface,
-      child: InkWell(
-        onTap: onOpenDetail,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(8, 4, 8, 4),
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 22,
-                backgroundColor: enabled
-                    ? colors.primaryContainer
-                    : colors.surfaceContainerHighest,
-                foregroundColor: enabled
-                    ? colors.onPrimaryContainer
-                    : colors.onSurfaceVariant,
-                child: Icon(icon, size: 22),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      summary,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: enabled
-                                ? colors.onSurfaceVariant
-                                : colors.outline,
-                          ),
-                    ),
-                  ],
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: isDark ? null : HubStyle.cardShadow,
+      ),
+      child: Material(
+        color: isDark
+            ? Theme.of(context).colorScheme.surfaceContainerHighest
+            : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onOpenDetail,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: enabled
+                        ? HubStyle.accent
+                        : HubStyle.accent.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    icon,
+                    size: 22,
+                    color: enabled ? Colors.white : HubStyle.accent,
+                  ),
                 ),
-              ),
-              Switch(
-                value: enabled,
-                onChanged: onEnabledChanged,
-              ),
-              Icon(
-                Icons.chevron_right,
-                color: colors.onSurfaceVariant,
-              ),
-            ],
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title, style: HubStyle.sectionTitle()),
+                      const SizedBox(height: 2),
+                      Text(
+                        summary,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: HubStyle.caption(
+                          color: enabled
+                              ? null
+                              : HubStyle.subtitle.withValues(alpha: 0.55),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Switch(
+                  value: enabled,
+                  onChanged: onEnabledChanged,
+                  activeThumbColor: HubStyle.accent,
+                  activeTrackColor: HubStyle.accent.withValues(alpha: 0.45),
+                ),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: HubStyle.accent,
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -637,19 +650,14 @@ class _SettingsSection extends StatelessWidget {
     if (children.isEmpty) {
       return const SizedBox.shrink();
     }
-    final colors = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
           child: Text(
-            title.toUpperCase(),
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: colors.primary,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.6,
-                ),
+            title,
+            style: HubStyle.sectionTitle(color: HubStyle.accent),
           ),
         ),
         ...children,
@@ -679,6 +687,8 @@ class _CompactSwitchTile extends StatelessWidget {
       subtitle: subtitle == null ? null : Text(subtitle!),
       value: value,
       onChanged: onChanged,
+      activeThumbColor: HubStyle.accent,
+      activeTrackColor: HubStyle.accent.withValues(alpha: 0.45),
     );
   }
 }
@@ -848,13 +858,13 @@ class _FuelMaxPriceFieldState extends State<_FuelMaxPriceField> {
         controller: _controller,
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
         textInputAction: TextInputAction.done,
-        decoration: InputDecoration(
+        decoration: HubStyle.inputDecoration(
           labelText: 'Precio máximo',
           hintText: 'Ej.: 1,65',
+          helperText: 'Introduce el precio actual que quieres como tope',
+        ).copyWith(
           suffixText: '€/L',
           errorText: _errorText,
-          helperText: 'Introduce el precio actual que quieres como tope',
-          border: const OutlineInputBorder(),
         ),
         onSubmitted: (_) => _commit(),
         onEditingComplete: _commit,
@@ -886,7 +896,7 @@ class _DistanceChips extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: Theme.of(context).textTheme.titleSmall),
+          Text(label, style: HubStyle.sectionTitle()),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
@@ -926,20 +936,14 @@ class _MultiDistanceChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: Theme.of(context).textTheme.titleSmall),
+          Text(label, style: HubStyle.sectionTitle()),
           const SizedBox(height: 4),
-          Text(
-            subtitle,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: colors.onSurfaceVariant,
-                ),
-          ),
+          Text(subtitle, style: HubStyle.caption()),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,

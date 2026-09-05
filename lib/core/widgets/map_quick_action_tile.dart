@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:moto_amg/core/theme/hub_style.dart';
 
 /// Botón redondo + etiqueta (mismo lenguaje que el mapa de grupo).
 class MapQuickActionTile extends StatelessWidget {
@@ -26,15 +27,15 @@ class MapQuickActionTile extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     final active = enabled && onTap != null;
     final bg = !active
-        ? colors.surfaceContainerHighest.withValues(alpha: 0.45)
+        ? const Color(0xFFF3F4F6)
         : emphasized
-            ? colors.primaryContainer
-            : colors.surfaceContainerHighest;
+            ? HubStyle.accent.withValues(alpha: 0.14)
+            : const Color(0xFFF3F4F6);
     final fg = !active
-        ? colors.onSurfaceVariant.withValues(alpha: 0.45)
+        ? HubStyle.subtitle.withValues(alpha: 0.45)
         : emphasized
-            ? colors.onPrimaryContainer
-            : colors.onSurfaceVariant;
+            ? HubStyle.accent
+            : HubStyle.subtitle;
 
     return Tooltip(
       message: tooltip ?? label,
@@ -60,11 +61,11 @@ class MapQuickActionTile extends StatelessWidget {
                         top: 4,
                         child: CircleAvatar(
                           radius: 8,
-                          backgroundColor: colors.primary,
+                          backgroundColor: HubStyle.accent,
                           child: Text(
                             badge!,
-                            style: TextStyle(
-                              color: colors.onPrimary,
+                            style: const TextStyle(
+                              color: Colors.white,
                               fontSize: 10,
                               fontWeight: FontWeight.w700,
                             ),
@@ -82,11 +83,9 @@ class MapQuickActionTile extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: colors.onSurfaceVariant,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 11,
-                ),
+            style: HubStyle.caption(
+              color: active ? HubStyle.subtitle : colors.onSurfaceVariant,
+            ),
           ),
         ],
       ),

@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:moto_amg/core/constants/app_constants.dart';
+import 'package:moto_amg/core/theme/hub_style.dart';
 import 'package:moto_amg/features/settings/presentation/screens/legal_document_screen.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -93,7 +94,6 @@ class _AboutAppScreenState extends State<AboutAppScreen> {
     );
   }
 
-
   String get _versionLabel {
     final info = _info;
     if (info == null) {
@@ -104,13 +104,13 @@ class _AboutAppScreenState extends State<AboutAppScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Acerca de MotoAMG')),
+      backgroundColor: isDark ? null : HubStyle.surface,
+      appBar: HubStyle.appBar(titleText: 'Acerca de MotoAMG'),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
         children: [
           Center(
             child: ClipRRect(
@@ -127,107 +127,104 @@ class _AboutAppScreenState extends State<AboutAppScreen> {
           Text(
             AppConstants.appName,
             textAlign: TextAlign.center,
-            style: textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
+            style: HubStyle.headline(),
           ),
           const SizedBox(height: 6),
           Text(
             AppConstants.appTagline,
             textAlign: TextAlign.center,
-            style: textTheme.bodyMedium?.copyWith(
-              color: colors.onSurfaceVariant,
-              height: 1.35,
-            ),
+            style: HubStyle.body(),
           ),
           const SizedBox(height: 6),
           Text(
             AppConstants.appShortDescription,
             textAlign: TextAlign.center,
-            style: textTheme.bodySmall?.copyWith(
-              color: colors.onSurfaceVariant,
-              height: 1.35,
-            ),
+            style: HubStyle.caption(),
           ),
           const SizedBox(height: 8),
           Text(
             'Versión $_versionLabel',
             textAlign: TextAlign.center,
-            style: textTheme.bodyMedium?.copyWith(
-              color: colors.onSurfaceVariant,
-            ),
+            style: HubStyle.body(),
           ),
           const SizedBox(height: 8),
           Text(
             AppConstants.copyrightNotice,
             textAlign: TextAlign.center,
-            style: textTheme.bodySmall?.copyWith(
-              color: colors.onSurfaceVariant,
-            ),
+            style: HubStyle.caption(),
           ),
           const SizedBox(height: 4),
           Text(
             'Desarrollo: ${AppConstants.developerName}',
             textAlign: TextAlign.center,
-            style: textTheme.bodySmall?.copyWith(
-              color: colors.onSurfaceVariant,
-            ),
+            style: HubStyle.caption(),
           ),
           const SizedBox(height: 28),
           _AboutLinkTile(
-            icon: Icons.mail_outline,
+            icon: Icons.mail_outline_rounded,
             title: 'Contacto y soporte',
             subtitle: AppConstants.supportEmail,
+            isDark: isDark,
             onTap: _openEmail,
           ),
+          const SizedBox(height: 10),
           _AboutLinkTile(
             icon: Icons.privacy_tip_outlined,
             title: 'Política de privacidad',
+            isDark: isDark,
             onTap: () => _openLegal(
               LegalDocumentKind.privacy,
               AppConstants.privacyPolicyUrl,
             ),
           ),
+          const SizedBox(height: 10),
           _AboutLinkTile(
             icon: Icons.description_outlined,
             title: 'Términos de uso',
+            isDark: isDark,
             onTap: () => _openLegal(
               LegalDocumentKind.terms,
               AppConstants.termsOfUseUrl,
             ),
           ),
+          const SizedBox(height: 10),
           _AboutLinkTile(
             icon: Icons.code_outlined,
             title: 'Licencias de software libre',
             subtitle: 'Paquetes de código abierto y sus licencias',
+            isDark: isDark,
             onTap: _openLicenses,
           ),
           const SizedBox(height: 20),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Atribuciones de mapas y datos',
-                    style: textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
+          DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: isDark ? null : HubStyle.cardShadow,
+            ),
+            child: Material(
+              color: isDark
+                  ? Theme.of(context).colorScheme.surfaceContainerHighest
+                  : Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Atribuciones de mapas y datos',
+                      style: HubStyle.sectionTitle(),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    AppConstants.dataAttributionsPlain,
-                    style: textTheme.bodySmall?.copyWith(
-                      color: colors.onSurfaceVariant,
-                      height: 1.4,
+                    const SizedBox(height: 8),
+                    Text(
+                      AppConstants.dataAttributionsPlain,
+                      style: HubStyle.caption(),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
-
         ],
       ),
     );
@@ -239,23 +236,67 @@ class _AboutLinkTile extends StatelessWidget {
     required this.icon,
     required this.title,
     this.subtitle,
+    required this.isDark,
     required this.onTap,
   });
 
   final IconData icon;
   final String title;
   final String? subtitle;
+  final bool isDark;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: Icon(icon),
-      title: Text(title),
-      subtitle: subtitle == null ? null : Text(subtitle!),
-      trailing: const Icon(Icons.chevron_right),
-      onTap: onTap,
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: isDark ? null : HubStyle.cardShadow,
+      ),
+      child: Material(
+        color: isDark
+            ? Theme.of(context).colorScheme.surfaceContainerHighest
+            : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 14, 8, 14),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: const BoxDecoration(
+                    color: HubStyle.accent,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, color: Colors.white, size: 22),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title, style: HubStyle.sectionTitle()),
+                      if (subtitle != null) ...[
+                        const SizedBox(height: 2),
+                        Text(subtitle!, style: HubStyle.caption()),
+                      ],
+                    ],
+                  ),
+                ),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: HubStyle.accent,
+                  size: 26,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

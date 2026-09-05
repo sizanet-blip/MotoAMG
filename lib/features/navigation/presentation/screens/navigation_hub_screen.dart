@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:moto_amg/core/constants/navigation_constants.dart';
+import 'package:moto_amg/core/theme/hub_style.dart';
 import 'package:moto_amg/core/widgets/app_popup_menu.dart';
 import 'package:moto_amg/features/auth/domain/entities/app_user.dart';
 import 'package:moto_amg/features/navigation/domain/entities/geocoding_place.dart';
@@ -285,20 +286,24 @@ class _NavigationHubScreenState extends ConsumerState<NavigationHubScreen> {
       final proceed = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('Itinerario muy largo'),
+          backgroundColor: HubStyle.surface,
+          title: Text('Itinerario muy largo', style: HubStyle.sectionTitle()),
           content: Text(
             'Este recorrido suma unos ${straightKm.round()} km en línea '
             'recta (~${estimatedRoadKm.round()} km estimados por carretera). '
             'El límite del servidor es ~$limitKm km y puede fallar el cálculo.\n\n'
             'Prueba con menos paradas o un destino más cercano, '
             'o continúa si quieres intentarlo igual.',
+            style: HubStyle.body(),
           ),
           actions: [
             TextButton(
+              style: HubStyle.textButtonStyle(),
               onPressed: () => Navigator.of(context).pop(false),
               child: const Text('Cancelar'),
             ),
             FilledButton(
+              style: HubStyle.filledButtonStyle(),
               onPressed: () => Navigator.of(context).pop(true),
               child: const Text('Calcular igual'),
             ),
@@ -506,24 +511,28 @@ class _NavigationHubScreenState extends ConsumerState<NavigationHubScreen> {
                   child: Row(
                     children: [
                       Material(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .surface
-                            .withValues(alpha: 0.96),
+                        color: HubStyle.surface.withValues(alpha: 0.96),
                         shape: const CircleBorder(),
                         elevation: 2,
-                        child: BackButton(
+                        shadowColor: Colors.black.withValues(alpha: 0.12),
+                        child: IconButton(
+                          tooltip: 'Volver',
                           onPressed: () => Navigator.of(context).pop(),
+                          icon: const Icon(
+                            Icons.arrow_back_rounded,
+                            color: HubStyle.title,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Material(
                           elevation: 3,
-                          borderRadius: BorderRadius.circular(28),
-                          color: Theme.of(context).colorScheme.surface,
+                          shadowColor: Colors.black.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(16),
+                          color: HubStyle.surface,
                           child: InkWell(
-                            borderRadius: BorderRadius.circular(28),
+                            borderRadius: BorderRadius.circular(16),
                             onTap: busy
                                 ? null
                                 : () => _openPlacePicker(
@@ -538,11 +547,9 @@ class _NavigationHubScreenState extends ConsumerState<NavigationHubScreen> {
                               ),
                               child: Row(
                                 children: [
-                                  Icon(
-                                    Icons.search,
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .onSurfaceVariant,
+                                  const Icon(
+                                    Icons.search_rounded,
+                                    color: HubStyle.accent,
                                   ),
                                   const SizedBox(width: 10),
                                   Expanded(
@@ -550,14 +557,7 @@ class _NavigationHubScreenState extends ConsumerState<NavigationHubScreen> {
                                       _itinerary.canPlan
                                           ? 'Añadir parada'
                                           : '¿A dónde vas?',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodyLarge
-                                          ?.copyWith(
-                                            color: Theme.of(context)
-                                                .colorScheme
-                                                .onSurfaceVariant,
-                                          ),
+                                      style: HubStyle.body(),
                                     ),
                                   ),
                                 ],
@@ -568,14 +568,16 @@ class _NavigationHubScreenState extends ConsumerState<NavigationHubScreen> {
                       ),
                       const SizedBox(width: 8),
                       Material(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .surface
-                            .withValues(alpha: 0.96),
+                        color: HubStyle.surface.withValues(alpha: 0.96),
                         shape: const CircleBorder(),
                         elevation: 2,
+                        shadowColor: Colors.black.withValues(alpha: 0.12),
                         child: PopupMenuButton<String>(
                           tooltip: 'Más opciones',
+                          icon: const Icon(
+                            Icons.more_vert_rounded,
+                            color: HubStyle.title,
+                          ),
                           offset: AppPopupMenus.offset,
                           elevation: AppPopupMenus.elevation,
                           shadowColor: AppPopupMenus.shadowColor,
@@ -595,14 +597,14 @@ class _NavigationHubScreenState extends ConsumerState<NavigationHubScreen> {
                               value: 'import_gpx',
                               icon: Icons.upload_file_rounded,
                               label: 'Importar GPX',
-                              tint: Theme.of(context).colorScheme.primary,
+                              tint: HubStyle.accent,
                               padding: const EdgeInsets.fromLTRB(8, 4, 8, 6),
                             ),
                             appPopupMenuItem(
                               value: 'resume',
                               icon: Icons.history_rounded,
                               label: 'Continuar ruta guardada',
-                              tint: Theme.of(context).colorScheme.primary,
+                              tint: HubStyle.accent,
                               padding: const EdgeInsets.fromLTRB(8, 4, 8, 6),
                             ),
                           ],
@@ -688,16 +690,15 @@ class _NavigationHubScreenState extends ConsumerState<NavigationHubScreen> {
                     bottom: MediaQuery.paddingOf(context).bottom + 16,
                     child: Material(
                       elevation: 2,
-                      borderRadius: BorderRadius.circular(12),
-                      color: Theme.of(context)
-                          .colorScheme
-                          .surface
-                          .withValues(alpha: 0.94),
-                      child: const Padding(
-                        padding: EdgeInsets.all(12),
+                      shadowColor: Colors.black.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(14),
+                      color: HubStyle.surface.withValues(alpha: 0.96),
+                      child: Padding(
+                        padding: const EdgeInsets.all(14),
                         child: Text(
                           'Busca un destino o mantén pulsado el mapa para añadir una parada.',
                           textAlign: TextAlign.center,
+                          style: HubStyle.body(),
                         ),
                       ),
                     ),
@@ -871,16 +872,20 @@ class _PlacePickerSheetState extends ConsumerState<_PlacePickerSheet> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Borrar recientes'),
-        content: const Text(
+        backgroundColor: HubStyle.surface,
+        title: Text('Borrar recientes', style: HubStyle.sectionTitle()),
+        content: Text(
           '¿Quieres eliminar todos los lugares recientes?',
+          style: HubStyle.body(),
         ),
         actions: [
           TextButton(
+            style: HubStyle.textButtonStyle(),
             onPressed: () => Navigator.pop(context, false),
             child: const Text('Cancelar'),
           ),
           FilledButton(
+            style: HubStyle.filledButtonStyle(),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Borrar todos'),
           ),
@@ -947,12 +952,7 @@ class _PlacePickerContent extends StatelessWidget {
             ),
           ),
         if (!landscape) const SizedBox(height: 12),
-        Text(
-          title,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
-        ),
+        Text(title, style: HubStyle.sectionTitle()),
         const SizedBox(height: 12),
         DestinationSearchField(
           controller: controller,
@@ -965,20 +965,18 @@ class _PlacePickerContent extends StatelessWidget {
         ),
         if (favorites.isNotEmpty) ...[
           SizedBox(height: landscape ? 12 : 20),
-          Text(
-            'Favoritos',
-            style: Theme.of(context).textTheme.titleSmall,
-          ),
+          Text('Favoritos', style: HubStyle.caption()),
           const SizedBox(height: 4),
           for (final place in favorites)
             ListTile(
               contentPadding: EdgeInsets.zero,
               visualDensity: landscape ? VisualDensity.compact : null,
-              leading: Icon(Icons.star_rounded, color: colors.primary),
+              leading: const Icon(Icons.star_rounded, color: HubStyle.accent),
               title: Text(
                 place.primaryLine,
                 maxLines: landscape ? 1 : 2,
                 overflow: TextOverflow.ellipsis,
+                style: HubStyle.body(color: HubStyle.title),
               ),
               subtitle: place.contextLine == null
                   ? null
@@ -986,6 +984,7 @@ class _PlacePickerContent extends StatelessWidget {
                       place.contextLine!,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
+                      style: HubStyle.caption(),
                     ),
               trailing: IconButton(
                 tooltip: 'Quitar de favoritos',
@@ -1003,10 +1002,7 @@ class _PlacePickerContent extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: Text(
-                  'Recientes',
-                  style: Theme.of(context).textTheme.titleSmall,
-                ),
+                child: Text('Recientes', style: HubStyle.caption()),
               ),
               TextButton(
                 onPressed: onClearRecents,
@@ -1023,11 +1019,12 @@ class _PlacePickerContent extends StatelessWidget {
             ListTile(
               contentPadding: EdgeInsets.zero,
               visualDensity: landscape ? VisualDensity.compact : null,
-              leading: const Icon(Icons.history),
+              leading: const Icon(Icons.history, color: HubStyle.subtitle),
               title: Text(
                 place.primaryLine,
                 maxLines: landscape ? 1 : 2,
                 overflow: TextOverflow.ellipsis,
+                style: HubStyle.body(color: HubStyle.title),
               ),
               subtitle: place.contextLine == null
                   ? null
@@ -1035,6 +1032,7 @@ class _PlacePickerContent extends StatelessWidget {
                       place.contextLine!,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
+                      style: HubStyle.caption(),
                     ),
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -1048,7 +1046,7 @@ class _PlacePickerContent extends StatelessWidget {
                           ? Icons.star_rounded
                           : Icons.star_border_rounded,
                       color: isFavorite(place)
-                          ? colors.primary
+                          ? HubStyle.accent
                           : colors.onSurfaceVariant,
                     ),
                     onPressed: () => onToggleFavorite(place),

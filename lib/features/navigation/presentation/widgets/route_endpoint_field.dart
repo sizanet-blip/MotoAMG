@@ -1,4 +1,5 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:moto_amg/core/theme/hub_style.dart';
 import 'package:moto_amg/core/widgets/app_popup_menu.dart';
 import 'package:moto_amg/features/navigation/domain/entities/geocoding_place.dart';
 import 'package:moto_amg/features/navigation/presentation/models/route_endpoint_input_mode.dart';
@@ -163,19 +164,18 @@ class RoutePlanFormatMenu extends StatelessWidget {
         }
       },
       itemBuilder: (context) {
-        final colors = Theme.of(context).colorScheme;
         return [
           appPopupMenuItem(
             value: _FormatMenuAction.allAddress,
             icon: Icons.place_outlined,
             label: 'Todo en direcciones',
-            tint: colors.primary,
+            tint: HubStyle.accent,
           ),
           appPopupMenuItem(
             value: _FormatMenuAction.allCoordinates,
             icon: Icons.gps_not_fixed,
             label: 'Todo en coordenadas',
-            tint: colors.tertiary,
+            tint: HubStyle.accent,
           ),
           const PopupMenuDivider(height: 8),
           appPopupMenuItem(

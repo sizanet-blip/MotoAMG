@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:moto_amg/core/constants/app_constants.dart';
 import 'package:moto_amg/core/onboarding/app_onboarding_provider.dart';
+import 'package:moto_amg/core/theme/hub_style.dart';
 import 'package:moto_amg/features/auth/presentation/providers/auth_providers.dart';
 import 'package:moto_amg/features/settings/presentation/screens/legal_document_screen.dart';
 
@@ -91,8 +92,7 @@ class _PrivacyOnboardingScreenState
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
+    final errorColor = Theme.of(context).colorScheme.error;
     final subtitle = _forAccount
         ? 'Esta cuenta aún no ha aceptado cómo tratamos los datos. '
             'Cada usuario debe aceptar la política, aunque el móvil ya se haya usado.'
@@ -100,6 +100,7 @@ class _PrivacyOnboardingScreenState
             'tratamos tus datos (ubicación, cuenta y uso del servicio).';
 
     return Scaffold(
+      backgroundColor: HubStyle.surface,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(24, 16, 24, 20),
@@ -121,18 +122,13 @@ class _PrivacyOnboardingScreenState
               Text(
                 'Privacidad y condiciones',
                 textAlign: TextAlign.center,
-                style: textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+                style: HubStyle.headline(),
               ),
               const SizedBox(height: 6),
               Text(
                 subtitle,
                 textAlign: TextAlign.center,
-                style: textTheme.bodyMedium?.copyWith(
-                  color: colors.onSurfaceVariant,
-                  height: 1.35,
-                ),
+                style: HubStyle.body(),
               ),
               const SizedBox(height: 16),
               Expanded(
@@ -165,16 +161,18 @@ class _PrivacyOnboardingScreenState
               const SizedBox(height: 12),
               DecoratedBox(
                 decoration: BoxDecoration(
-                  color: colors.surfaceContainerHighest.withValues(alpha: 0.55),
-                  borderRadius: BorderRadius.circular(14),
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: HubStyle.cardShadow,
                   border: Border.all(
                     color: _accepted
-                        ? colors.primary.withValues(alpha: 0.45)
-                        : colors.outlineVariant.withValues(alpha: 0.5),
+                        ? HubStyle.accent.withValues(alpha: 0.45)
+                        : const Color(0xFFE5E7EB),
                   ),
                 ),
                 child: CheckboxListTile(
                   value: _accepted,
+                  activeColor: HubStyle.accent,
                   onChanged: _completing
                       ? null
                       : (value) => setState(() => _accepted = value ?? false),
@@ -182,14 +180,14 @@ class _PrivacyOnboardingScreenState
                   contentPadding: const EdgeInsets.fromLTRB(8, 8, 12, 8),
                   title: Text.rich(
                     TextSpan(
-                      style: textTheme.bodyMedium?.copyWith(height: 1.35),
+                      style: HubStyle.body(color: HubStyle.title),
                       children: [
                         const TextSpan(text: 'He leído y acepto la '),
                         TextSpan(
                           text: 'Política de privacidad',
-                          style: TextStyle(
-                            color: colors.primary,
-                            fontWeight: FontWeight.w600,
+                          style: const TextStyle(
+                            color: HubStyle.accent,
+                            fontWeight: FontWeight.w700,
                             decoration: TextDecoration.underline,
                           ),
                           recognizer: _privacyTap,
@@ -197,9 +195,9 @@ class _PrivacyOnboardingScreenState
                         const TextSpan(text: ' y los '),
                         TextSpan(
                           text: 'Términos de uso',
-                          style: TextStyle(
-                            color: colors.primary,
-                            fontWeight: FontWeight.w600,
+                          style: const TextStyle(
+                            color: HubStyle.accent,
+                            fontWeight: FontWeight.w700,
                             decoration: TextDecoration.underline,
                           ),
                           recognizer: _termsTap,
@@ -217,17 +215,23 @@ class _PrivacyOnboardingScreenState
                       ? 'Marca la casilla para continuar con esta cuenta.'
                       : 'Marca la casilla para continuar.',
                   textAlign: TextAlign.center,
-                  style: textTheme.bodySmall?.copyWith(color: colors.error),
+                  style: HubStyle.caption(color: errorColor),
                 ),
               ],
               const SizedBox(height: 12),
               FilledButton(
                 onPressed: _accepted && !_completing ? _finish : null,
+                style: HubStyle.filledButtonStyle(
+                  enabled: _accepted && !_completing,
+                ),
                 child: _completing
                     ? const SizedBox(
                         width: 22,
                         height: 22,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
                       )
                     : const Text('Aceptar y continuar'),
               ),
@@ -256,16 +260,12 @@ class _LegalSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: colors.surfaceContainerHighest.withValues(alpha: 0.55),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: colors.outlineVariant.withValues(alpha: 0.5),
-        ),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: HubStyle.cardShadow,
+        border: Border.all(color: const Color(0xFFE5E7EB)),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -274,29 +274,27 @@ class _LegalSummaryCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(icon, color: colors.primary, size: 24),
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: HubStyle.accent.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, color: HubStyle.accent, size: 22),
+                ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Text(
-                    title,
-                    style: textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
+                  child: Text(title, style: HubStyle.sectionTitle()),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            Text(
-              body,
-              style: textTheme.bodySmall?.copyWith(
-                color: colors.onSurfaceVariant,
-                height: 1.35,
-              ),
-            ),
+            const SizedBox(height: 10),
+            Text(body, style: HubStyle.caption()),
             const SizedBox(height: 12),
             OutlinedButton(
               onPressed: onOpen,
+              style: HubStyle.outlinedButtonStyle(),
               child: Text(actionLabel),
             ),
           ],

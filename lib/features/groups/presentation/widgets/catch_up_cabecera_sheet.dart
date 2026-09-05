@@ -1,4 +1,5 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:moto_amg/core/theme/hub_style.dart';
 import 'package:moto_amg/core/widgets/keyboard_safe_sheet_body.dart';
 import 'package:moto_amg/features/groups/domain/entities/group_voice_announcement.dart';
 import 'package:moto_amg/features/navigation/presentation/widgets/route_preferences_bar.dart';
@@ -37,38 +38,31 @@ class _CatchUpCabeceraSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
           'El grupo ya está en marcha',
-          style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
+          style: HubStyle.sectionTitle(),
         ),
         const SizedBox(height: 8),
         Text(
           'Puedes ir a la cabecera ($cabeceraName) con el estilo de ruta '
           'que quieras. Cuando enganches el trazado del grupo, seguirás '
           'la ruta compartida.',
-          style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-                height: 1.35,
-              ),
+          style: HubStyle.body(),
         ),
         const SizedBox(height: 16),
         Text(
           'Cómo quieres llegar a la cabecera',
-          style: theme.textTheme.labelLarge?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
+          style: HubStyle.caption(color: HubStyle.title),
         ),
         const SizedBox(height: 8),
         const RoutePreferencesBar(),
         const SizedBox(height: 16),
         FilledButton.icon(
+          style: HubStyle.filledButtonStyle(),
           onPressed: () => Navigator.pop(
             context,
             CatchUpCabeceraChoice.chase,
@@ -78,6 +72,7 @@ class _CatchUpCabeceraSheet extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         OutlinedButton(
+          style: HubStyle.outlinedButtonStyle(),
           onPressed: () => Navigator.pop(
             context,
             CatchUpCabeceraChoice.destination,

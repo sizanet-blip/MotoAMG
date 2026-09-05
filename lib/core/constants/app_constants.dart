@@ -1,4 +1,4 @@
-/// Constantes de negocio y rutas de Firebase para MotoAMG.
+﻿/// Constantes de negocio y rutas de Firebase para MotoAMG.
 abstract final class AppConstants {
   static const String appName = 'MotoAMG';
   static const String appIconAsset = 'assets/branding/motoamg-app-icon.png';
@@ -30,9 +30,6 @@ abstract final class AppConstants {
       'Autenticación, datos en la nube e informes de error: Google Firebase.\n'
       'Intercom de voz: LiveKit.\n'
       'Bibliotecas de código abierto: ver «Licencias de software libre».';
-
-  static const String colorThemeBox = 'app_color_theme';
-  static const String colorThemeKey = 'palette_v1';
 
   static const String onboardingBox = 'app_onboarding';
   static const String onboardingCompleteKey = 'permissions_v1';

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:moto_amg/core/theme/hub_style.dart';
 
 /// Ítem de la hoja de acciones secundaria (mismo patrón en mapa / vista previa).
 class AppActionSheetItem {
@@ -32,6 +33,7 @@ Future<String?> showAppActionSheet(
   return showModalBottomSheet<String>(
     context: context,
     showDragHandle: true,
+    backgroundColor: HubStyle.surface,
     builder: (ctx) {
       return SafeArea(
         child: Column(
@@ -41,29 +43,24 @@ Future<String?> showAppActionSheet(
             if (title != null)
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
-                child: Text(
-                  title,
-                  style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                ),
+                child: Text(title, style: HubStyle.sectionTitle()),
               ),
             for (final item in items)
               ListTile(
                 enabled: item.enabled,
                 leading: Icon(
                   item.icon,
-                  color: item.destructive ? colors.error : null,
+                  color: item.destructive ? colors.error : HubStyle.accent,
                 ),
                 title: Text(
                   item.title,
                   style: item.destructive
-                      ? TextStyle(color: colors.error)
-                      : null,
+                      ? HubStyle.body(color: colors.error)
+                      : HubStyle.body(color: HubStyle.title),
                 ),
                 subtitle: item.subtitle == null
                     ? null
-                    : Text(item.subtitle!),
+                    : Text(item.subtitle!, style: HubStyle.caption()),
                 onTap: item.enabled
                     ? () => Navigator.pop(ctx, item.id)
                     : null,

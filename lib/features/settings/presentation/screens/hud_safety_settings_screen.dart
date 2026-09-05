@@ -3,6 +3,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:moto_amg/core/theme/hub_style.dart';
 import 'package:moto_amg/features/navigation/presentation/providers/navigation_providers.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -14,10 +15,11 @@ class HudSafetySettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final prefs = ref.watch(hudSafetyProvider);
     final controller = ref.read(hudSafetyProvider.notifier);
-    final colors = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Pantalla al navegar')),
+      backgroundColor: isDark ? null : HubStyle.surface,
+      appBar: HubStyle.appBar(titleText: 'Pantalla al navegar'),
       body: ListView(
         padding: const EdgeInsets.only(bottom: 24),
         children: [
@@ -30,6 +32,8 @@ class HudSafetySettingsScreen extends ConsumerWidget {
             ),
             value: prefs.keepScreenOn,
             onChanged: controller.setKeepScreenOn,
+            activeThumbColor: HubStyle.accent,
+            activeTrackColor: HubStyle.accent.withValues(alpha: 0.45),
           ),
           SwitchListTile(
             secondary: const Icon(Icons.wb_sunny_outlined),
@@ -39,6 +43,8 @@ class HudSafetySettingsScreen extends ConsumerWidget {
             ),
             value: prefs.highBrightness,
             onChanged: controller.setHighBrightness,
+            activeThumbColor: HubStyle.accent,
+            activeTrackColor: HubStyle.accent.withValues(alpha: 0.45),
           ),
           const Divider(height: 24),
           SwitchListTile(
@@ -49,15 +55,15 @@ class HudSafetySettingsScreen extends ConsumerWidget {
             ),
             value: prefs.helmetMode,
             onChanged: controller.setHelmetMode,
+            activeThumbColor: HubStyle.accent,
+            activeTrackColor: HubStyle.accent.withValues(alpha: 0.45),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
             child: Text(
               'Si lo activas, al navegar verás abajo dos botones grandes: '
               'uno para silenciar la voz y otro para cancelar la ruta.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: colors.onSurfaceVariant,
-                  ),
+              style: HubStyle.caption(),
             ),
           ),
           const Divider(height: 24),
@@ -70,15 +76,15 @@ class HudSafetySettingsScreen extends ConsumerWidget {
             ),
             value: prefs.map3dEnabled,
             onChanged: controller.setMap3dEnabled,
+            activeThumbColor: HubStyle.accent,
+            activeTrackColor: HubStyle.accent.withValues(alpha: 0.45),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
             child: Text(
               'Por defecto está desactivado. Si lo activas, el mapa se inclina '
               'y, al acercarte (zoom alto), verás los edificios en 3D.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: colors.onSurfaceVariant,
-                  ),
+              style: HubStyle.caption(),
             ),
           ),
           const Divider(height: 24),
@@ -91,18 +97,16 @@ class HudSafetySettingsScreen extends ConsumerWidget {
             ),
             value: prefs.showRouteSimulator,
             onChanged: controller.setShowRouteSimulator,
+            activeThumbColor: HubStyle.accent,
+            activeTrackColor: HubStyle.accent.withValues(alpha: 0.45),
           ),
           if (defaultTargetPlatform == TargetPlatform.android) ...[
             const Divider(height: 32),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               child: Text(
-                'GPS EN SEGUNDO PLANO',
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: colors.primary,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.6,
-                    ),
+                'GPS en segundo plano',
+                style: HubStyle.sectionTitle(color: HubStyle.accent),
               ),
             ),
             const Padding(
@@ -188,77 +192,82 @@ class _BatteryOptimizationSectionState extends State<_BatteryOptimizationSection
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final colors = Theme.of(context).colorScheme;
-    final theme = Theme.of(context);
 
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: colors.surfaceContainerHighest.withValues(alpha: 0.55),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: isDark ? null : HubStyle.cardShadow,
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(
-                  _isExempt ? Icons.check_circle_outline : Icons.battery_alert_outlined,
-                  size: 22,
-                  color: _isExempt ? colors.primary : colors.error,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Optimización de batería',
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w700,
+      child: Material(
+        color: isDark ? colors.surfaceContainerHighest : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    _isExempt
+                        ? Icons.check_circle_outline
+                        : Icons.battery_alert_outlined,
+                    size: 22,
+                    color: _isExempt ? HubStyle.accent : colors.error,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Optimización de batería',
+                          style: HubStyle.sectionTitle(),
                         ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'En Samsung, Xiaomi y otras marcas el móvil puede parar '
-                        'el GPS con la pantalla apagada. Desactiva la optimización '
-                        'para MotoAMG y la ruta seguirá mejor.',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: colors.onSurfaceVariant,
-                          height: 1.35,
+                        const SizedBox(height: 6),
+                        Text(
+                          'En Samsung, Xiaomi y otras marcas el móvil puede parar '
+                          'el GPS con la pantalla apagada. Desactiva la optimización '
+                          'para MotoAMG y la ruta seguirá mejor.',
+                          style: HubStyle.caption(),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              if (_checking)
+                const LinearProgressIndicator(
+                  minHeight: 3,
+                  color: HubStyle.accent,
+                )
+              else
+                Text(
+                  _isExempt
+                      ? 'MotoAMG puede usar GPS en segundo plano.'
+                      : 'Aún puede estar restringido — conviene revisarlo.',
+                  style: HubStyle.caption(
+                    color: _isExempt ? HubStyle.accent : colors.error,
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            if (_checking)
-              const LinearProgressIndicator(minHeight: 3)
-            else
-              Text(
-                _isExempt
-                    ? 'MotoAMG puede usar GPS en segundo plano.'
-                    : 'Aún puede estar restringido — conviene revisarlo.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: _isExempt ? colors.primary : colors.error,
-                  fontWeight: FontWeight.w600,
+              const SizedBox(height: 12),
+              FilledButton.icon(
+                onPressed:
+                    _checking ? null : () => unawaited(_openBatterySettings()),
+                style: HubStyle.filledButtonStyle(enabled: !_checking),
+                icon: const Icon(Icons.settings_outlined),
+                label: Text(
+                  _isExempt
+                      ? 'Revisar ajustes de batería'
+                      : 'Abrir ajustes de batería',
                 ),
               ),
-            const SizedBox(height: 12),
-            FilledButton.tonalIcon(
-              onPressed: _checking ? null : () => unawaited(_openBatterySettings()),
-              icon: const Icon(Icons.settings_outlined),
-              label: Text(
-                _isExempt
-                    ? 'Revisar ajustes de batería'
-                    : 'Abrir ajustes de batería',
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

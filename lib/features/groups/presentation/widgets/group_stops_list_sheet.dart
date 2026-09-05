@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:moto_amg/core/theme/hub_style.dart';
 import 'package:moto_amg/features/auth/domain/entities/app_user.dart';
 import 'package:moto_amg/features/groups/domain/entities/group_stop.dart';
 import 'package:moto_amg/features/groups/domain/services/group_stop_service.dart';
@@ -94,14 +95,20 @@ class _GroupStopsListSheetState extends ConsumerState<GroupStopsListSheet> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Quitar parada'),
-        content: Text('¿Quitar «${stop.type.shortLabel}» del mapa del grupo?'),
+        backgroundColor: HubStyle.surface,
+        title: Text('Quitar parada', style: HubStyle.sectionTitle()),
+        content: Text(
+          '¿Quitar «${stop.type.shortLabel}» del mapa del grupo?',
+          style: HubStyle.body(),
+        ),
         actions: [
           TextButton(
+            style: HubStyle.textButtonStyle(),
             onPressed: () => Navigator.of(context).pop(false),
             child: const Text('Cancelar'),
           ),
           FilledButton(
+            style: HubStyle.filledButtonStyle(),
             onPressed: () => Navigator.of(context).pop(true),
             child: const Text('Quitar'),
           ),
@@ -128,12 +135,7 @@ class _GroupStopsListSheetState extends ConsumerState<GroupStopsListSheet> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Paradas del grupo',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                ),
+                Text('Paradas del grupo', style: HubStyle.sectionTitle()),
                 Text(
                   widget.canManageStops
                       ? (stops.isEmpty
@@ -143,9 +145,7 @@ class _GroupStopsListSheetState extends ConsumerState<GroupStopsListSheet> {
                       : (stops.isEmpty
                           ? 'Nadie ha marcado paradas todavía.'
                           : '${stops.length} en el mapa · pulsa para ver en el mapa.'),
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
+                  style: HubStyle.caption(),
                 ),
               ],
             ),
@@ -168,11 +168,7 @@ class _GroupStopsListSheetState extends ConsumerState<GroupStopsListSheet> {
                                 'donde quieras parar.'
                             : 'Nadie ha marcado paradas todavía.',
                         textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant,
-                            ),
+                        style: HubStyle.body(),
                       ),
                     ),
                   );
@@ -229,7 +225,7 @@ class _GroupStopsListSheetState extends ConsumerState<GroupStopsListSheet> {
                           if (focusStop != null)
                             Icon(
                               Icons.my_location,
-                              color: Theme.of(context).colorScheme.primary,
+                              color: HubStyle.accent,
                             ),
                         ],
                       ),

@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:moto_amg/core/theme/hub_style.dart';
 import 'package:moto_amg/features/auth/domain/entities/app_user.dart';
 import 'package:moto_amg/features/auth/presentation/providers/auth_providers.dart';
 import 'package:moto_amg/features/clubs/presentation/providers/club_providers.dart';
@@ -67,25 +68,27 @@ class _JoinClubScreenState extends ConsumerState<JoinClubScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Unirme a un club')),
+      backgroundColor: isDark ? null : HubStyle.surface,
+      appBar: HubStyle.appBar(titleText: 'Unirme a una peña'),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
         children: [
           Text(
             'Usa el enlace que te han mandado o escribe el código.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+            style: HubStyle.body(),
           ),
           const SizedBox(height: 20),
           TextField(
             controller: _codeCtrl,
             enabled: !_busy,
             textCapitalization: TextCapitalization.characters,
-            decoration: const InputDecoration(
+            style: HubStyle.body(color: HubStyle.title),
+            decoration: HubStyle.inputDecoration(
               labelText: 'Código de invitación',
-              border: OutlineInputBorder(),
+              hintText: 'Ej. AMG-XXXX',
             ),
             onSubmitted: (_) => _busy ? null : _join(),
           ),
@@ -93,17 +96,23 @@ class _JoinClubScreenState extends ConsumerState<JoinClubScreen> {
             const SizedBox(height: 12),
             Text(
               _error!,
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
+              style: HubStyle.caption(
+                color: Theme.of(context).colorScheme.error,
+              ),
             ),
           ],
           const SizedBox(height: 24),
           FilledButton(
             onPressed: _busy ? null : _join,
+            style: HubStyle.filledButtonStyle(enabled: !_busy),
             child: _busy
                 ? const SizedBox(
                     width: 22,
                     height: 22,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
                   )
                 : const Text('Unirme'),
           ),

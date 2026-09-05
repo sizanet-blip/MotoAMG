@@ -1,8 +1,8 @@
 ﻿import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:moto_amg/core/theme/hub_style.dart';
 import 'package:moto_amg/features/navigation/domain/entities/lane_guidance.dart';
-import 'package:moto_amg/features/navigation/presentation/theme/navigation_hud_theme.dart';
 
 /// Panel 2D de control de carriles (activos rellenos, resto contorno).
 class NavigationLaneGuidancePanel extends StatelessWidget {
@@ -21,15 +21,9 @@ class NavigationLaneGuidancePanel extends StatelessWidget {
 
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: NavigationHudTheme.panel.withValues(alpha: 0.94),
+        color: HubStyle.surface.withValues(alpha: 0.97),
         borderRadius: BorderRadius.circular(14),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x55000000),
-            blurRadius: 10,
-            offset: Offset(0, 3),
-          ),
-        ],
+        boxShadow: HubStyle.cardShadow,
       ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
@@ -57,16 +51,16 @@ class _LaneCell extends StatelessWidget {
     final recommended = lane.isRecommended;
     final active = lane.isActive;
     final fill = active
-        ? NavigationHudTheme.accentStrong
+        ? HubStyle.accent
         : recommended
-            ? NavigationHudTheme.accentStrong.withValues(alpha: 0.72)
+            ? HubStyle.accent.withValues(alpha: 0.72)
             : Colors.transparent;
     final border = active || recommended
-        ? NavigationHudTheme.accent
-        : NavigationHudTheme.textSecondary.withValues(alpha: 0.45);
+        ? HubStyle.accent
+        : HubStyle.subtitle.withValues(alpha: 0.45);
     final arrowColor = active || recommended
         ? Colors.white
-        : NavigationHudTheme.textSecondary.withValues(alpha: 0.75);
+        : HubStyle.subtitle.withValues(alpha: 0.75);
 
     return Container(
       width: 36,
