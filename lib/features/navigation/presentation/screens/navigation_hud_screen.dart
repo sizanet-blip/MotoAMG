@@ -160,7 +160,8 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
         (_) => unawaited(_refreshCabeceraChase()),
       );
     }
-    if (!_route.hasAlerts) {
+    // También si faltan señales (semáforo/STOP/ceda): hasAlerts no las cubre.
+    if (!_route.hasAlerts || _route.mapPois.isEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         unawaited(_enrichActiveRouteAlerts());
       });

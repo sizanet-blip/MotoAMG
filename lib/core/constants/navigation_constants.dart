@@ -96,14 +96,26 @@ abstract final class NavigationConstants {
   /// Buffer lateral para gasolineras y POI Overpass (metros).
   static const double routePoiBufferMeters = 400;
 
-  /// Corredor lateral para semáforos / STOP / ceda (metros). Estrecho para
-  /// no pintar señales de calles paralelas.
-  static const double trafficControlRouteBufferMeters = 45;
+  /// Corredor lateral para semáforos / STOP / ceda (metros). Muy estrecho:
+  /// calles paralelas urbanas suelen estar a 20–35 m.
+  static const double trafficControlRouteBufferMeters = 18;
 
   /// Muestreo de anclas Overpass para controles de tráfico (metros).
   /// Más denso que [overpassSampleEveryMeters] porque la caja AABB de
   /// tramos largos deja fuera curvas urbanas.
-  static const double overpassTrafficSampleEveryMeters = 2500;
+  static const double overpassTrafficSampleEveryMeters = 1200;
+
+  /// Agrupa señales del mismo cruce (metros a lo largo de la ruta).
+  static const double trafficControlDedupeAlongMeters = 45;
+
+  /// Ventana delante del puck para pintar señales en el HUD (metros).
+  static const double trafficControlMapAheadMeters = 350;
+
+  /// Holgura detrás del puck: señales recién pasadas (metros).
+  static const double trafficControlMapBehindMeters = 20;
+
+  /// Máximo de señales visibles a la vez en navegación.
+  static const int trafficControlMapMaxVisible = 3;
 
   /// Corredor lateral para radares en la ruta (metros). Más estrecho que
   /// [routePoiBufferMeters] para no avisar de cámaras en calles paralelas.

@@ -51,10 +51,22 @@ class RouteAlertsService {
       return route;
     }
     final cacheKey =
-        '${route.id}_${preferredFuel?.name ?? 'all'}_${preferences.enrichCacheSuffix}_radar75_tc1';
+        '${route.id}_${preferredFuel?.name ?? 'all'}_${preferences.enrichCacheSuffix}_radar75_tc4';
     final cached = _cache[cacheKey];
-    if (cached != null) {
+    if (cached != null && cached.mapPois.isNotEmpty) {
       return _withAlertsAndMapPois(route, cached.alerts, cached.mapPois);
+    }
+    // Si Overpass falló antes, reutiliza avisos y reintenta solo las señales.
+    if (cached != null && cached.mapPois.isEmpty) {
+      final mapPois =
+          await _overpass.fetchTrafficControlsNearRoute(route.polyline);
+      if (mapPois.isNotEmpty) {
+        _cache[cacheKey] = (
+          alerts: cached.alerts,
+          mapPois: List.unmodifiable(mapPois),
+        );
+      }
+      return _withAlertsAndMapPois(route, cached.alerts, mapPois);
     }
 
     final futures = <Future<List<RouteAlert>>>[

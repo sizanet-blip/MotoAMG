@@ -3,6 +3,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:moto_amg/core/constants/navigation_constants.dart';
 import 'package:moto_amg/features/navigation/domain/entities/route_alert.dart';
+import 'package:moto_amg/features/navigation/domain/entities/route_map_poi.dart';
 
 /// Preferencias de avisos en navegación (HUD, mapa y voz).
 class AlertPreferences extends Equatable {
@@ -36,6 +37,10 @@ class AlertPreferences extends Equatable {
     this.speedLimitAlertEnabled = true,
     this.speedLimitToleranceKmh = 5,
     this.speedLimitSoundEnabled = true,
+    this.trafficSignsEnabled = true,
+    this.trafficSignalShowOnMap = true,
+    this.stopShowOnMap = true,
+    this.giveWayShowOnMap = true,
   });
 
   static const defaults = AlertPreferences();
@@ -102,6 +107,12 @@ class AlertPreferences extends Equatable {
 
   /// Pitido corto la primera vez que te pasas; se rearma al volver bajo el umbral.
   final bool speedLimitSoundEnabled;
+
+  /// Controles de tráfico en el mapa (semáforo, STOP, ceda). Solo visual.
+  final bool trafficSignsEnabled;
+  final bool trafficSignalShowOnMap;
+  final bool stopShowOnMap;
+  final bool giveWayShowOnMap;
 
   /// Opciones de distancia para la UI.
   static const radarAnnounceOptions = <double>[800, 500, 350, 200, 150, 90, 50];
@@ -227,6 +238,18 @@ class AlertPreferences extends Equatable {
     return acceptsCurveAlert(alert);
   }
 
+  /// Semáforo / STOP / ceda en el mapa (vista previa y navegación).
+  bool showMapPoiOnMap(RouteMapPoiKind kind) {
+    if (!trafficSignsEnabled) {
+      return false;
+    }
+    return switch (kind) {
+      RouteMapPoiKind.trafficSignal => trafficSignalShowOnMap,
+      RouteMapPoiKind.stop => stopShowOnMap,
+      RouteMapPoiKind.giveWay => giveWayShowOnMap,
+    };
+  }
+
   bool voiceEnabledFor(RouteAlertType type) {
     if (!isTypeEnabled(type)) {
       return false;
@@ -320,6 +343,10 @@ class AlertPreferences extends Equatable {
     bool? speedLimitAlertEnabled,
     int? speedLimitToleranceKmh,
     bool? speedLimitSoundEnabled,
+    bool? trafficSignsEnabled,
+    bool? trafficSignalShowOnMap,
+    bool? stopShowOnMap,
+    bool? giveWayShowOnMap,
   }) {
     return AlertPreferences(
       radarsEnabled: radarsEnabled ?? this.radarsEnabled,
@@ -361,6 +388,11 @@ class AlertPreferences extends Equatable {
           speedLimitToleranceKmh ?? this.speedLimitToleranceKmh,
       speedLimitSoundEnabled:
           speedLimitSoundEnabled ?? this.speedLimitSoundEnabled,
+      trafficSignsEnabled: trafficSignsEnabled ?? this.trafficSignsEnabled,
+      trafficSignalShowOnMap:
+          trafficSignalShowOnMap ?? this.trafficSignalShowOnMap,
+      stopShowOnMap: stopShowOnMap ?? this.stopShowOnMap,
+      giveWayShowOnMap: giveWayShowOnMap ?? this.giveWayShowOnMap,
     );
   }
 
@@ -394,6 +426,10 @@ class AlertPreferences extends Equatable {
         'speedLimitAlertEnabled': speedLimitAlertEnabled,
         'speedLimitToleranceKmh': speedLimitToleranceKmh,
         'speedLimitSoundEnabled': speedLimitSoundEnabled,
+        'trafficSignsEnabled': trafficSignsEnabled,
+        'trafficSignalShowOnMap': trafficSignalShowOnMap,
+        'stopShowOnMap': stopShowOnMap,
+        'giveWayShowOnMap': giveWayShowOnMap,
       };
 
   factory AlertPreferences.fromJson(Map<String, dynamic> json) {
@@ -487,6 +523,10 @@ class AlertPreferences extends Equatable {
         return 5;
       }(),
       speedLimitSoundEnabled: flag('speedLimitSoundEnabled', true),
+      trafficSignsEnabled: flag('trafficSignsEnabled', true),
+      trafficSignalShowOnMap: flag('trafficSignalShowOnMap', true),
+      stopShowOnMap: flag('stopShowOnMap', true),
+      giveWayShowOnMap: flag('giveWayShowOnMap', true),
     );
   }
 
@@ -521,6 +561,10 @@ class AlertPreferences extends Equatable {
         speedLimitAlertEnabled,
         speedLimitToleranceKmh,
         speedLimitSoundEnabled,
+        trafficSignsEnabled,
+        trafficSignalShowOnMap,
+        stopShowOnMap,
+        giveWayShowOnMap,
       ];
 }
 

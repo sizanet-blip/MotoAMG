@@ -255,6 +255,8 @@ class _NavigationMapViewState extends State<NavigationMapView> {
   var _awaitingStyleFadeOut = false;
   /// Evita confundir un animateCamera nuestro con un pan del usuario.
   var _programmaticCameraMove = false;
+  /// Generación para que un delay viejo no borre el flag de un move nuevo.
+  var _programmaticCameraGen = 0;
   var _cameraMoveBusy = false;
   CameraUpdate? _pendingCameraUpdate;
   double? _smoothedNavZoom;
@@ -477,8 +479,9 @@ class _NavigationMapViewState extends State<NavigationMapView> {
     if (widget._isPreview || !widget.cameraFollowUser) {
       return;
     }
-    if (_programmaticCameraMove) {
-      _programmaticCameraMove = false;
+    // No limpiar el flag aquí: un segundo idle de MapLibre o un delay
+    // solapado del simulador provocaba falsos “pan del usuario”.
+    if (_programmaticCameraMove || _cameraMoveBusy) {
       return;
     }
     final cam = _controller?.cameraPosition?.target;
@@ -490,8 +493,8 @@ class _NavigationMapViewState extends State<NavigationMapView> {
       GeoPoint(lat: cam.latitude, lng: cam.longitude),
       GeoPoint(lat: target.latitude, lng: target.longitude),
     );
-    // El usuario ha arrastrado el mapa lejos de su posición.
-    if (awayMeters > 55) {
+    // Umbral holgado: con animación + simulador rápido la cámara va detrás.
+    if (awayMeters > 120) {
       widget.onCameraFollowChanged?.call(false);
     }
   }
@@ -976,12 +979,13 @@ class _NavigationMapViewState extends State<NavigationMapView> {
     };
   }
 
-  /// Semáforos / STOP / ceda: todos los de la ruta (solo mapa).
+  /// Semáforos / STOP / ceda: solo en navegación, en el corredor de la ruta
+  /// y cerca del progreso actual (no toda la ruta de golpe).
   Map<String, dynamic> _mapPoisGeoJson() {
     return {
       'type': 'FeatureCollection',
       'features': [
-        for (final poi in widget.route.mapPois)
+        for (final poi in _mapPoisForMap())
           {
             'type': 'Feature',
             'properties': {
@@ -999,6 +1003,112 @@ class _NavigationMapViewState extends State<NavigationMapView> {
           },
       ],
     };
+  }
+
+  List<RouteMapPoi> _mapPoisForMap() {
+    if (widget._isPreview) {
+      return const [];
+    }
+    final prefs = widget.alertPreferences;
+    final corridor = NavigationConstants.trafficControlRouteBufferMeters;
+    final onRoute = <RouteMapPoi>[];
+    for (final poi in widget.route.mapPois) {
+      if (!prefs.showMapPoiOnMap(poi.kind)) {
+        continue;
+      }
+      // Revalida distancia al eje: descarta calles paralelas / parkings.
+      if (_distanceToRouteMeters(poi.point) > corridor) {
+        continue;
+      }
+      onRoute.add(poi);
+    }
+    if (onRoute.isEmpty) {
+      return const [];
+    }
+
+    final thinned = _thinMapPoisForDisplay(onRoute);
+    final lat = widget.latitude;
+    final lng = widget.longitude;
+    final maxVisible = NavigationConstants.trafficControlMapMaxVisible;
+    if (lat == null || lng == null) {
+      return thinned.take(maxVisible).toList(growable: false);
+    }
+
+    final position = GeoPoint(lat: lat, lng: lng);
+    final along = _approxAlongMeters(position);
+    final aheadMax = NavigationConstants.trafficControlMapAheadMeters;
+    final behind = NavigationConstants.trafficControlMapBehindMeters;
+    final ahead = <RouteMapPoi>[];
+    for (final poi in thinned) {
+      if (poi.distanceAlongRouteMeters < along - behind) {
+        continue;
+      }
+      if (poi.distanceAlongRouteMeters > along + aheadMax) {
+        break;
+      }
+      ahead.add(poi);
+      if (ahead.length >= maxVisible) {
+        break;
+      }
+    }
+    return ahead;
+  }
+
+  /// Misma lógica de cruce que Overpass: 1 semáforo; sin STOP/ceda laterales.
+  List<RouteMapPoi> _thinMapPoisForDisplay(List<RouteMapPoi> sorted) {
+    final clusterM = NavigationConstants.trafficControlDedupeAlongMeters;
+    final kept = <RouteMapPoi>[];
+    bool near(RouteMapPoi a, RouteMapPoi b) =>
+        (a.distanceAlongRouteMeters - b.distanceAlongRouteMeters).abs() <
+        clusterM;
+
+    for (final poi in sorted) {
+      final cluster = kept.where((k) => near(k, poi)).toList();
+      if (cluster.isEmpty) {
+        kept.add(poi);
+        continue;
+      }
+      if (poi.kind == RouteMapPoiKind.trafficSignal) {
+        if (cluster.any((k) => k.kind == RouteMapPoiKind.trafficSignal)) {
+          continue;
+        }
+        kept.removeWhere(
+          (k) => near(k, poi) && k.kind != RouteMapPoiKind.trafficSignal,
+        );
+        kept.add(poi);
+        continue;
+      }
+      if (cluster.any((k) => k.kind == RouteMapPoiKind.trafficSignal)) {
+        continue;
+      }
+      if (cluster.any((k) => k.kind == poi.kind)) {
+        continue;
+      }
+      kept.add(poi);
+    }
+    return kept;
+  }
+
+  double _distanceToRouteMeters(GeoPoint position) {
+    final polyline = widget.route.polyline;
+    if (polyline.length < 2) {
+      return double.infinity;
+    }
+    var bestDist = double.infinity;
+    for (var i = 0; i < polyline.length - 1; i++) {
+      final a = polyline[i];
+      final b = polyline[i + 1];
+      final t = _projectT(position, a, b);
+      final proj = GeoPoint(
+        lat: a.lat + (b.lat - a.lat) * t,
+        lng: a.lng + (b.lng - a.lng) * t,
+      );
+      final d = _haversineMetersLocal(position, proj);
+      if (d < bestDist) {
+        bestDist = d;
+      }
+    }
+    return bestDist;
   }
 
   Map<String, dynamic> _speedLimitsLinesGeoJson() {
@@ -1686,7 +1796,7 @@ class _NavigationMapViewState extends State<NavigationMapView> {
       _mapPoisSymbolLayerId,
       const SymbolLayerProperties(
         iconImage: [Expressions.get, 'icon'],
-        iconSize: 0.42,
+        iconSize: 0.55,
         iconAllowOverlap: true,
         iconIgnorePlacement: true,
         iconAnchor: 'center',
@@ -1985,27 +2095,164 @@ class _NavigationMapViewState extends State<NavigationMapView> {
     try {
       await controller.addImage(
         _mapPoiIconSignalId,
-        await _buildAlertMarkerPng(
-          icon: Icons.traffic_rounded,
-          background: const Color(0xFF455A64),
-        ),
+        await _buildTrafficSignalPng(),
       );
       await controller.addImage(
         _mapPoiIconStopId,
-        await _buildAlertMarkerPng(
-          icon: Icons.stop_circle_rounded,
-          background: const Color(0xFFC62828),
-        ),
+        await _buildStopSignPng(),
       );
       await controller.addImage(
         _mapPoiIconGiveWayId,
-        await _buildAlertMarkerPng(
-          icon: Icons.warning_amber_rounded,
-          background: const Color(0xFFF9A825),
-        ),
+        await _buildGiveWaySignPng(),
       );
       _mapPoiIconsReady = true;
     } catch (_) {}
+  }
+
+  /// Semáforo vertical legible (rojo / ámbar / verde).
+  Future<Uint8List> _buildTrafficSignalPng() async {
+    const size = 96.0;
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+
+    final housing = RRect.fromRectAndRadius(
+      const Rect.fromLTWH(30, 10, 36, 76),
+      const Radius.circular(8),
+    );
+    canvas.drawRRect(
+      housing.shift(const Offset(1.5, 2)),
+      Paint()
+        ..color = Colors.black.withValues(alpha: 0.22)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2),
+    );
+    canvas.drawRRect(housing, Paint()..color = const Color(0xFF263238));
+    canvas.drawRRect(
+      housing,
+      Paint()
+        ..color = const Color(0xFF90A4AE)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2,
+    );
+
+    const lamps = <(double, Color)>[
+      (24, Color(0xFFE53935)),
+      (48, Color(0xFFFFB300)),
+      (72, Color(0xFF43A047)),
+    ];
+    for (final (cy, color) in lamps) {
+      final c = Offset(size / 2, cy);
+      canvas.drawCircle(c, 10, Paint()..color = color);
+      canvas.drawCircle(
+        c,
+        10,
+        Paint()
+          ..color = Colors.black.withValues(alpha: 0.35)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.5,
+      );
+    }
+
+    final image =
+        await recorder.endRecording().toImage(size.toInt(), size.toInt());
+    final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+    return bytes!.buffer.asUint8List();
+  }
+
+  /// Octógono STOP (rojo + texto blanco).
+  Future<Uint8List> _buildStopSignPng() async {
+    const size = 96.0;
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+    final center = const Offset(size / 2, size / 2);
+    const r = 38.0;
+
+    final octagon = Path();
+    for (var i = 0; i < 8; i++) {
+      final angle = (math.pi / 8) + (i * math.pi / 4);
+      final p = Offset(
+        center.dx + r * math.cos(angle),
+        center.dy + r * math.sin(angle),
+      );
+      if (i == 0) {
+        octagon.moveTo(p.dx, p.dy);
+      } else {
+        octagon.lineTo(p.dx, p.dy);
+      }
+    }
+    octagon.close();
+
+    canvas.drawPath(
+      octagon.shift(const Offset(1.5, 2)),
+      Paint()
+        ..color = Colors.black.withValues(alpha: 0.22)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2),
+    );
+    canvas.drawPath(octagon, Paint()..color = const Color(0xFFC62828));
+    canvas.drawPath(
+      octagon,
+      Paint()
+        ..color = Colors.white
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 5,
+    );
+
+    final textPainter = TextPainter(textDirection: TextDirection.ltr)
+      ..text = const TextSpan(
+        text: 'STOP',
+        style: TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.5,
+          color: Colors.white,
+        ),
+      )
+      ..layout();
+    textPainter.paint(
+      canvas,
+      Offset(
+        (size - textPainter.width) / 2,
+        (size - textPainter.height) / 2,
+      ),
+    );
+
+    final image =
+        await recorder.endRecording().toImage(size.toInt(), size.toInt());
+    final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+    return bytes!.buffer.asUint8List();
+  }
+
+  /// Ceda el paso: triángulo invertido blanco con borde rojo.
+  Future<Uint8List> _buildGiveWaySignPng() async {
+    const size = 96.0;
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+
+    final triangle = Path()
+      ..moveTo(48, 86)
+      ..lineTo(10, 14)
+      ..lineTo(86, 14)
+      ..close();
+
+    canvas.drawPath(
+      triangle.shift(const Offset(1.5, 2)),
+      Paint()
+        ..color = Colors.black.withValues(alpha: 0.22)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2),
+    );
+    canvas.drawPath(triangle, Paint()..color = Colors.white);
+    canvas.drawPath(
+      triangle,
+      Paint()
+        ..color = const Color(0xFFC62828)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 8
+        ..strokeJoin = StrokeJoin.round,
+    );
+
+    final image =
+        await recorder.endRecording().toImage(size.toInt(), size.toInt());
+    final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+    return bytes!.buffer.asUint8List();
   }
 
   /// Marcador circular con icono Material (estilo app de navegación).
@@ -2630,6 +2877,7 @@ class _NavigationMapViewState extends State<NavigationMapView> {
       return;
     }
 
+    final moveGen = ++_programmaticCameraGen;
     _programmaticCameraMove = true;
     _cameraMoveBusy = true;
     try {
@@ -2666,11 +2914,14 @@ class _NavigationMapViewState extends State<NavigationMapView> {
     } finally {
       _cameraMoveBusy = false;
       Future<void>.delayed(const Duration(milliseconds: 400), () {
-        _programmaticCameraMove = false;
+        if (moveGen == _programmaticCameraGen) {
+          _programmaticCameraMove = false;
+        }
       });
       final pending = _pendingCameraUpdate;
       if (pending != null && mounted && widget.cameraFollowUser) {
         _pendingCameraUpdate = null;
+        final pendingGen = ++_programmaticCameraGen;
         _programmaticCameraMove = true;
         _cameraMoveBusy = true;
         try {
@@ -2684,7 +2935,9 @@ class _NavigationMapViewState extends State<NavigationMapView> {
         } finally {
           _cameraMoveBusy = false;
           Future<void>.delayed(const Duration(milliseconds: 350), () {
-            _programmaticCameraMove = false;
+            if (pendingGen == _programmaticCameraGen) {
+              _programmaticCameraMove = false;
+            }
           });
         }
       }

@@ -97,6 +97,18 @@ class AlertPreferencesScreen extends ConsumerWidget {
             onOpenDetail: () =>
                 _openDetail(context, _AlertCategory.speedLimit),
           ),
+          const SizedBox(height: 10),
+          _AlertTypeHubTile(
+            icon: Icons.traffic_outlined,
+            title: 'Señales de tráfico',
+            summary: _trafficSignsSummary(prefs),
+            enabled: prefs.trafficSignsEnabled,
+            isDark: isDark,
+            onEnabledChanged: (v) =>
+                notifier.update((p) => p.copyWith(trafficSignsEnabled: v)),
+            onOpenDetail: () =>
+                _openDetail(context, _AlertCategory.trafficSigns),
+          ),
           const SizedBox(height: 20),
           DecoratedBox(
             decoration: BoxDecoration(
@@ -145,7 +157,7 @@ class AlertPreferencesScreen extends ConsumerWidget {
   }
 }
 
-enum _AlertCategory { radars, fuel, tolls, curves, speedLimit }
+enum _AlertCategory { radars, fuel, tolls, curves, speedLimit, trafficSigns }
 
 class _AlertTypeDetailScreen extends ConsumerWidget {
   const _AlertTypeDetailScreen({required this.category});
@@ -158,6 +170,7 @@ class _AlertTypeDetailScreen extends ConsumerWidget {
         _AlertCategory.tolls => 'Peajes',
         _AlertCategory.curves => 'Curvas',
         _AlertCategory.speedLimit => 'Límite de velocidad',
+        _AlertCategory.trafficSigns => 'Señales de tráfico',
       };
 
   String get _mainSwitchTitle => switch (category) {
@@ -166,6 +179,7 @@ class _AlertTypeDetailScreen extends ConsumerWidget {
         _AlertCategory.tolls => 'Avisos de peaje',
         _AlertCategory.curves => 'Detectar curvas',
         _AlertCategory.speedLimit => 'Avisarme si me paso',
+        _AlertCategory.trafficSigns => 'Mostrar señales en el mapa',
       };
 
   bool _isEnabled(AlertPreferences prefs) => switch (category) {
@@ -174,6 +188,7 @@ class _AlertTypeDetailScreen extends ConsumerWidget {
         _AlertCategory.tolls => prefs.tollsEnabled,
         _AlertCategory.curves => prefs.curvesEnabled,
         _AlertCategory.speedLimit => prefs.speedLimitAlertEnabled,
+        _AlertCategory.trafficSigns => prefs.trafficSignsEnabled,
       };
 
   AlertPreferences _setEnabled(AlertPreferences prefs, bool value) =>
@@ -184,6 +199,8 @@ class _AlertTypeDetailScreen extends ConsumerWidget {
         _AlertCategory.curves => prefs.copyWith(curvesEnabled: value),
         _AlertCategory.speedLimit =>
           prefs.copyWith(speedLimitAlertEnabled: value),
+        _AlertCategory.trafficSigns =>
+          prefs.copyWith(trafficSignsEnabled: value),
       };
 
   @override
@@ -206,9 +223,13 @@ class _AlertTypeDetailScreen extends ConsumerWidget {
                   ? (enabled
                       ? 'Marca en rojo la velocidad cuando te pases'
                       : 'Sin aviso visual ni sonido por exceso')
-                  : (enabled
-                      ? 'Configura abajo cómo quieres verlo y oírlo'
-                      : 'Actívalo para ajustar las opciones'),
+                  : category == _AlertCategory.trafficSigns
+                      ? (enabled
+                          ? 'Elige abajo qué señales pintar en el mapa'
+                          : 'Semáforos, STOP y ceda ocultos')
+                      : (enabled
+                          ? 'Configura abajo cómo quieres verlo y oírlo'
+                          : 'Actívalo para ajustar las opciones'),
             ),
             value: enabled,
             onChanged: (v) => notifier.update((p) => _setEnabled(p, v)),
@@ -274,6 +295,43 @@ class _AlertTypeDetailScreen extends ConsumerWidget {
               ),
               activeThumbColor: HubStyle.accent,
               activeTrackColor: HubStyle.accent.withValues(alpha: 0.45),
+            ),
+          ] else if (category == _AlertCategory.trafficSigns) ...[
+            const Divider(height: 24),
+            _SettingsSection(
+              title: 'En el mapa',
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                  child: Text(
+                    'Solo iconos en el mapa durante la navegación. '
+                    'Sin voz ni panel de distancia.',
+                    style: HubStyle.caption(),
+                  ),
+                ),
+                _CompactSwitchTile(
+                  title: 'Semáforos',
+                  subtitle: 'Icono de semáforo',
+                  value: prefs.trafficSignalShowOnMap,
+                  onChanged: (v) => notifier.update(
+                    (p) => p.copyWith(trafficSignalShowOnMap: v),
+                  ),
+                ),
+                _CompactSwitchTile(
+                  title: 'STOP',
+                  subtitle: 'Señal de stop',
+                  value: prefs.stopShowOnMap,
+                  onChanged: (v) =>
+                      notifier.update((p) => p.copyWith(stopShowOnMap: v)),
+                ),
+                _CompactSwitchTile(
+                  title: 'Ceda el paso',
+                  subtitle: 'Triángulo invertido',
+                  value: prefs.giveWayShowOnMap,
+                  onChanged: (v) =>
+                      notifier.update((p) => p.copyWith(giveWayShowOnMap: v)),
+                ),
+              ],
             ),
           ] else ...[
             const Divider(height: 24),
@@ -413,6 +471,7 @@ class _AlertTypeDetailScreen extends ConsumerWidget {
           ),
         ],
       _AlertCategory.speedLimit => const [],
+      _AlertCategory.trafficSigns => const [],
     };
   }
 
@@ -458,6 +517,7 @@ class _AlertTypeDetailScreen extends ConsumerWidget {
           ),
         ],
       _AlertCategory.speedLimit => const [],
+      _AlertCategory.trafficSigns => const [],
     };
   }
 
@@ -759,6 +819,17 @@ String _speedLimitSummary(AlertPreferences prefs) {
   return _joinSummary([
     margin == 0 ? 'Al pasarlo' : 'Margen +$margin km/h',
     if (prefs.speedLimitSoundEnabled) 'Sonido',
+  ]);
+}
+
+String _trafficSignsSummary(AlertPreferences prefs) {
+  if (!prefs.trafficSignsEnabled) {
+    return 'Desactivado';
+  }
+  return _joinSummary([
+    if (prefs.trafficSignalShowOnMap) 'Semáforo',
+    if (prefs.stopShowOnMap) 'STOP',
+    if (prefs.giveWayShowOnMap) 'Ceda',
   ]);
 }
 

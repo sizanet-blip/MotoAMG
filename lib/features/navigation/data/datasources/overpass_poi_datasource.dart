@@ -60,7 +60,7 @@ class OverpassPoiDatasource {
         return const [];
       }
       final elements = decoded['elements'] as List<dynamic>? ?? const [];
-      final pois = <RouteMapPoi>[];
+      final rawPois = <({RouteMapPoi poi, double distToRoute})>[];
       final seen = <String>{};
       final buffer = NavigationConstants.trafficControlRouteBufferMeters;
 
@@ -97,24 +97,91 @@ class OverpassPoiDatasource {
         if (!seen.add(key)) {
           continue;
         }
-        pois.add(
-          RouteMapPoi(
+        rawPois.add((
+          poi: RouteMapPoi(
             id: key,
             kind: kind,
             point: point,
             distanceAlongRouteMeters: projected.alongMeters,
             label: kind.shortLabel,
           ),
-        );
+          distToRoute: projected.distanceToRoute,
+        ));
       }
-      pois.sort(
-        (a, b) => a.distanceAlongRouteMeters
-            .compareTo(b.distanceAlongRouteMeters),
-      );
-      return List.unmodifiable(pois);
+      rawPois.sort((a, b) {
+        final along = a.poi.distanceAlongRouteMeters
+            .compareTo(b.poi.distanceAlongRouteMeters);
+        if (along != 0) {
+          return along;
+        }
+        return a.distToRoute.compareTo(b.distToRoute);
+      });
+      return List.unmodifiable(_thinTrafficControls(rawPois));
     } catch (_) {
       return const [];
     }
+  }
+
+  /// Un icono por cruce: prioriza semáforo; evita STOP/ceda de calles laterales.
+  List<RouteMapPoi> _thinTrafficControls(
+    List<({RouteMapPoi poi, double distToRoute})> sorted,
+  ) {
+    final clusterM = NavigationConstants.trafficControlDedupeAlongMeters;
+    final kept = <({RouteMapPoi poi, double distToRoute})>[];
+
+    bool near(RouteMapPoi a, RouteMapPoi b) =>
+        (a.distanceAlongRouteMeters - b.distanceAlongRouteMeters).abs() <
+        clusterM;
+
+    for (final candidate in sorted) {
+      final poi = candidate.poi;
+      final cluster = kept.where((k) => near(k.poi, poi)).toList();
+      if (cluster.isEmpty) {
+        kept.add(candidate);
+        continue;
+      }
+
+      if (poi.kind == RouteMapPoiKind.trafficSignal) {
+        final existingSignal = cluster
+            .where((k) => k.poi.kind == RouteMapPoiKind.trafficSignal)
+            .toList();
+        if (existingSignal.isNotEmpty) {
+          // Conserva el más cercano al eje de la ruta.
+          final best = existingSignal.first;
+          if (candidate.distToRoute + 0.5 < best.distToRoute) {
+            kept.remove(best);
+            kept.removeWhere(
+              (k) =>
+                  near(k.poi, poi) &&
+                  k.poi.kind != RouteMapPoiKind.trafficSignal,
+            );
+            kept.add(candidate);
+          }
+          continue;
+        }
+        kept.removeWhere(
+          (k) =>
+              near(k.poi, poi) && k.poi.kind != RouteMapPoiKind.trafficSignal,
+        );
+        kept.add(candidate);
+        continue;
+      }
+
+      // STOP / ceda: solo si no hay semáforo en el cruce y no hay otro igual.
+      if (cluster.any((k) => k.poi.kind == RouteMapPoiKind.trafficSignal)) {
+        continue;
+      }
+      if (cluster.any((k) => k.poi.kind == poi.kind)) {
+        continue;
+      }
+      kept.add(candidate);
+    }
+
+    kept.sort(
+      (a, b) => a.poi.distanceAlongRouteMeters
+          .compareTo(b.poi.distanceAlongRouteMeters),
+    );
+    return [for (final k in kept) k.poi];
   }
 
   /// Legacy Overpass. Prefer [SpainFuelDatasource.fetchFuelNearRoute].
