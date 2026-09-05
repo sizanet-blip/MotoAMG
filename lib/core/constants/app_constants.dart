@@ -1,9 +1,11 @@
-/// Constantes de negocio y rutas de Firebase para LocMotos.
+﻿/// Constantes de negocio y rutas de Firebase para MotoAMG.
 abstract final class AppConstants {
-  static const String appName = 'LocMotos';
-  static const String appIconAsset = 'assets/branding/locmotos-app-icon.png';
-  static const String appWordmarkAsset = 'assets/branding/locmotos-wordmark.png';
-  static const String appTagline = 'Rastreo en grupo para moteros';
+  static const String appName = 'MotoAMG';
+  static const String appIconAsset = 'assets/branding/motoamg-app-icon.png';
+  static const String appWordmarkAsset = 'assets/branding/motoamg-wordmark.png';
+  static const String appTagline = 'Pelotón en vivo y GPS para moteros';
+  static const String appShortDescription =
+      'Salidas en grupo, ubicación del pack, rutas e intercom';
   static const String developerName = 'Alberto Maestre Gutierrez';
   static const String copyrightNotice = '© 2026 Alberto Maestre Gutierrez';
   static const String supportEmail = 'info@albertomaestre.es';
@@ -20,7 +22,7 @@ abstract final class AppConstants {
       'Cartografía y estilos: Protomaps · Datos © OpenStreetMap contributors.\n'
       'Geocodificación: OpenStreetMap Nominatim (cuando aplica).\n'
       'Radares offline: inventarios derivados de fuentes oficiales (DGT / SCT) '
-      'y datos OpenStreetMap, servidos o empaquetados para LocMotos.\n'
+      'y datos OpenStreetMap, servidos o empaquetados para MotoAMG.\n'
       'Gasolineras y precios: inventario público MITECO (carburantes), '
       'cuando está descargado o disponible.\n'
       'Autenticación, datos en la nube e informes de error: Google Firebase.\n'
@@ -32,6 +34,11 @@ abstract final class AppConstants {
 
   static const String onboardingBox = 'app_onboarding';
   static const String onboardingCompleteKey = 'permissions_v1';
+  /// Aceptación de privacidad en este dispositivo (primera instalación).
+  static const String privacyAcceptedKey = 'privacy_v1';
+
+  /// Versión de la política: si cambia, cada cuenta debe volver a aceptar.
+  static const String privacyPolicyVersion = '2026-09-05';
 
   /// Intervalo de envío de GPS al nodo RTDB `live_locations`.
   static const Duration locationUpdateInterval = Duration(seconds: 3);
@@ -67,13 +74,13 @@ abstract final class AppConstants {
   /// Si vuelve a acercarse por debajo de esto, se puede volver a avisar después.
   static const double groupPackAlertResetMeters = 600;
 
-  static const String locationNotificationTitle = 'LocMotos';
+  static const String locationNotificationTitle = 'MotoAMG';
   static const String locationNotificationText =
       'Compartiendo tu ubicación con el grupo';
   static const String locationNotificationChannel = 'Ubicación en ruta';
 
   /// Notificación mientras navegas con ruta activa (servicio en primer plano).
-  static const String navigationNotificationTitle = 'LocMotos';
+  static const String navigationNotificationTitle = 'MotoAMG';
   static const String navigationNotificationText = 'Navegando en ruta';
   static const String navigationNotificationChannel = 'Navegación GPS';
 
@@ -89,7 +96,7 @@ abstract final class AppConstants {
   static const int maxPlateLength = 12;
 
   /// Dominio sintético para cuentas con usuario (sin correo real).
-  static const String usernameAuthDomain = 'users.locmotos.app';
+  static const String usernameAuthDomain = 'users.motoamg.app';
   static const int minGroupNameLength = 2;
   static const int maxGroupNameLength = 40;
 

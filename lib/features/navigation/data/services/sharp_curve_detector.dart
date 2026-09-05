@@ -1,10 +1,11 @@
+﻿import 'dart:collection';
 import 'dart:math' as math;
 
-import 'package:loc_motos/core/constants/navigation_constants.dart';
-import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
-import 'package:loc_motos/features/navigation/domain/entities/route_alert.dart';
+import 'package:moto_amg/core/constants/navigation_constants.dart';
+import 'package:moto_amg/features/navigation/domain/entities/geo_point.dart';
+import 'package:moto_amg/features/navigation/domain/entities/route_alert.dart';
 
-/// Detecta curvas fuertes a partir de la geometría de la polilínea.
+/// Detecta curvas a partir de la geometría de la polilínea (estilo GPS moto).
 abstract final class SharpCurveDetector {
   static List<RouteAlert> detect(
     List<GeoPoint> polyline, {
@@ -19,12 +20,57 @@ abstract final class SharpCurveDetector {
     }
 
     final alerts = <RouteAlert>[];
+    final window = Queue<_TurnSample>();
+    var windowSigned = 0.0;
+    var windowAbs = 0.0;
     var along = 0.0;
-    var windowStartAlong = 0.0;
-    var windowStartBearing = _bearingDeg(polyline[0], polyline[1]);
-    var cumDelta = 0.0;
-    var lastBearing = windowStartBearing;
+    var lastBearing = _bearingDeg(polyline[0], polyline[1]);
     var lastAlertAlong = -minSeparationMeters;
+    var pendingPeakAbs = 0.0;
+    double? pendingSigned;
+    GeoPoint? pendingPoint;
+    var pendingAlong = 0.0;
+    var armed = false;
+
+    void flushPending() {
+      if (!armed || pendingPoint == null || pendingSigned == null) {
+        armed = false;
+        pendingPeakAbs = 0;
+        pendingSigned = null;
+        pendingPoint = null;
+        return;
+      }
+      if (pendingAlong - lastAlertAlong < minSeparationMeters) {
+        armed = false;
+        pendingPeakAbs = 0;
+        pendingSigned = null;
+        pendingPoint = null;
+        return;
+      }
+      final signed = pendingSigned!;
+      final absDeg = pendingPeakAbs;
+      final severity = CurveSeverity.fromTurnDegrees(absDeg);
+      final turn = signed >= 0 ? CurveTurn.right : CurveTurn.left;
+      final side = turn.shortLabel.toLowerCase();
+      alerts.add(
+        RouteAlert(
+          id: 'curve_${pendingAlong.round()}_${severity.name}',
+          type: RouteAlertType.sharpCurve,
+          point: pendingPoint!,
+          distanceAlongRouteMeters: pendingAlong,
+          label: '${severity.shortLabel} $side',
+          meta: '${absDeg.round()}°',
+          curveSeverity: severity,
+          curveTurn: turn,
+          curveDegrees: absDeg,
+        ),
+      );
+      lastAlertAlong = pendingAlong;
+      armed = false;
+      pendingPeakAbs = 0;
+      pendingSigned = null;
+      pendingPoint = null;
+    }
 
     for (var i = 1; i < polyline.length - 1; i++) {
       final a = polyline[i];
@@ -35,34 +81,36 @@ abstract final class SharpCurveDetector {
       }
       along += seg;
       final bearing = _bearingDeg(a, b);
-      cumDelta += _bearingDeltaAbs(lastBearing, bearing).abs();
+      final delta = _bearingDeltaSigned(lastBearing, bearing);
       lastBearing = bearing;
 
-      while (along - windowStartAlong > windowMeters &&
-          windowStartAlong < along) {
-        // Avance de ventana aproximado: reinicia al punto actual.
-        windowStartAlong = along - windowMeters;
-        windowStartBearing = bearing;
-        cumDelta = 0;
+      window.add(_TurnSample(along: along, signedDelta: delta));
+      windowSigned += delta;
+      windowAbs += delta.abs();
+
+      while (window.isNotEmpty &&
+          along - window.first.along > windowMeters) {
+        final old = window.removeFirst();
+        windowSigned -= old.signedDelta;
+        windowAbs -= old.signedDelta.abs();
       }
 
-      if (cumDelta >= minBearingDeltaDeg &&
-          along - lastAlertAlong >= minSeparationMeters) {
-        alerts.add(
-          RouteAlert(
-            id: 'curve_${along.round()}',
-            type: RouteAlertType.sharpCurve,
-            point: a,
-            distanceAlongRouteMeters: along,
-            label: 'Curva pronunciada',
-          ),
-        );
-        lastAlertAlong = along;
-        cumDelta = 0;
-        windowStartAlong = along;
-        windowStartBearing = bearing;
+      final netAbs = windowSigned.abs();
+      final score = math.max(netAbs, windowAbs * 0.65);
+
+      if (score >= minBearingDeltaDeg) {
+        if (!armed || score >= pendingPeakAbs) {
+          armed = true;
+          pendingPeakAbs = score;
+          pendingSigned = windowSigned;
+          pendingPoint = a;
+          pendingAlong = along;
+        }
+      } else if (armed) {
+        flushPending();
       }
     }
+    flushPending();
     return alerts;
   }
 
@@ -87,7 +135,7 @@ abstract final class SharpCurveDetector {
     return (_deg(math.atan2(y, x)) + 360) % 360;
   }
 
-  static double _bearingDeltaAbs(double from, double to) {
+  static double _bearingDeltaSigned(double from, double to) {
     var d = to - from;
     while (d > 180) {
       d -= 360;
@@ -100,4 +148,11 @@ abstract final class SharpCurveDetector {
 
   static double _rad(double deg) => deg * math.pi / 180;
   static double _deg(double rad) => rad * 180 / math.pi;
+}
+
+class _TurnSample {
+  const _TurnSample({required this.along, required this.signedDelta});
+
+  final double along;
+  final double signedDelta;
 }

@@ -1,9 +1,9 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:loc_motos/features/navigation/domain/exceptions/navigation_exceptions.dart';
-import 'package:loc_motos/features/navigation/domain/exceptions/navigation_user_message.dart';
+import 'package:moto_amg/features/navigation/domain/exceptions/navigation_exceptions.dart';
+import 'package:moto_amg/features/navigation/domain/exceptions/navigation_user_message.dart';
 
 void main() {
   test('mantiene el mensaje de NavigationException', () {

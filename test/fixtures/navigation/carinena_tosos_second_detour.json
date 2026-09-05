@@ -1,0 +1,95 @@
+{
+  "id": "carinena_tosos_second_detour",
+  "description": "Cariñena→Tosos: bifurcación en Y (tipo 9) debe avisar cerca; giros leves tipo 10 genéricos siguen filtrados.",
+  "origin": { "lat": 41.3366984, "lng": -1.2021818 },
+  "destination": { "lat": 41.3157856, "lng": -1.0715739 },
+  "polyline": [
+    { "lat": 41.3366984, "lng": -1.2021818 },
+    { "lat": 41.335633, "lng": -1.202817 },
+    { "lat": 41.335705, "lng": -1.196296 },
+    { "lat": 41.329155, "lng": -1.187714 },
+    { "lat": 41.317289, "lng": -1.175432 },
+    { "lat": 41.3147, "lng": -1.176706 },
+    { "lat": 41.3157856, "lng": -1.0715739 }
+  ],
+  "maneuvers": [
+    {
+      "index": 0,
+      "type": "depart",
+      "instruction": "Conduzca hacia el sureste.",
+      "distanceMeters": 52,
+      "location": { "lat": 41.3366984, "lng": -1.2021818 },
+      "beginShapeIndex": 0
+    },
+    {
+      "index": 1,
+      "type": "turnLeft",
+      "valhallaType": 15,
+      "instruction": "Gire a la izquierda hacia A-220.",
+      "distanceMeters": 545,
+      "location": { "lat": 41.335633, "lng": -1.202817 },
+      "beginShapeIndex": 1,
+      "streetName": "A-220"
+    },
+    {
+      "index": 2,
+      "type": "turnRight",
+      "valhallaType": 10,
+      "instruction": "Gire a la derecha.",
+      "distanceMeters": 1132,
+      "location": { "lat": 41.335705, "lng": -1.196296 },
+      "beginShapeIndex": 2,
+      "polylineTurnDegrees": -76
+    },
+    {
+      "index": 3,
+      "type": "turnRight",
+      "valhallaType": 9,
+      "instruction": "Siga por la derecha.",
+      "distanceMeters": 1805,
+      "location": { "lat": 41.329155, "lng": -1.187714 },
+      "beginShapeIndex": 3,
+      "polylineTurnDegrees": -27
+    },
+    {
+      "index": 4,
+      "type": "turnRight",
+      "valhallaType": 10,
+      "instruction": "Gire a la derecha.",
+      "distanceMeters": 319,
+      "location": { "lat": 41.317289, "lng": -1.175432 },
+      "beginShapeIndex": 4,
+      "polylineTurnDegrees": -51
+    },
+    {
+      "index": 5,
+      "type": "turnRight",
+      "valhallaType": 10,
+      "instruction": "Gire a la derecha.",
+      "distanceMeters": 4631,
+      "location": { "lat": 41.3147, "lng": -1.176706 },
+      "beginShapeIndex": 5,
+      "polylineTurnDegrees": -61
+    },
+    {
+      "index": 6,
+      "type": "arrive",
+      "instruction": "Ha llegado a su destino.",
+      "distanceMeters": 0,
+      "location": { "lat": 41.3157856, "lng": -1.0715739 },
+      "beginShapeIndex": 6
+    }
+  ],
+  "checkpoints": [
+    {
+      "position": { "lat": 41.3295, "lng": -1.1885 },
+      "expectManeuverType": "turnRight",
+      "maxRemainingMeters": 400
+    },
+    {
+      "position": { "lat": 41.3178, "lng": -1.1758 },
+      "expectManeuverType": "turnRight",
+      "maxRemainingMeters": 400
+    }
+  ]
+}

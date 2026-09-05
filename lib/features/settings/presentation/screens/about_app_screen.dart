@@ -1,8 +1,8 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:loc_motos/core/constants/app_constants.dart';
-import 'package:loc_motos/features/settings/presentation/screens/legal_document_screen.dart';
+import 'package:moto_amg/core/constants/app_constants.dart';
+import 'package:moto_amg/features/settings/presentation/screens/legal_document_screen.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -49,7 +49,7 @@ class _AboutAppScreenState extends State<AboutAppScreen> {
       scheme: 'mailto',
       path: AppConstants.supportEmail,
       queryParameters: const {
-        'subject': 'LocMotos — soporte',
+        'subject': 'MotoAMG — soporte',
       },
     );
     final opened = await launchUrl(uri);
@@ -84,7 +84,7 @@ class _AboutAppScreenState extends State<AboutAppScreen> {
           'Desarrollo: ${AppConstants.developerName}\n\n'
           'Las bibliotecas de terceros se listan a continuación con sus '
           'licencias. Mapas, radares, carburantes y servicios de infraestructura '
-          'tienen atribuciones propias en «Acerca de LocMotos».',
+          'tienen atribuciones propias en «Acerca de MotoAMG».',
       applicationIcon: Image.asset(
         AppConstants.appIconAsset,
         width: 48,
@@ -108,7 +108,7 @@ class _AboutAppScreenState extends State<AboutAppScreen> {
     final textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Acerca de LocMotos')),
+      appBar: AppBar(title: const Text('Acerca de MotoAMG')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
         children: [
@@ -133,19 +133,28 @@ class _AboutAppScreenState extends State<AboutAppScreen> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Versión $_versionLabel',
-            textAlign: TextAlign.center,
-            style: textTheme.bodyMedium?.copyWith(
-              color: colors.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
             AppConstants.appTagline,
             textAlign: TextAlign.center,
             style: textTheme.bodyMedium?.copyWith(
               color: colors.onSurfaceVariant,
               height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            AppConstants.appShortDescription,
+            textAlign: TextAlign.center,
+            style: textTheme.bodySmall?.copyWith(
+              color: colors.onSurfaceVariant,
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Versión $_versionLabel',
+            textAlign: TextAlign.center,
+            style: textTheme.bodyMedium?.copyWith(
+              color: colors.onSurfaceVariant,
             ),
           ),
           const SizedBox(height: 8),

@@ -1,8 +1,8 @@
-import 'dart:math' as math;
+﻿import 'dart:math' as math;
 
-import 'package:loc_motos/core/constants/navigation_constants.dart';
-import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
-import 'package:loc_motos/features/navigation/domain/entities/navigation_route.dart';
+import 'package:moto_amg/core/constants/navigation_constants.dart';
+import 'package:moto_amg/features/navigation/domain/entities/geo_point.dart';
+import 'package:moto_amg/features/navigation/domain/entities/navigation_route.dart';
 
 /// Detección de desvío y orientación básica hacia el tramo original.
 class RouteDeviationService {

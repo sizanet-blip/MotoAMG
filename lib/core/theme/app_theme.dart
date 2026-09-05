@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
-import 'package:loc_motos/core/theme/app_color_theme.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:moto_amg/core/theme/app_color_theme.dart';
 
 abstract final class AppTheme {
   static const Color _classicSeed = Color(0xFFE65100);

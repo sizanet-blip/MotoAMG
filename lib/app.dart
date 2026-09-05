@@ -1,14 +1,14 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:loc_motos/core/constants/app_constants.dart';
-import 'package:loc_motos/core/theme/app_theme.dart';
-import 'package:loc_motos/core/theme/app_color_theme_provider.dart';
-import 'package:loc_motos/features/onboarding/presentation/widgets/app_bootstrap.dart';
-import 'package:loc_motos/features/navigation/presentation/providers/navigation_providers.dart';
+import 'package:moto_amg/core/constants/app_constants.dart';
+import 'package:moto_amg/core/theme/app_theme.dart';
+import 'package:moto_amg/core/theme/app_color_theme_provider.dart';
+import 'package:moto_amg/features/onboarding/presentation/widgets/app_bootstrap.dart';
+import 'package:moto_amg/features/navigation/presentation/providers/navigation_providers.dart';
 
-class LocMotosApp extends StatelessWidget {
-  const LocMotosApp({super.key, this.overrides = const []});
+class MotoAmgApp extends StatelessWidget {
+  const MotoAmgApp({super.key, this.overrides = const []});
 
   final List<Override> overrides;
 
@@ -16,13 +16,13 @@ class LocMotosApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return ProviderScope(
       overrides: overrides,
-      child: const _LocMotosRoot(),
+      child: const _MotoAmgRoot(),
     );
   }
 }
 
-class _LocMotosRoot extends ConsumerWidget {
-  const _LocMotosRoot();
+class _MotoAmgRoot extends ConsumerWidget {
+  const _MotoAmgRoot();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

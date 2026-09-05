@@ -1,5 +1,5 @@
 [Unit]
-Description=LocMotos LiveKit token server
+Description=MotoAMG LiveKit token server
 After=network.target
 
 [Service]

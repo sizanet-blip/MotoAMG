@@ -1,0 +1,54 @@
+{
+  "id": "same_road_bend",
+  "description": "Curva en la misma carretera: no debe mostrar giro; sí alerta de curva.",
+  "origin": { "lat": 41.0, "lng": -1.0 },
+  "destination": { "lat": 41.002, "lng": -0.998 },
+  "polyline": [
+    { "lat": 41.0, "lng": -1.0 },
+    { "lat": 41.0008, "lng": -1.0 },
+    { "lat": 41.0012, "lng": -0.9996 },
+    { "lat": 41.0016, "lng": -0.9992 },
+    { "lat": 41.002, "lng": -0.9988 }
+  ],
+  "maneuvers": [
+    {
+      "index": 0,
+      "type": "depart",
+      "instruction": "Sal",
+      "distanceMeters": 400,
+      "location": { "lat": 41.0, "lng": -1.0 },
+      "beginShapeIndex": 0
+    },
+    {
+      "index": 1,
+      "type": "turnRight",
+      "valhallaType": 10,
+      "instruction": "Gira a la derecha",
+      "distanceMeters": 300,
+      "location": { "lat": 41.0008, "lng": -1.0 },
+      "beginShapeIndex": 1,
+      "streetName": "Carretera de la Sierra",
+      "beginStreetName": "Carretera de la Sierra",
+      "turnDegree": 28
+    },
+    {
+      "index": 2,
+      "type": "turnLeft",
+      "valhallaType": 10,
+      "instruction": "Gira a la izquierda hacia Pueblo",
+      "distanceMeters": 200,
+      "location": { "lat": 41.002, "lng": -0.9988 },
+      "beginShapeIndex": 4,
+      "streetName": "Pueblo",
+      "beginStreetName": "Carretera de la Sierra"
+    }
+  ],
+  "checkpoints": [
+    {
+      "position": { "lat": 41.00075, "lng": -1.0 },
+      "expectManeuverType": "turnLeft",
+      "maxRemainingMeters": 250,
+      "expectCurveAlert": true
+    }
+  ]
+}

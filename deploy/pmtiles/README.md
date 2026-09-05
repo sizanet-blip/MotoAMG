@@ -1,4 +1,4 @@
-# LocMotos — PMTiles por CCAA (Protomaps).
+# MotoAMG — PMTiles por CCAA (Protomaps).
 
 **Importante:** `https://build.protomaps.com/` **sin fecha devuelve 404**. Es normal.
 
@@ -27,7 +27,7 @@ En el repo también existe el script PowerShell `tool/extract_spain_ccaa.ps1` (m
 2. Colócalo en:
 
 ```
-LocMotos/tools/pmtiles/pmtiles.exe
+MotoAMG/tools/pmtiles/pmtiles.exe
 ```
 
 ### Linux / VPS (solo si tienes mucho disco y RAM)
@@ -138,7 +138,7 @@ En un PC/Linux con cron:
 
 ```cron
 # Primer domingo de cada mes, 03:00 — solo ejemplo
-0 3 1-7 * 0 cd /ruta/LocMotos && python3 deploy/pmtiles/build_ccaa_pmtiles.py --force --upload ubuntu@IP:/var/www/maps/ >> /var/log/locmotos-pmtiles.log 2>&1
+0 3 1-7 * 0 cd /ruta/MotoAMG && python3 deploy/pmtiles/build_ccaa_pmtiles.py --force --upload ubuntu@IP:/var/www/maps/ >> /var/log/motoamg-pmtiles.log 2>&1
 ```
 
 ---

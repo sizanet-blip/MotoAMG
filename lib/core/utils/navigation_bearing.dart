@@ -1,5 +1,5 @@
-import 'package:geolocator/geolocator.dart';
-import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
+﻿import 'package:geolocator/geolocator.dart';
+import 'package:moto_amg/features/navigation/domain/entities/geo_point.dart';
 
 /// Rumbo de navegación: GPS si hay brújula, si no el tramo de ruta más cercano.
 double resolveNavigationBearing({

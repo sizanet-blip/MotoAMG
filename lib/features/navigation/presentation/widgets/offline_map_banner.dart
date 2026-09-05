@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
-import 'package:loc_motos/features/settings/presentation/screens/offline_maps_settings_screen.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:moto_amg/features/settings/presentation/screens/offline_maps_settings_screen.dart';
 
 /// Aviso de sin red + acceso a descarga de mapas offline.
 class OfflineMapBanner extends StatelessWidget {

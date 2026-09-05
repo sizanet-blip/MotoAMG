@@ -1,8 +1,8 @@
-import 'dart:typed_data';
+﻿import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
-import 'package:loc_motos/features/auth/domain/entities/vehicle_map_marker.dart';
+import 'package:moto_amg/features/auth/domain/entities/vehicle_map_marker.dart';
 
 /// Silueta vista cenital del vehículo (estilo apps de navegación).
 ///

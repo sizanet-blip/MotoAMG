@@ -1,4 +1,4 @@
-# Photon en Oracle Cloud (LocMotos)
+# Photon en Oracle Cloud (MotoAMG)
 
 Buscador de direcciones propio, complemento de Valhalla.
 
@@ -77,7 +77,7 @@ docker logs --tail 50 <contenedor_photon>
 curl http://127.0.0.1:2322/api?q=test
 ```
 
-## 3. Activar en LocMotos
+## 3. Activar en MotoAMG
 
 En `lib/core/constants/navigation_constants.dart`:
 
@@ -106,4 +106,4 @@ Ver: https://github.com/komoot/photon
 ## Mantenimiento
 
 - Actualizar mapa cada 1–2 meses (re-descargar dump o reimportar)
-- Monitorizar RAM: `docker stats locmotos-photon`
+- Monitorizar RAM: `docker stats motoamg-photon`

@@ -1,4 +1,4 @@
-import 'package:loc_motos/core/constants/app_constants.dart';
+﻿import 'package:moto_amg/core/constants/app_constants.dart';
 
 abstract final class AuthValidators {
   static final _email = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
@@ -50,9 +50,11 @@ abstract final class AuthValidators {
   static String? recoveryKey(String? value) {
     final key = (value ?? '').trim();
     final compact = key.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
-    final body = compact.startsWith('LM') ? compact.substring(2) : compact;
+    final body = (compact.startsWith('MA') || compact.startsWith('LM'))
+        ? compact.substring(2)
+        : compact;
     if (body.length != 16) {
-      return 'La clave tiene el formato LM-XXXX-XXXX-XXXX-XXXX.';
+      return 'La clave tiene el formato MA-XXXX-XXXX-XXXX-XXXX.';
     }
     return null;
   }

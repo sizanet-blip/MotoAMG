@@ -1,6 +1,6 @@
 # Tráfico en vivo (TomTom) — DESCARTADO por ahora
 
-**Estado (ago 2026):** fuera de alcance. LocMotos **no** integra TomTom.
+**Estado (ago 2026):** fuera de alcance. MotoAMG **no** integra TomTom.
 
 La fase de avisos moto (peajes Valhalla, gasolineras/radares, curvas por geometría) sigue sin API keys de pago ni tráfico en vivo.
 

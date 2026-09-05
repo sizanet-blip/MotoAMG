@@ -1,13 +1,13 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:loc_motos/core/widgets/keyboard_safe_sheet_body.dart';
-import 'package:loc_motos/features/groups/domain/entities/group_incident.dart';
-import 'package:loc_motos/features/groups/domain/services/critical_emergency_actions.dart';
-import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
-import 'package:loc_motos/features/settings/data/repositories/emergency_contacts_repository.dart';
-import 'package:loc_motos/features/settings/presentation/providers/settings_providers.dart';
+import 'package:moto_amg/core/widgets/keyboard_safe_sheet_body.dart';
+import 'package:moto_amg/features/groups/domain/entities/group_incident.dart';
+import 'package:moto_amg/features/groups/domain/services/critical_emergency_actions.dart';
+import 'package:moto_amg/features/navigation/domain/entities/geo_point.dart';
+import 'package:moto_amg/features/settings/data/repositories/emergency_contacts_repository.dart';
+import 'package:moto_amg/features/settings/presentation/providers/settings_providers.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Color de la advertencia (mismo que el banner).

@@ -1,24 +1,25 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
-import 'package:loc_motos/features/auth/presentation/providers/auth_providers.dart';
-import 'package:loc_motos/features/groups/data/datasources/group_incident_remote_datasource.dart';
-import 'package:loc_motos/features/groups/data/datasources/group_stop_remote_datasource.dart';
-import 'package:loc_motos/features/groups/data/datasources/group_voice_remote_datasource.dart';
-import 'package:loc_motos/features/groups/data/datasources/group_remote_datasource.dart';
-import 'package:loc_motos/features/groups/data/repositories/group_pack_alert_repository.dart';
-import 'package:loc_motos/features/groups/data/repositories/group_repository_impl.dart';
-import 'package:loc_motos/features/groups/domain/entities/group_incident.dart';
-import 'package:loc_motos/features/groups/domain/entities/group_member.dart';
-import 'package:loc_motos/features/groups/domain/entities/group_stop.dart';
-import 'package:loc_motos/features/groups/domain/entities/group_membership.dart';
-import 'package:loc_motos/features/groups/domain/entities/group_voice_announcement.dart';
-import 'package:loc_motos/features/groups/domain/entities/ride_group.dart';
-import 'package:loc_motos/features/groups/domain/entities/ride_role.dart';
-import 'package:loc_motos/features/groups/domain/exceptions/group_exceptions.dart';
-import 'package:loc_motos/features/groups/domain/repositories/group_repository.dart';
-import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
-import 'package:loc_motos/features/navigation/domain/entities/navigation_route.dart';
-import 'package:loc_motos/features/tracking/presentation/providers/tracking_providers.dart';
+﻿import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:moto_amg/features/auth/domain/entities/app_user.dart';
+import 'package:moto_amg/features/auth/presentation/providers/auth_providers.dart';
+import 'package:moto_amg/features/auth/presentation/providers/home_landing_provider.dart';
+import 'package:moto_amg/features/groups/data/datasources/group_incident_remote_datasource.dart';
+import 'package:moto_amg/features/groups/data/datasources/group_stop_remote_datasource.dart';
+import 'package:moto_amg/features/groups/data/datasources/group_voice_remote_datasource.dart';
+import 'package:moto_amg/features/groups/data/datasources/group_remote_datasource.dart';
+import 'package:moto_amg/features/groups/data/repositories/group_pack_alert_repository.dart';
+import 'package:moto_amg/features/groups/data/repositories/group_repository_impl.dart';
+import 'package:moto_amg/features/groups/domain/entities/group_incident.dart';
+import 'package:moto_amg/features/groups/domain/entities/group_member.dart';
+import 'package:moto_amg/features/groups/domain/entities/group_stop.dart';
+import 'package:moto_amg/features/groups/domain/entities/group_membership.dart';
+import 'package:moto_amg/features/groups/domain/entities/group_voice_announcement.dart';
+import 'package:moto_amg/features/groups/domain/entities/ride_group.dart';
+import 'package:moto_amg/features/groups/domain/entities/ride_role.dart';
+import 'package:moto_amg/features/groups/domain/exceptions/group_exceptions.dart';
+import 'package:moto_amg/features/groups/domain/repositories/group_repository.dart';
+import 'package:moto_amg/features/navigation/domain/entities/geo_point.dart';
+import 'package:moto_amg/features/navigation/domain/entities/navigation_route.dart';
+import 'package:moto_amg/features/tracking/presentation/providers/tracking_providers.dart';
 
 final groupRepositoryProvider = Provider<GroupRepository>((ref) {
   return GroupRepositoryImpl(GroupRemoteDataSource());
@@ -248,6 +249,8 @@ class GroupActionController extends Notifier<AsyncValue<void>> {
       }
       await _repo.setActiveGroup(uid: user.uid, groupId: groupId);
       _setLocalGroup(user, groupId);
+      ref.read(homeLandingSectionProvider.notifier).state =
+          HomeLandingSection.groups;
     });
   }
 

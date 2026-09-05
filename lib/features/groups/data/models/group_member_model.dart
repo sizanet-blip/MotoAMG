@@ -1,8 +1,8 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:loc_motos/core/utils/timestamp_converter.dart';
-import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
-import 'package:loc_motos/features/groups/domain/entities/group_member.dart';
-import 'package:loc_motos/features/groups/domain/entities/ride_role.dart';
+﻿import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:moto_amg/core/utils/timestamp_converter.dart';
+import 'package:moto_amg/features/auth/domain/entities/app_user.dart';
+import 'package:moto_amg/features/groups/domain/entities/group_member.dart';
+import 'package:moto_amg/features/groups/domain/entities/ride_role.dart';
 
 class GroupMemberModel extends GroupMember {
   const GroupMemberModel({

@@ -1,8 +1,8 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:loc_motos/core/utils/spain_data_freshness.dart';
-import 'package:loc_motos/features/navigation/data/datasources/spain_fuel_datasource.dart';
-import 'package:loc_motos/features/navigation/presentation/providers/navigation_providers.dart';
+import 'package:moto_amg/core/utils/spain_data_freshness.dart';
+import 'package:moto_amg/features/navigation/data/datasources/spain_fuel_datasource.dart';
+import 'package:moto_amg/features/navigation/presentation/providers/navigation_providers.dart';
 
 /// Descarga manual del inventario MITECO de gasolineras (precios).
 class FuelCacheSettingsScreen extends ConsumerWidget {
@@ -55,7 +55,7 @@ class FuelCacheSettingsScreen extends ConsumerWidget {
             children: [
               Text(
                 'Descarga el inventario oficial de carburantes (MITECO) desde '
-                'el servidor LocMotos. Con Wi‑Fi es rápido y luego puedes ver '
+                'el servidor MotoAMG. Con Wi‑Fi es rápido y luego puedes ver '
                 'precios en la ruta sin consultar la red en cada viaje.',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: colors.onSurfaceVariant,

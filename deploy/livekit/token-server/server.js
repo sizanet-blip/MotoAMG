@@ -6,7 +6,7 @@ const admin = require('firebase-admin');
 
 const PORT = Number(process.env.PORT || 7882);
 const LIVEKIT_URL = process.env.LIVEKIT_URL || 'wss://livekit.albertomaestre.es';
-const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY || 'locmotos';
+const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY || 'motoamg';
 const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET || '';
 const TOKEN_TTL = process.env.TOKEN_TTL || '6h';
 
@@ -168,5 +168,5 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, '127.0.0.1', () => {
-  console.log(`locmotos-livekit-token listening on 127.0.0.1:${PORT}`);
+  console.log(`motoamg-livekit-token listening on 127.0.0.1:${PORT}`);
 });

@@ -1,5 +1,6 @@
-import 'package:equatable/equatable.dart';
-import 'package:loc_motos/features/auth/domain/entities/user_vehicle.dart';
+﻿import 'package:equatable/equatable.dart';
+import 'package:moto_amg/core/constants/app_constants.dart';
+import 'package:moto_amg/features/auth/domain/entities/user_vehicle.dart';
 
 enum AuthProviderType { google, email, username, anonymous }
 
@@ -25,6 +26,8 @@ class AppUser extends Equatable {
     this.bikePlate,
     this.vehicles = const [],
     this.activeVehicleId,
+    this.privacyAcceptedAt,
+    this.privacyAcceptedVersion,
   });
 
   final String uid;
@@ -55,6 +58,12 @@ class AppUser extends Equatable {
 
   final List<UserVehicle> vehicles;
   final String? activeVehicleId;
+
+  /// Momento en que esta cuenta aceptó la política vigente.
+  final DateTime? privacyAcceptedAt;
+
+  /// Versión de política aceptada (ver [AppConstants.privacyPolicyVersion]).
+  final String? privacyAcceptedVersion;
 
   bool get isAnonymous => provider == AuthProviderType.anonymous;
 
@@ -143,6 +152,12 @@ class AppUser extends Equatable {
 
   bool get needsDisplayName => displayName.trim().isEmpty;
 
+  /// Cada cuenta debe aceptar la versión vigente (no basta con el dispositivo).
+  bool get needsPrivacyAcceptance {
+    final version = privacyAcceptedVersion?.trim() ?? '';
+    return version != AppConstants.privacyPolicyVersion;
+  }
+
   AppUser copyWith({
     String? uid,
     String? displayName,
@@ -163,6 +178,8 @@ class AppUser extends Equatable {
     String? bikePlate,
     List<UserVehicle>? vehicles,
     String? activeVehicleId,
+    DateTime? privacyAcceptedAt,
+    String? privacyAcceptedVersion,
     bool clearCurrentGroupId = false,
     bool clearCurrentClubId = false,
     bool clearPendingClubRequestId = false,
@@ -196,6 +213,9 @@ class AppUser extends Equatable {
       activeVehicleId: clearActiveVehicleId
           ? null
           : activeVehicleId ?? this.activeVehicleId,
+      privacyAcceptedAt: privacyAcceptedAt ?? this.privacyAcceptedAt,
+      privacyAcceptedVersion:
+          privacyAcceptedVersion ?? this.privacyAcceptedVersion,
     );
   }
 
@@ -220,5 +240,7 @@ class AppUser extends Equatable {
         bikePlate,
         vehicles,
         activeVehicleId,
+        privacyAcceptedAt,
+        privacyAcceptedVersion,
       ];
 }

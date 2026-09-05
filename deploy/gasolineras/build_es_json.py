@@ -2,11 +2,11 @@
 """Genera /var/www/gasolineras/es.json desde la API de carburantes MITECO.
 
 Uso:
-  sudo python3 /opt/locmotos/gasolineras/build_es_json.py
+  sudo python3 /opt/motoamg/gasolineras/build_es_json.py
   python3 build_es_json.py --out /var/www/gasolineras/es.json
 
 Cron (ejemplo 04:45, tras radares):
-  45 4 * * * /usr/bin/python3 /opt/locmotos/gasolineras/build_es_json.py >> /var/log/gasolineras-build.log 2>&1
+  45 4 * * * /usr/bin/python3 /opt/motoamg/gasolineras/build_es_json.py >> /var/log/gasolineras-build.log 2>&1
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ import urllib.request
 from datetime import datetime, timezone
 from typing import Any
 
-USER_AGENT = "LocMotos-FuelBuild/1.0 (+https://valhalla.albertomaestre.es)"
+USER_AGENT = "MotoAMG-FuelBuild/1.0 (+https://valhalla.albertomaestre.es)"
 
 # Documentación: sedeaplicaciones.minetur.gob.es/ServiciosRESTCarburantes/...
 ESTACIONES_URL = (

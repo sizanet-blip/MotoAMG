@@ -18,17 +18,18 @@ class HelpFaqItem {
 /// Guía rápida actualizada: lo esencial en pocos minutos.
 const quickGuideSections = <HelpSection>[
   HelpSection(
-    title: 'Qué es LocMotos',
+    title: 'Qué es MotoAMG',
     body:
-        'LocMotos es una app para moteros: mapa de grupo en vivo y navegador GPS '
-        'integrado. Sirve para salidas en pelotón y también para ir solo.\n\n'
+        'MotoAMG es una app para moteros: pelotón en vivo y GPS. '
+        'Salidas en grupo, ubicación del pack, rutas e intercom. '
+        'Sirve para salidas en pelotón y también para ir solo.\n\n'
         'No sustituye tu atención al tráfico ni el cumplimiento de las normas.',
   ),
   HelpSection(
     title: 'Antes de salir',
     body:
         '1. Activa ubicación y notificaciones cuando la app lo pida.\n'
-        '2. En Xiaomi, Samsung y similares, excluye LocMotos de la '
+        '2. En Xiaomi, Samsung y similares, excluye MotoAMG de la '
         'optimización de batería (Configuración → Pantalla al navegar).\n'
         '3. Inicia sesión (Google, correo o usuario) o entra como invitado.\n'
         '4. Revisa radares y mapas offline si vas a zonas con poca cobertura.',
@@ -78,7 +79,7 @@ const fullManualSections = <HelpSection>[
   HelpSection(
     title: '1. Bienvenida',
     body:
-        'LocMotos está pensada para salidas en moto: coordinar un pelotón en el '
+        'MotoAMG está pensada para salidas en moto: coordinar un pelotón en el '
         'mapa y navegar con un GPS integrado, con o sin grupo.\n\n'
         'Este manual describe el uso diario de la app. No es un documento técnico '
         'ni sustituye las normas de circulación.',
@@ -108,7 +109,7 @@ const fullManualSections = <HelpSection>[
   HelpSection(
     title: '4. Grupos',
     body:
-        'Un grupo es tu pelotón en LocMotos.\n\n'
+        'Un grupo es tu pelotón en MotoAMG.\n\n'
         'Crear un grupo\n'
         'Desde Mis grupos → Crear grupo. Elige un nombre claro. La app genera un '
         'código de 6 caracteres: compártelo solo con quien deba unirse.\n\n'
@@ -165,7 +166,7 @@ const fullManualSections = <HelpSection>[
         'Contactos de emergencia\n'
         'En Configuración → Contacto de emergencia puedes guardar 1–2 personas '
         'de fuera del grupo. Tras Urgente · 112 puedes avisarles por SMS o WhatsApp; '
-        'LocMotos no envía nada automáticamente.',
+        'MotoAMG no envía nada automáticamente.',
   ),
   HelpSection(
     title: '8. Intercom',
@@ -181,7 +182,7 @@ const fullManualSections = <HelpSection>[
   HelpSection(
     title: '9. Navegador integrado',
     body:
-        'LocMotos incluye su propio GPS; no dependes de otra app, aunque puedes '
+        'MotoAMG incluye su propio GPS; no dependes de otra app, aunque puedes '
         'abrir Waze o Maps si lo prefieres.\n\n'
         'Planificar una ruta (sin grupo o en modo navegación)\n'
         '1. Abre Navegación.\n'
@@ -201,7 +202,7 @@ const fullManualSections = <HelpSection>[
     body:
         'Quien planifica puede publicar una ruta para todo el pelotón. Entonces:\n\n'
         '• Todos la ven en el mapa del grupo.\n'
-        '• «Navegar» abre el GPS de LocMotos hacia ese destino/trazado.\n'
+        '• «Navegar» abre el GPS de MotoAMG hacia ese destino/trazado.\n'
         '• Si llegas tarde y estás lejos, puedes elegir ir a la cabecera '
         '(con el estilo de ruta que quieras) o ir directo al destino del grupo.\n\n'
         'Cuando enganchas el trazado del pelotón, sigues la ruta compartida.',
@@ -233,15 +234,15 @@ const fullManualSections = <HelpSection>[
         '• Comparte el código del grupo solo con personas de confianza.\n'
         '• Tu ubicación se usa para el mapa del grupo y la navegación.\n'
         '• No uses la app si te distrae: la seguridad va primero.\n'
-        '• LocMotos es una ayuda; tú decides cómo y cuándo circular.\n\n'
-        'Más detalle legal en Acerca de LocMotos (privacidad y condiciones).',
+        '• MotoAMG es una ayuda; tú decides cómo y cuándo circular.\n\n'
+        'Más detalle legal en Acerca de MotoAMG (privacidad y condiciones).',
   ),
   HelpSection(
     title: '14. Soporte',
     body:
         'Si algo no cuadra, consulta primero Preguntas y respuestas.\n'
         'Si necesitas ayuda personalizada, escribe a soporte desde Ayuda o '
-        'Acerca de LocMotos.',
+        'Acerca de MotoAMG.',
   ),
 ];
 
@@ -275,7 +276,7 @@ const faqItems = <HelpFaqItem>[
     question: 'No me ven en el mapa / no veo a los demás',
     answer:
         'Comprueba que la ubicación está activa, que estás dentro del grupo correcto '
-        'y que LocMotos no está restringida por la batería. En segundo plano algunos '
+        'y que MotoAMG no está restringida por la batería. En segundo plano algunos '
         'móviles cortan el GPS: revisa Configuración → Pantalla al navegar y las '
         'excepciones del sistema.',
   ),
@@ -308,7 +309,7 @@ const faqItems = <HelpFaqItem>[
         'naranja: a quien avisa no se le muestra.',
   ),
   HelpFaqItem(
-    question: '¿LocMotos llama al 112 sola?',
+    question: '¿MotoAMG llama al 112 sola?',
     answer:
         'No. En Urgente · 112 la app puede abrir el marcador y copiar la ubicación, '
         'pero la llamada la haces tú. Los contactos personales se avisan a mano '
@@ -337,16 +338,16 @@ const faqItems = <HelpFaqItem>[
   HelpFaqItem(
     question: 'La app se cierra o el GPS se corta en segundo plano',
     answer:
-        'Es habitual en Android con ahorro de batería agresivo. Excluye LocMotos '
+        'Es habitual en Android con ahorro de batería agresivo. Excluye MotoAMG '
         'de la optimización, deja las notificaciones activas y, en ruta, usa '
         '«mantener pantalla encendida» si te resulta útil.',
   ),
   HelpFaqItem(
-    question: '¿Puedo usar Waze o Google Maps en vez del GPS de LocMotos?',
+    question: '¿Puedo usar Waze o Google Maps en vez del GPS de MotoAMG?',
     answer:
         'Sí. Desde el mapa del grupo o las acciones de navegación puedes abrir '
         'Waze o Maps hacia el destino. El navegador integrado sigue disponible '
-        'para quien prefiera quedarse en LocMotos.',
+        'para quien prefiera quedarse en MotoAMG.',
   ),
   HelpFaqItem(
     question: 'Entrada de invitado: ¿se guarda algo?',
@@ -377,7 +378,7 @@ const faqItems = <HelpFaqItem>[
   HelpFaqItem(
     question: '¿Cómo contacto con soporte?',
     answer:
-        'Desde Ayuda o Acerca de LocMotos puedes escribir al correo de soporte. '
+        'Desde Ayuda o Acerca de MotoAMG puedes escribir al correo de soporte. '
         'Describe el móvil, la versión de la app y qué estabas haciendo cuando '
         'ocurrió el problema.',
   ),

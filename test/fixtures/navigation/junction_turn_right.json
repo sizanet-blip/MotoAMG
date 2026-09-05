@@ -1,0 +1,54 @@
+{
+  "id": "junction_turn_right",
+  "description": "Cruce real (CV-700): cartel Derecha, sin alerta de curva en el cruce.",
+  "origin": { "lat": 41.0, "lng": -1.0 },
+  "destination": { "lat": 41.002, "lng": -0.999 },
+  "polyline": [
+    { "lat": 41.0, "lng": -1.0 },
+    { "lat": 41.001, "lng": -1.0 },
+    { "lat": 41.001, "lng": -0.999 },
+    { "lat": 41.002, "lng": -0.999 }
+  ],
+  "maneuvers": [
+    {
+      "index": 0,
+      "type": "depart",
+      "instruction": "Sal",
+      "distanceMeters": 200,
+      "location": { "lat": 41.0, "lng": -1.0 },
+      "beginShapeIndex": 0,
+      "streetName": "CV-700"
+    },
+    {
+      "index": 1,
+      "type": "turnRight",
+      "valhallaType": 10,
+      "instruction": "Gira a la derecha hacia CV-700",
+      "distanceMeters": 7000,
+      "location": { "lat": 41.001, "lng": -1.0 },
+      "beginShapeIndex": 1,
+      "streetName": "CV-700",
+      "beginStreetName": "Camino Transversal"
+    },
+    {
+      "index": 2,
+      "type": "turnLeft",
+      "valhallaType": 10,
+      "instruction": "Gira a la izquierda",
+      "distanceMeters": 500,
+      "location": { "lat": 41.002, "lng": -0.999 },
+      "beginShapeIndex": 3,
+      "streetName": "CV-700",
+      "beginStreetName": "Otra vía"
+    }
+  ],
+  "checkpoints": [
+    {
+      "position": { "lat": 41.0009, "lng": -1.0 },
+      "expectManeuverType": "turnRight",
+      "maxRemainingMeters": 150,
+      "expectCurveAlert": false,
+      "curveSearchMeters": 120
+    }
+  ]
+}

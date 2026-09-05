@@ -1,5 +1,5 @@
-import 'package:equatable/equatable.dart';
-import 'package:loc_motos/features/groups/domain/entities/ride_role.dart';
+﻿import 'package:equatable/equatable.dart';
+import 'package:moto_amg/features/groups/domain/entities/ride_role.dart';
 
 class GroupMember extends Equatable {
   const GroupMember({

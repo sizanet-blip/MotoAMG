@@ -19,15 +19,15 @@ sudo apt install -y osmium-tool curl
 ## Instalación
 
 ```bash
-sudo mkdir -p /opt/locmotos/radares /var/www/radares /var/cache/locmotos/radares
-sudo cp build_es_json.py /opt/locmotos/radares/
-sudo chmod +x /opt/locmotos/radares/build_es_json.py
+sudo mkdir -p /opt/motoamg/radares /var/www/radares /var/cache/motoamg/radares
+sudo cp build_es_json.py /opt/motoamg/radares/
+sudo chmod +x /opt/motoamg/radares/build_es_json.py
 ```
 
 ## Primera generación (solo oficiales)
 
 ```bash
-sudo python3 /opt/locmotos/radares/build_es_json.py --skip-osm
+sudo python3 /opt/motoamg/radares/build_es_json.py --skip-osm
 curl -I https://valhalla.albertomaestre.es/radares/es.json
 ```
 
@@ -37,17 +37,17 @@ La **primera** vez descarga ~1.5 GB de Geofabrik (varios minutos).
 Luego filtra con osmium (rápido). El PBF se reutiliza 24 h.
 
 ```bash
-sudo python3 /opt/locmotos/radares/build_es_json.py
+sudo python3 /opt/motoamg/radares/build_es_json.py
 ```
 
 Opciones útiles:
 
 ```bash
 # Forzar nueva descarga del PBF
-sudo python3 /opt/locmotos/radares/build_es_json.py --force-pbf-download
+sudo python3 /opt/motoamg/radares/build_es_json.py --force-pbf-download
 
 # Usar un PBF ya descargado
-sudo python3 /opt/locmotos/radares/build_es_json.py --pbf /ruta/spain-latest.osm.pbf
+sudo python3 /opt/motoamg/radares/build_es_json.py --pbf /ruta/spain-latest.osm.pbf
 ```
 
 ## Cron diario
@@ -57,7 +57,7 @@ sudo crontab -e
 ```
 
 ```
-15 4 * * * /usr/bin/python3 /opt/locmotos/radares/build_es_json.py >> /var/log/radares-build.log 2>&1
+15 4 * * * /usr/bin/python3 /opt/motoamg/radares/build_es_json.py >> /var/log/radares-build.log 2>&1
 ```
 
 ## Formato

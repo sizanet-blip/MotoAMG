@@ -1,14 +1,15 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'package:loc_motos/core/constants/navigation_constants.dart';
-import 'package:loc_motos/features/navigation/data/models/navigation_route_model.dart';
-import 'package:loc_motos/features/navigation/data/services/route_guidance_service.dart';
-import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
-import 'package:loc_motos/features/navigation/domain/entities/route_preferences.dart';
-import 'package:loc_motos/features/navigation/domain/entities/speed_limit_segment.dart';
-import 'package:loc_motos/features/navigation/domain/exceptions/navigation_exceptions.dart';
+import 'package:moto_amg/core/constants/navigation_constants.dart';
+import 'package:moto_amg/features/navigation/data/models/navigation_route_model.dart';
+import 'package:moto_amg/features/navigation/data/services/route_polyline_compare.dart';
+import 'package:moto_amg/features/navigation/data/services/route_guidance_service.dart';
+import 'package:moto_amg/features/navigation/domain/entities/geo_point.dart';
+import 'package:moto_amg/features/navigation/domain/entities/route_preferences.dart';
+import 'package:moto_amg/features/navigation/domain/entities/speed_limit_segment.dart';
+import 'package:moto_amg/features/navigation/domain/exceptions/navigation_exceptions.dart';
 
 class ValhallaRemoteDataSource {
   ValhallaRemoteDataSource({http.Client? client})
@@ -147,9 +148,23 @@ class ValhallaRemoteDataSource {
       if (route.polyline.length < 2) {
         continue;
       }
-      // No filtrar agresivo: las alternativas de Valhalla suelen ser válidas
-      // aunque tiempo/distancia se parezcan. Solo quitar clones casi idénticos.
-      if (_isNearClone(route, routes)) {
+      final duplicateIndex = _findDuplicateRouteIndex(route, routes);
+      if (duplicateIndex != null) {
+        final existing = routes[duplicateIndex];
+        if (route.durationSeconds < existing.durationSeconds) {
+          routes[duplicateIndex] = route;
+          debugPrint(
+            'Valhalla: ruta duplicada sustituida '
+            '(${existing.durationSeconds}s → ${route.durationSeconds}s, '
+            'mismo trazado)',
+          );
+        } else {
+          debugPrint(
+            'Valhalla: ruta duplicada descartada '
+            '(${route.durationSeconds}s vs ${existing.durationSeconds}s, '
+            'mismo trazado)',
+          );
+        }
         continue;
       }
       routes.add(route);
@@ -443,23 +458,29 @@ class ValhallaRemoteDataSource {
     }
   }
 
-  /// Solo descarta clones casi calcados (misma distancia y tiempo).
-  bool _isNearClone(
+  /// Índice de ruta ya añadida con el mismo trazado (p. ej. misma A-220).
+  int? _findDuplicateRouteIndex(
     NavigationRouteModel candidate,
     List<NavigationRouteModel> existing,
   ) {
-    for (final route in existing) {
-      final timeDelta =
-          (candidate.durationSeconds - route.durationSeconds).abs();
-      final distDelta =
-          (candidate.distanceMeters - route.distanceMeters).abs();
-      final timeSame = timeDelta <= 30;
-      final distSame = distDelta <= 400;
-      if (timeSame && distSame) {
-        return true;
+    for (var i = 0; i < existing.length; i++) {
+      if (_isSameRouteCorridor(candidate, existing[i])) {
+        return i;
       }
     }
-    return false;
+    return null;
+  }
+
+  bool _isSameRouteCorridor(
+    NavigationRouteModel a,
+    NavigationRouteModel b,
+  ) {
+    if (routesShareSameCorridor(a.polyline, b.polyline)) {
+      return true;
+    }
+    final timeDelta = (a.durationSeconds - b.durationSeconds).abs();
+    final distDelta = (a.distanceMeters - b.distanceMeters).abs();
+    return timeDelta <= 30 && distDelta <= 400;
   }
 
   double _twistScore(Map<String, dynamic> trip) {

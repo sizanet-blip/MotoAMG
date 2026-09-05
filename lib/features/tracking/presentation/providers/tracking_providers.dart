@@ -1,10 +1,10 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:loc_motos/features/tracking/data/datasources/location_remote_datasource.dart';
-import 'package:loc_motos/features/tracking/data/repositories/location_repository_impl.dart';
-import 'package:loc_motos/features/tracking/data/services/device_location_service.dart';
-import 'package:loc_motos/features/tracking/domain/entities/device_position.dart';
-import 'package:loc_motos/features/tracking/domain/entities/live_location.dart';
-import 'package:loc_motos/features/tracking/domain/repositories/location_repository.dart';
+﻿import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:moto_amg/features/tracking/data/datasources/location_remote_datasource.dart';
+import 'package:moto_amg/features/tracking/data/repositories/location_repository_impl.dart';
+import 'package:moto_amg/features/tracking/data/services/device_location_service.dart';
+import 'package:moto_amg/features/tracking/domain/entities/device_position.dart';
+import 'package:moto_amg/features/tracking/domain/entities/live_location.dart';
+import 'package:moto_amg/features/tracking/domain/repositories/location_repository.dart';
 
 final locationRepositoryProvider = Provider<LocationRepository>((ref) {
   return LocationRepositoryImpl(LocationRemoteDataSource());

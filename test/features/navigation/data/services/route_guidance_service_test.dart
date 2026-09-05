@@ -1,9 +1,9 @@
-import 'package:flutter_test/flutter_test.dart';
-import 'package:loc_motos/features/navigation/data/services/route_guidance_service.dart';
-import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
-import 'package:loc_motos/features/navigation/domain/entities/navigation_maneuver.dart';
-import 'package:loc_motos/features/navigation/domain/entities/navigation_route.dart';
-import 'package:loc_motos/features/navigation/domain/entities/speed_limit_segment.dart';
+﻿import 'package:flutter_test/flutter_test.dart';
+import 'package:moto_amg/features/navigation/data/services/route_guidance_service.dart';
+import 'package:moto_amg/features/navigation/domain/entities/geo_point.dart';
+import 'package:moto_amg/features/navigation/domain/entities/navigation_maneuver.dart';
+import 'package:moto_amg/features/navigation/domain/entities/navigation_route.dart';
+import 'package:moto_amg/features/navigation/domain/entities/speed_limit_segment.dart';
 
 void main() {
   group('RouteGuidanceService (estilo Waze)', () {
@@ -221,6 +221,70 @@ void main() {
         upcomingIndex: 2,
       );
       expect(remaining, greaterThan(900));
+    });
+
+    test('elige el giro significativo más cercano, no uno lejano', () {
+      final poly = [
+        const GeoPoint(lat: 41.0, lng: -1.0),
+        const GeoPoint(lat: 41.0005, lng: -1.0),
+        const GeoPoint(lat: 41.001, lng: -1.0),
+        const GeoPoint(lat: 41.02, lng: -1.0),
+      ];
+      final dualRoute = NavigationRoute(
+        id: 'dual',
+        origin: poly.first,
+        destination: poly.last,
+        polyline: poly,
+        maneuvers: [
+          const NavigationManeuver(
+            index: 0,
+            type: ManeuverType.depart,
+            instruction: 'Sal',
+            distanceMeters: 50,
+            location: GeoPoint(lat: 41.0, lng: -1.0),
+            beginShapeIndex: 0,
+          ),
+          const NavigationManeuver(
+            index: 1,
+            type: ManeuverType.turnRight,
+            valhallaType: 10,
+            turnDegree: 80,
+            instruction: 'Gira a la derecha',
+            distanceMeters: 2000,
+            location: GeoPoint(lat: 41.0005, lng: -1.0),
+            beginShapeIndex: 1,
+            streetName: 'Camino',
+            beginStreetName: 'Otro',
+          ),
+          const NavigationManeuver(
+            index: 2,
+            type: ManeuverType.turnLeft,
+            valhallaType: 10,
+            instruction: 'Gira a la izquierda',
+            distanceMeters: 500,
+            location: GeoPoint(lat: 41.02, lng: -1.0),
+            beginShapeIndex: 3,
+          ),
+        ],
+        distanceMeters: 2500,
+        durationSeconds: 300,
+        createdAt: DateTime(2026),
+      );
+
+      const nearFork = GeoPoint(lat: 41.0002, lng: -1.0);
+      final index = guidance.resolveUpcomingManeuverIndex(
+        position: nearFork,
+        route: dualRoute,
+        passedThresholdMeters: 20,
+      );
+      expect(index, 1);
+
+      final remaining = guidance.remainingMetersToUpcoming(
+        position: nearFork,
+        route: dualRoute,
+        upcomingIndex: index,
+      );
+      expect(remaining, lessThan(100));
     });
   });
 

@@ -1,4 +1,4 @@
-# Mantenimiento del VPS LocMotos
+# Mantenimiento del VPS MotoAMG
 
 Guía operativa para el servidor Oracle Cloud (`*.albertomaestre.es`).
 
@@ -22,14 +22,14 @@ sed -i 's/\r$//' ~/vps-healthcheck.sh   # solo si se copió desde Windows
 
 | Qué | Cuándo | Comando manual (opcional) |
 |-----|--------|---------------------------|
-| **Radares** (`es.json`) | Cada día **04:15** | `sudo python3 /opt/locmotos/radares/build_es_json.py` |
-| **Gasolineras** (`es.json`) | Cada día **04:45** | `sudo python3 /opt/locmotos/gasolineras/build_es_json.py` |
+| **Radares** (`es.json`) | Cada día **04:15** | `sudo python3 /opt/motoamg/radares/build_es_json.py` |
+| **Gasolineras** (`es.json`) | Cada día **04:45** | `sudo python3 /opt/motoamg/gasolineras/build_es_json.py` |
 
 Cron en **root** (`sudo crontab -l`):
 
 ```
-15 4 * * * /usr/bin/python3 /opt/locmotos/radares/build_es_json.py >> /var/log/radares-build.log 2>&1
-45 4 * * * /usr/bin/python3 /opt/locmotos/gasolineras/build_es_json.py >> /var/log/gasolineras-build.log 2>&1
+15 4 * * * /usr/bin/python3 /opt/motoamg/radares/build_es_json.py >> /var/log/radares-build.log 2>&1
+45 4 * * * /usr/bin/python3 /opt/motoamg/gasolineras/build_es_json.py >> /var/log/gasolineras-build.log 2>&1
 ```
 
 Logs:
@@ -203,7 +203,7 @@ curl -I https://valhalla.albertomaestre.es/maps/aragon.pmtiles
 1. Descargar **spain-latest.osm.pbf** (Geofabrik) — una vez sirve para varias cosas.
 2. **Valhalla** → nuevo PBF + reiniciar contenedor.
 3. **Radares** → cron diario; manual:  
-   `sudo python3 /opt/locmotos/radares/build_es_json.py --force-pbf-download`
+   `sudo python3 /opt/motoamg/radares/build_es_json.py --force-pbf-download`
 4. **PMTiles** → regenerar en PC y subir al VPS.
 5. **Photon** → reimportar dump (proceso aparte).
 6. **Gasolineras** → cron diario (MITECO, no OSM).
@@ -250,7 +250,7 @@ Límite distancia moto en `custom_files/valhalla.json`:
 Copiar healthcheck al VPS (desde PC Windows):
 
 ```powershell
-scp "RUTA\LocMotos\deploy\vps-healthcheck.sh" ubuntu@TU_IP:/home/ubuntu/vps-healthcheck.sh
+scp "RUTA\MotoAMG\deploy\vps-healthcheck.sh" ubuntu@TU_IP:/home/ubuntu/vps-healthcheck.sh
 ```
 
 En el VPS:

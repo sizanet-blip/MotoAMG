@@ -1,8 +1,8 @@
-import 'package:geolocator/geolocator.dart';
-import 'package:loc_motos/core/constants/app_constants.dart';
-import 'package:loc_motos/core/utils/distance_format.dart';
-import 'package:loc_motos/core/utils/gps_status.dart';
-import 'package:loc_motos/features/tracking/domain/entities/live_location.dart';
+﻿import 'package:geolocator/geolocator.dart';
+import 'package:moto_amg/core/constants/app_constants.dart';
+import 'package:moto_amg/core/utils/distance_format.dart';
+import 'package:moto_amg/core/utils/gps_status.dart';
+import 'package:moto_amg/features/tracking/domain/entities/live_location.dart';
 
 enum GroupPackAlertKind { behind, far }
 

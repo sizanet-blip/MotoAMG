@@ -1,5 +1,5 @@
-import 'package:equatable/equatable.dart';
-import 'package:loc_motos/features/navigation/domain/entities/geo_bounds.dart';
+﻿import 'package:equatable/equatable.dart';
+import 'package:moto_amg/features/navigation/domain/entities/geo_bounds.dart';
 
 /// Región descargable de mapas vectoriales (.pmtiles).
 class MapRegion extends Equatable {

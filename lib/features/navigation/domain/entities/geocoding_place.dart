@@ -1,5 +1,5 @@
-import 'package:equatable/equatable.dart';
-import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
+﻿import 'package:equatable/equatable.dart';
+import 'package:moto_amg/features/navigation/domain/entities/geo_point.dart';
 
 /// Resultado de búsqueda / geocodificación de una dirección.
 class GeocodingPlace extends Equatable {

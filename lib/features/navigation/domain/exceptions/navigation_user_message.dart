@@ -1,7 +1,7 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:io';
 
-import 'package:loc_motos/features/navigation/domain/exceptions/navigation_exceptions.dart';
+import 'package:moto_amg/features/navigation/domain/exceptions/navigation_exceptions.dart';
 
 /// Textos cortos para el usuario (sin nombres de servidor ni códigos técnicos).
 abstract final class NavigationUserMessages {

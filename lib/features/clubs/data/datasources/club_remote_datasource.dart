@@ -1,7 +1,7 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:loc_motos/core/constants/app_constants.dart';
-import 'package:loc_motos/core/utils/timestamp_converter.dart';
-import 'package:loc_motos/features/clubs/domain/entities/moto_club.dart';
+﻿import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:moto_amg/core/constants/app_constants.dart';
+import 'package:moto_amg/core/utils/timestamp_converter.dart';
+import 'package:moto_amg/features/clubs/domain/entities/moto_club.dart';
 
 class ClubRemoteDataSource {
   ClubRemoteDataSource({FirebaseFirestore? firestore})

@@ -1,11 +1,11 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:loc_motos/core/utils/spain_data_freshness.dart';
-import 'package:loc_motos/features/navigation/data/datasources/spain_radar_datasource.dart';
-import 'package:loc_motos/features/navigation/presentation/providers/navigation_providers.dart';
-import 'package:loc_motos/features/settings/data/repositories/radar_update_reminder_repository.dart';
-import 'package:loc_motos/features/settings/presentation/providers/settings_providers.dart';
+import 'package:moto_amg/core/utils/spain_data_freshness.dart';
+import 'package:moto_amg/features/navigation/data/datasources/spain_radar_datasource.dart';
+import 'package:moto_amg/features/navigation/presentation/providers/navigation_providers.dart';
+import 'package:moto_amg/features/settings/data/repositories/radar_update_reminder_repository.dart';
+import 'package:moto_amg/features/settings/presentation/providers/settings_providers.dart';
 
 /// Descarga manual del inventario de radares (DGT/SCT + OSM España).
 class RadarCacheSettingsScreen extends ConsumerStatefulWidget {
@@ -116,7 +116,7 @@ class _RadarCacheSettingsScreenState
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
             children: [
               Text(
-                'Descarga el inventario de España desde el servidor LocMotos '
+                'Descarga el inventario de España desde el servidor MotoAMG '
                 '(DGT, SCT y OpenStreetMap). Con Wi‑Fi es rápido y luego '
                 'puedes usarlo en las rutas sin cobertura.',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(

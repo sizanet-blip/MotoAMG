@@ -1,6 +1,6 @@
-import 'package:flutter_test/flutter_test.dart';
-import 'package:loc_motos/features/navigation/data/services/route_progress_simulator.dart';
-import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
+﻿import 'package:flutter_test/flutter_test.dart';
+import 'package:moto_amg/features/navigation/data/services/route_progress_simulator.dart';
+import 'package:moto_amg/features/navigation/domain/entities/geo_point.dart';
 
 void main() {
   group('RouteProgressSimulator', () {

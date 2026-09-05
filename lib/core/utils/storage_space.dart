@@ -1,10 +1,10 @@
-import 'package:flutter/foundation.dart';
+﻿import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 /// Margen extra al comprobar espacio (sistema + otros ficheros).
 const mapDownloadSpaceBufferBytes = 16 * 1024 * 1024;
 
-const _channel = MethodChannel('com.locmotos.loc_motos/storage');
+const _channel = MethodChannel('es.albertomaestre.motoamg/storage');
 
 /// Espacio libre en bytes en la ruta indicada, o null si no se pudo leer.
 Future<int?> readFreeBytesForPath(String directoryPath) async {

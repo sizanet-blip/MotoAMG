@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
-import 'package:loc_motos/core/widgets/keyboard_safe_sheet_body.dart';
-import 'package:loc_motos/features/groups/domain/entities/group_stop.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:moto_amg/core/widgets/keyboard_safe_sheet_body.dart';
+import 'package:moto_amg/features/groups/domain/entities/group_stop.dart';
 
 /// Elige el tipo de parada al marcar un punto en el mapa.
 Future<GroupStopType?> showGroupStopTypeSheet(BuildContext context) {

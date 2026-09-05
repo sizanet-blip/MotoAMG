@@ -1,16 +1,16 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:livekit_client/livekit_client.dart';
-import 'package:loc_motos/features/intercom/data/datasources/intercom_token_remote_datasource.dart';
-import 'package:loc_motos/features/intercom/data/intercom_audio_session.dart';
-import 'package:loc_motos/features/intercom/data/repositories/intercom_preferences_repository.dart';
-import 'package:loc_motos/features/intercom/domain/entities/intercom_preferences.dart';
-import 'package:loc_motos/features/intercom/domain/entities/intercom_session_state.dart';
-import 'package:loc_motos/features/intercom/domain/entities/intercom_token_credentials.dart';
-import 'package:loc_motos/features/navigation/presentation/providers/navigation_providers.dart';
+import 'package:moto_amg/features/intercom/data/datasources/intercom_token_remote_datasource.dart';
+import 'package:moto_amg/features/intercom/data/intercom_audio_session.dart';
+import 'package:moto_amg/features/intercom/data/repositories/intercom_preferences_repository.dart';
+import 'package:moto_amg/features/intercom/domain/entities/intercom_preferences.dart';
+import 'package:moto_amg/features/intercom/domain/entities/intercom_session_state.dart';
+import 'package:moto_amg/features/intercom/domain/entities/intercom_token_credentials.dart';
+import 'package:moto_amg/features/navigation/presentation/providers/navigation_providers.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 final intercomPreferencesRepositoryProvider =

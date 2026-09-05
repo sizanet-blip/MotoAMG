@@ -1,17 +1,17 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:loc_motos/core/utils/distance_format.dart';
-import 'package:loc_motos/core/utils/gps_status.dart';
-import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
-import 'package:loc_motos/features/groups/domain/entities/group_incident.dart';
-import 'package:loc_motos/features/groups/domain/entities/group_member.dart';
-import 'package:loc_motos/features/groups/domain/entities/ride_role.dart';
-import 'package:loc_motos/features/groups/presentation/providers/group_providers.dart';
-import 'package:loc_motos/features/tracking/domain/entities/live_location.dart';
-import 'package:loc_motos/features/tracking/presentation/providers/tracking_providers.dart';
+import 'package:moto_amg/core/utils/distance_format.dart';
+import 'package:moto_amg/core/utils/gps_status.dart';
+import 'package:moto_amg/features/auth/domain/entities/app_user.dart';
+import 'package:moto_amg/features/groups/domain/entities/group_incident.dart';
+import 'package:moto_amg/features/groups/domain/entities/group_member.dart';
+import 'package:moto_amg/features/groups/domain/entities/ride_role.dart';
+import 'package:moto_amg/features/groups/presentation/providers/group_providers.dart';
+import 'package:moto_amg/features/tracking/domain/entities/live_location.dart';
+import 'package:moto_amg/features/tracking/presentation/providers/tracking_providers.dart';
 
 /// Abre la lista rápida del pelotón (distancia + estado).
 Future<void> showGroupPackListSheet({

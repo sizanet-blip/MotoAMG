@@ -1,0 +1,50 @@
+{
+  "id": "dual_turn_pick_nearest",
+  "description": "Con dos giros significativos, el cartel debe mostrar el más cercano.",
+  "origin": { "lat": 41.0, "lng": -1.0 },
+  "destination": { "lat": 41.02, "lng": -1.0 },
+  "polyline": [
+    { "lat": 41.0, "lng": -1.0 },
+    { "lat": 41.0005, "lng": -1.0 },
+    { "lat": 41.001, "lng": -1.0 },
+    { "lat": 41.02, "lng": -1.0 }
+  ],
+  "maneuvers": [
+    {
+      "index": 0,
+      "type": "depart",
+      "instruction": "Sal",
+      "distanceMeters": 50,
+      "location": { "lat": 41.0, "lng": -1.0 },
+      "beginShapeIndex": 0
+    },
+    {
+      "index": 1,
+      "type": "turnRight",
+      "valhallaType": 10,
+      "turnDegree": 80,
+      "instruction": "Gira a la derecha",
+      "distanceMeters": 2000,
+      "location": { "lat": 41.0005, "lng": -1.0 },
+      "beginShapeIndex": 1,
+      "streetName": "Camino",
+      "beginStreetName": "Otro"
+    },
+    {
+      "index": 2,
+      "type": "turnLeft",
+      "valhallaType": 10,
+      "instruction": "Gira a la izquierda",
+      "distanceMeters": 500,
+      "location": { "lat": 41.02, "lng": -1.0 },
+      "beginShapeIndex": 3
+    }
+  ],
+  "checkpoints": [
+    {
+      "position": { "lat": 41.0002, "lng": -1.0 },
+      "expectManeuverType": "turnRight",
+      "maxRemainingMeters": 100
+    }
+  ]
+}

@@ -1,15 +1,15 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 
 import 'package:http/http.dart' as http;
-import 'package:loc_motos/core/constants/navigation_constants.dart';
-import 'package:loc_motos/features/navigation/data/datasources/geocoding_remote_datasource.dart';
-import 'package:loc_motos/features/navigation/data/helpers/geocoding_query_normalizer.dart';
-import 'package:loc_motos/features/navigation/data/helpers/geocoding_result_processor.dart';
-import 'package:loc_motos/features/navigation/data/helpers/geocoding_search_cache.dart';
-import 'package:loc_motos/features/navigation/data/helpers/photon_geocoding_parser.dart';
-import 'package:loc_motos/features/navigation/domain/entities/geocoding_place.dart';
-import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
-import 'package:loc_motos/features/navigation/domain/exceptions/navigation_exceptions.dart';
+import 'package:moto_amg/core/constants/navigation_constants.dart';
+import 'package:moto_amg/features/navigation/data/datasources/geocoding_remote_datasource.dart';
+import 'package:moto_amg/features/navigation/data/helpers/geocoding_query_normalizer.dart';
+import 'package:moto_amg/features/navigation/data/helpers/geocoding_result_processor.dart';
+import 'package:moto_amg/features/navigation/data/helpers/geocoding_search_cache.dart';
+import 'package:moto_amg/features/navigation/data/helpers/photon_geocoding_parser.dart';
+import 'package:moto_amg/features/navigation/domain/entities/geocoding_place.dart';
+import 'package:moto_amg/features/navigation/domain/entities/geo_point.dart';
+import 'package:moto_amg/features/navigation/domain/exceptions/navigation_exceptions.dart';
 
 /// Buscador Photon (Komoot) — rápido y pensado para autocomplete.
 class PhotonGeocodingDataSource implements GeocodingRemoteDataSource {

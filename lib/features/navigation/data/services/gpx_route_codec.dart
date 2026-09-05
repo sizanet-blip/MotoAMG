@@ -1,7 +1,7 @@
-import 'dart:math' as math;
+﻿import 'dart:math' as math;
 
-import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
-import 'package:loc_motos/features/navigation/domain/entities/navigation_route.dart';
+import 'package:moto_amg/features/navigation/domain/entities/geo_point.dart';
+import 'package:moto_amg/features/navigation/domain/entities/navigation_route.dart';
 
 /// Parada leída de un GPX (nombre opcional).
 class GpxImportedStop {
@@ -19,19 +19,19 @@ class GpxImportedStop {
   }
 }
 
-/// Codifica / decodifica rutas LocMotos en GPX 1.1 (sin dependencia XML).
+/// Codifica / decodifica rutas MotoAMG en GPX 1.1 (sin dependencia XML).
 class GpxRouteCodec {
   const GpxRouteCodec();
 
   /// Exporta waypoints (origen + paradas + destino) y la polilínea como track.
   String encode(
     NavigationRoute route, {
-    String name = 'Ruta LocMotos',
+    String name = 'Ruta MotoAMG',
   }) {
     final buffer = StringBuffer()
       ..writeln('<?xml version="1.0" encoding="UTF-8"?>')
       ..writeln(
-        '<gpx version="1.1" creator="LocMotos" '
+        '<gpx version="1.1" creator="MotoAMG" '
         'xmlns="http://www.topografix.com/GPX/1/1">',
       )
       ..writeln('  <metadata>')

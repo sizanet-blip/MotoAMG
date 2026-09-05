@@ -1,6 +1,6 @@
-import 'package:loc_motos/features/tracking/data/datasources/location_remote_datasource.dart';
-import 'package:loc_motos/features/tracking/domain/entities/live_location.dart';
-import 'package:loc_motos/features/tracking/domain/repositories/location_repository.dart';
+﻿import 'package:moto_amg/features/tracking/data/datasources/location_remote_datasource.dart';
+import 'package:moto_amg/features/tracking/domain/entities/live_location.dart';
+import 'package:moto_amg/features/tracking/domain/repositories/location_repository.dart';
 
 class LocationRepositoryImpl implements LocationRepository {
   LocationRepositoryImpl(this._remote);

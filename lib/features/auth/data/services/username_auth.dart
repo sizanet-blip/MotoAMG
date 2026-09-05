@@ -1,7 +1,7 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'dart:math';
 
-import 'package:loc_motos/core/constants/app_constants.dart';
+import 'package:moto_amg/core/constants/app_constants.dart';
 
 /// Usuario único + correo sintético + clave de recuperación.
 abstract final class UsernameAuth {
@@ -31,18 +31,19 @@ abstract final class UsernameAuth {
       4,
       (_) => _recoveryAlphabet[rng.nextInt(_recoveryAlphabet.length)],
     ).join();
-    return 'LM-${block()}-${block()}-${block()}-${block()}';
+    return 'MA-${block()}-${block()}-${block()}-${block()}';
   }
 
   static String normalizeRecoveryKey(String input) {
     var raw = input.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
-    if (raw.startsWith('LM')) {
+    // MA = MotoAMG; LM = prefijo legado (LocMotos).
+    if (raw.startsWith('MA') || raw.startsWith('LM')) {
       raw = raw.substring(2);
     }
     if (raw.length != 16) {
       return input.trim().toUpperCase();
     }
-    return 'LM-${raw.substring(0, 4)}-${raw.substring(4, 8)}-'
+    return 'MA-${raw.substring(0, 4)}-${raw.substring(4, 8)}-'
         '${raw.substring(8, 12)}-${raw.substring(12, 16)}';
   }
 

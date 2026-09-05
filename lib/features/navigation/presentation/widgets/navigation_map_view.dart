@@ -1,23 +1,26 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
-import 'package:loc_motos/core/constants/navigation_constants.dart';
-import 'package:loc_motos/core/utils/navigation_duration_format.dart';
-import 'package:loc_motos/features/auth/domain/entities/vehicle_map_marker.dart';
-import 'package:loc_motos/features/auth/presentation/widgets/vehicle_navigation_marker.dart';
-import 'package:loc_motos/features/navigation/data/services/navigation_map_style_service.dart';
-import 'package:loc_motos/features/navigation/domain/entities/alert_preferences.dart';
-import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
-import 'package:loc_motos/features/navigation/domain/entities/hybrid_map_styles.dart';
-import 'package:loc_motos/features/navigation/domain/entities/navigation_route.dart';
-import 'package:loc_motos/features/navigation/domain/entities/route_alert.dart';
-import 'package:loc_motos/features/navigation/presentation/helpers/route_map_bounds.dart';
-import 'package:loc_motos/features/navigation/presentation/helpers/route_progress_split.dart';
-import 'package:loc_motos/features/navigation/presentation/models/navigation_map_camera_mode.dart';
-import 'package:loc_motos/core/utils/navigation_bearing.dart';
+import 'package:moto_amg/core/constants/navigation_constants.dart';
+import 'package:moto_amg/core/utils/navigation_duration_format.dart';
+import 'package:moto_amg/features/auth/domain/entities/vehicle_map_marker.dart';
+import 'package:moto_amg/features/auth/presentation/widgets/vehicle_navigation_marker.dart';
+import 'package:moto_amg/features/navigation/data/services/navigation_map_style_service.dart';
+import 'package:moto_amg/features/navigation/domain/entities/alert_preferences.dart';
+import 'package:moto_amg/features/navigation/domain/entities/geo_point.dart';
+import 'package:moto_amg/features/navigation/domain/entities/hybrid_map_styles.dart';
+import 'package:moto_amg/features/navigation/domain/entities/navigation_route.dart';
+import 'package:moto_amg/features/navigation/domain/entities/route_alert.dart';
+import 'package:moto_amg/features/navigation/domain/entities/route_map_poi.dart';
+import 'package:moto_amg/features/navigation/presentation/helpers/route_map_bounds.dart';
+import 'package:moto_amg/features/navigation/presentation/helpers/route_progress_split.dart';
+import 'package:moto_amg/features/navigation/presentation/helpers/speed_limit_compare.dart';
+import 'package:moto_amg/features/navigation/presentation/helpers/speed_limit_map_geojson.dart';
+import 'package:moto_amg/features/navigation/presentation/models/navigation_map_camera_mode.dart';
+import 'package:moto_amg/core/utils/navigation_bearing.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 
 /// Estilo visual del compañero en el HUD (solo los que importan en marcha).
@@ -95,12 +98,20 @@ class NavigationMapView extends StatefulWidget {
     this.preferDarkMap = false,
     this.lowGlCompat = false,
     this.groupMates = const [],
+    this.showSpeedLimitSegments = false,
+    this.speedLimitDiffs,
     this.overlay,
     this.onControllerReady,
     this.onCameraFollowChanged,
   });
 
   final NavigationRoute route;
+
+  /// Colorea la ruta por tramos de límite (km/h) y muestra etiquetas.
+  final bool showSpeedLimitSegments;
+
+  /// Si se indica, resalta solo tramos donde MotoAMG ≠ TomTom.
+  final List<SpeedLimitDifference>? speedLimitDiffs;
 
   /// Otras opciones de ruta (vista previa); se pintan más claras.
   final List<NavigationRoute> alternativeRoutes;
@@ -159,36 +170,47 @@ class NavigationMapView extends StatefulWidget {
 }
 
 class _NavigationMapViewState extends State<NavigationMapView> {
-  static const _routeSourceId = 'locmotos-route';
-  static const _routeCasingLayerId = 'locmotos-route-casing';
-  static const _routeLineLayerId = 'locmotos-route-line';
-  static const _traveledSourceId = 'locmotos-traveled';
-  static const _traveledCasingLayerId = 'locmotos-traveled-casing';
-  static const _traveledLineLayerId = 'locmotos-traveled-line';
-  static const _altsSourceId = 'locmotos-alts';
-  static const _altsCasingLayerId = 'locmotos-alts-casing';
-  static const _altsLineLayerId = 'locmotos-alts-line';
-  static const _routeLabelsSourceId = 'locmotos-route-labels';
-  static const _routeLabelsLayerId = 'locmotos-route-labels-text';
-  static const _etaSourceId = 'locmotos-eta';
-  static const _etaLayerId = 'locmotos-eta-text';
-  static const _etaPillSelectedId = 'locmotos-eta-pill';
-  static const _etaPillAltId = 'locmotos-eta-pill-alt';
-  static const _alertsSourceId = 'locmotos-alerts';
-  static const _alertsSymbolLayerId = 'locmotos-alerts-symbol';
-  static const _alertIconCameraId = 'locmotos-alert-camera';
-  static const _alertIconRadarFixedId = 'locmotos-alert-radar-fixed';
-  static const _alertIconRadarSectionId = 'locmotos-alert-radar-section';
-  static const _alertIconRadarTrailerId = 'locmotos-alert-radar-trailer';
-  static const _alertIconFuelId = 'locmotos-alert-fuel';
-  static const _alertIconTollId = 'locmotos-alert-toll';
-  static const _alertIconCurveId = 'locmotos-alert-curve';
-  static const _puckIconImageId = 'locmotos-nav-puck-icon-v2';
-  static const _groupMateIconId = 'locmotos-hud-group-mate';
-  static const _groupMateStaleIconId = 'locmotos-hud-group-mate-stale';
-  static const _groupMateCabeceraIconId = 'locmotos-hud-group-cabecera';
-  static const _groupMateColaIconId = 'locmotos-hud-group-cola';
-  static const _groupMateIncidentIconId = 'locmotos-hud-group-incident';
+  static const _routeSourceId = 'motoamg-route';
+  static const _routeCasingLayerId = 'motoamg-route-casing';
+  static const _routeLineLayerId = 'motoamg-route-line';
+  static const _traveledSourceId = 'motoamg-traveled';
+  static const _traveledCasingLayerId = 'motoamg-traveled-casing';
+  static const _traveledLineLayerId = 'motoamg-traveled-line';
+  static const _altsSourceId = 'motoamg-alts';
+  static const _altsCasingLayerId = 'motoamg-alts-casing';
+  static const _altsLineLayerId = 'motoamg-alts-line';
+  static const _routeLabelsSourceId = 'motoamg-route-labels';
+  static const _routeLabelsLayerId = 'motoamg-route-labels-text';
+  static const _etaSourceId = 'motoamg-eta';
+  static const _etaLayerId = 'motoamg-eta-text';
+  static const _etaPillSelectedId = 'motoamg-eta-pill';
+  static const _etaPillAltId = 'motoamg-eta-pill-alt';
+  static const _alertsSourceId = 'motoamg-alerts';
+  static const _alertsSymbolLayerId = 'motoamg-alerts-symbol';
+  static const _mapPoisSourceId = 'motoamg-map-pois';
+  static const _mapPoisSymbolLayerId = 'motoamg-map-pois-symbol';
+  static const _speedLimitsSourceId = 'motoamg-speed-limits';
+  static const _speedLimitsLineLayerId = 'motoamg-speed-limits-line';
+  static const _speedLimitsSignsSourceId = 'motoamg-speed-limits-signs';
+  static const _speedLimitsSignsLayerId = 'motoamg-speed-limits-signs-symbol';
+  static const _mapPoiIconSignalId = 'motoamg-map-poi-signal';
+  static const _mapPoiIconStopId = 'motoamg-map-poi-stop';
+  static const _mapPoiIconGiveWayId = 'motoamg-map-poi-giveway';
+  static const _alertIconCameraId = 'motoamg-alert-camera';
+  static const _alertIconRadarFixedId = 'motoamg-alert-radar-fixed';
+  static const _alertIconRadarSectionId = 'motoamg-alert-radar-section';
+  static const _alertIconRadarTrailerId = 'motoamg-alert-radar-trailer';
+  static const _alertIconFuelId = 'motoamg-alert-fuel';
+  static const _alertIconTollId = 'motoamg-alert-toll';
+  static const _alertIconCurveId = 'motoamg-alert-curve';
+  static String _curveIconId(CurveSeverity severity, CurveTurn? turn) =>
+      'motoamg-alert-curve-${severity.name}-${turn?.name ?? 'right'}';
+  static const _puckIconImageId = 'motoamg-nav-puck-icon-v2';
+  static const _groupMateIconId = 'motoamg-hud-group-mate';
+  static const _groupMateStaleIconId = 'motoamg-hud-group-mate-stale';
+  static const _groupMateCabeceraIconId = 'motoamg-hud-group-cabecera';
+  static const _groupMateColaIconId = 'motoamg-hud-group-cola';
+  static const _groupMateIncidentIconId = 'motoamg-hud-group-incident';
   static const _groupMateColor = Color(0xFFE65100);
   static const _groupMateStaleColor = Color(0xFF78909C);
   static const _groupMateCabeceraColor = Color(0xFF2E7D32);
@@ -213,6 +235,10 @@ class _NavigationMapViewState extends State<NavigationMapView> {
   var _routeLayersReady = false;
   var _etaPillsReady = false;
   var _alertIconsReady = false;
+  var _mapPoiIconsReady = false;
+  var _speedLimitSignIconsReady = false;
+  final _loadedSpeedLimitSignKmh = <int>{};
+  final _loadedDiffSignPairs = <(int?, int?)>{};
   /// Evita dos `_drawRoute` concurrentes (p. ej. onMapCreated + onStyleLoaded).
   var _drawRouteBusy = false;
   var _drawRouteQueued = false;
@@ -315,11 +341,25 @@ class _NavigationMapViewState extends State<NavigationMapView> {
       oldWidget.route.alerts,
       widget.route.alerts,
     );
+    final mapPoisChanged = !_sameMapPoiIds(
+      oldWidget.route.mapPois,
+      widget.route.mapPois,
+    );
+    final speedLimitsChanged = oldWidget.showSpeedLimitSegments !=
+            widget.showSpeedLimitSegments ||
+        oldWidget.speedLimitDiffs != widget.speedLimitDiffs ||
+        (widget.showSpeedLimitSegments &&
+            oldWidget.route.speedLimitSegments !=
+                widget.route.speedLimitSegments);
     final altsChanged = !_sameRouteIds(
       oldWidget.alternativeRoutes,
       widget.alternativeRoutes,
     );
-    if (routeChanged || altsChanged || alertsChanged) {
+    if (routeChanged ||
+        altsChanged ||
+        alertsChanged ||
+        mapPoisChanged ||
+        speedLimitsChanged) {
       final oldIds = {
         oldWidget.route.id,
         ...oldWidget.alternativeRoutes.map((r) => r.id),
@@ -412,6 +452,10 @@ class _NavigationMapViewState extends State<NavigationMapView> {
     _routeLayersReady = false;
     _etaPillsReady = false;
     _alertIconsReady = false;
+    _mapPoiIconsReady = false;
+    _speedLimitSignIconsReady = false;
+    _loadedSpeedLimitSignKmh.clear();
+    _loadedDiffSignPairs.clear();
     _puck = null;
     _puckHalo = null;
     _puckSymbol = null;
@@ -582,7 +626,7 @@ class _NavigationMapViewState extends State<NavigationMapView> {
       for (final raw in ids) {
         final id = raw?.toString() ?? '';
         final lower = id.toLowerCase();
-        if (id.startsWith('locmotos-')) {
+        if (id.startsWith('motoamg-')) {
           continue;
         }
         if (lower.contains('poi') ||
@@ -644,6 +688,9 @@ class _NavigationMapViewState extends State<NavigationMapView> {
       alternatives: widget.alternativeRoutes,
     );
     final alertsGeoJson = _alertsGeoJson();
+    final mapPoisGeoJson = _mapPoisGeoJson();
+    final speedLimitsGeoJson = _speedLimitsLinesGeoJson();
+    final speedLimitSignsGeoJson = _speedLimitsSignsGeoJson();
 
     if (_routeLayersReady) {
       try {
@@ -653,10 +700,26 @@ class _NavigationMapViewState extends State<NavigationMapView> {
         await controller.setGeoJsonSource(_routeLabelsSourceId, labelsGeoJson);
         await controller.setGeoJsonSource(_etaSourceId, etaGeoJson);
         await controller.setGeoJsonSource(_alertsSourceId, alertsGeoJson);
+        await controller.setGeoJsonSource(_mapPoisSourceId, mapPoisGeoJson);
+        if (widget.showSpeedLimitSegments) {
+          await controller.setGeoJsonSource(
+            _speedLimitsSourceId,
+            speedLimitsGeoJson,
+          );
+          await _ensureSpeedLimitSignImages(controller);
+          await controller.setGeoJsonSource(
+            _speedLimitsSignsSourceId,
+            speedLimitSignsGeoJson,
+          );
+        }
       } catch (_) {
         // Estilo/fuentes recreados: volver a crear capas.
         _routeLayersReady = false;
         _alertIconsReady = false;
+        _mapPoiIconsReady = false;
+        _speedLimitSignIconsReady = false;
+        _loadedSpeedLimitSignKmh.clear();
+        _loadedDiffSignPairs.clear();
       }
     }
     if (!_routeLayersReady) {
@@ -669,6 +732,9 @@ class _NavigationMapViewState extends State<NavigationMapView> {
         labelsGeoJson: labelsGeoJson,
         etaGeoJson: etaGeoJson,
         alertsGeoJson: alertsGeoJson,
+        mapPoisGeoJson: mapPoisGeoJson,
+        speedLimitsGeoJson: speedLimitsGeoJson,
+        speedLimitSignsGeoJson: speedLimitSignsGeoJson,
       );
       _routeLayersReady = true;
     }
@@ -792,6 +858,9 @@ class _NavigationMapViewState extends State<NavigationMapView> {
   /// Quita capas/fuentes de ruta si ya existen (evita CannotAddLayerException).
   Future<void> _clearRouteOverlayLayers(MapLibreMapController controller) async {
     const layerIds = [
+      _speedLimitsSignsLayerId,
+      _speedLimitsLineLayerId,
+      _mapPoisSymbolLayerId,
       _alertsSymbolLayerId,
       _etaLayerId,
       _routeLabelsLayerId,
@@ -803,6 +872,9 @@ class _NavigationMapViewState extends State<NavigationMapView> {
       _altsCasingLayerId,
     ];
     const sourceIds = [
+      _speedLimitsSignsSourceId,
+      _speedLimitsSourceId,
+      _mapPoisSourceId,
       _alertsSourceId,
       _etaSourceId,
       _routeLabelsSourceId,
@@ -846,6 +918,18 @@ class _NavigationMapViewState extends State<NavigationMapView> {
     return true;
   }
 
+  bool _sameMapPoiIds(List<RouteMapPoi> a, List<RouteMapPoi> b) {
+    if (a.length != b.length) {
+      return false;
+    }
+    for (var i = 0; i < a.length; i++) {
+      if (a[i].id != b[i].id) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   Future<void> _syncAlertsSource() async {
     final controller = _controller;
     if (controller == null || !_routeLayersReady) {
@@ -853,6 +937,7 @@ class _NavigationMapViewState extends State<NavigationMapView> {
     }
     try {
       await controller.setGeoJsonSource(_alertsSourceId, _alertsGeoJson());
+      await controller.setGeoJsonSource(_mapPoisSourceId, _mapPoisGeoJson());
     } catch (_) {}
   }
 
@@ -876,7 +961,10 @@ class _NavigationMapViewState extends State<NavigationMapView> {
                   },
                 RouteAlertType.fuel => _alertIconFuelId,
                 RouteAlertType.toll => _alertIconTollId,
-                RouteAlertType.sharpCurve => _alertIconCurveId,
+                RouteAlertType.sharpCurve => _curveIconId(
+                      alert.effectiveCurveSeverity,
+                      alert.curveTurn,
+                    ),
               },
             },
             'geometry': {
@@ -888,9 +976,56 @@ class _NavigationMapViewState extends State<NavigationMapView> {
     };
   }
 
+  /// Semáforos / STOP / ceda: todos los de la ruta (solo mapa).
+  Map<String, dynamic> _mapPoisGeoJson() {
+    return {
+      'type': 'FeatureCollection',
+      'features': [
+        for (final poi in widget.route.mapPois)
+          {
+            'type': 'Feature',
+            'properties': {
+              'kind': poi.kind.name,
+              'icon': switch (poi.kind) {
+                RouteMapPoiKind.trafficSignal => _mapPoiIconSignalId,
+                RouteMapPoiKind.stop => _mapPoiIconStopId,
+                RouteMapPoiKind.giveWay => _mapPoiIconGiveWayId,
+              },
+            },
+            'geometry': {
+              'type': 'Point',
+              'coordinates': [poi.point.lng, poi.point.lat],
+            },
+          },
+      ],
+    };
+  }
+
+  Map<String, dynamic> _speedLimitsLinesGeoJson() {
+    if (!widget.showSpeedLimitSegments) {
+      return {'type': 'FeatureCollection', 'features': <Map<String, dynamic>>[]};
+    }
+    final diffs = widget.speedLimitDiffs;
+    if (diffs != null) {
+      return SpeedLimitMapGeoJson.diffLines(widget.route.polyline, diffs);
+    }
+    return SpeedLimitMapGeoJson.lines(widget.route);
+  }
+
+  Map<String, dynamic> _speedLimitsSignsGeoJson() {
+    if (!widget.showSpeedLimitSegments) {
+      return {'type': 'FeatureCollection', 'features': <Map<String, dynamic>>[]};
+    }
+    final diffs = widget.speedLimitDiffs;
+    if (diffs != null) {
+      return SpeedLimitMapGeoJson.diffSigns(widget.route.polyline, diffs);
+    }
+    return SpeedLimitMapGeoJson.signs(widget.route);
+  }
+
   List<RouteAlert> _alertsForMap() {
     final mapped = widget.route.alerts
-        .where((a) => widget.alertPreferences.showTypeOnMap(a.type))
+        .where((a) => widget.alertPreferences.showAlertOnMap(a))
         .toList(growable: false);
     if (mapped.isEmpty) {
       return const [];
@@ -1360,6 +1495,9 @@ class _NavigationMapViewState extends State<NavigationMapView> {
     required Map<String, dynamic> labelsGeoJson,
     required Map<String, dynamic> etaGeoJson,
     required Map<String, dynamic> alertsGeoJson,
+    required Map<String, dynamic> mapPoisGeoJson,
+    required Map<String, dynamic> speedLimitsGeoJson,
+    required Map<String, dynamic> speedLimitSignsGeoJson,
   }) async {
     final belowLayerId = await _firstMapLabelLayerId(controller);
 
@@ -1540,6 +1678,230 @@ class _NavigationMapViewState extends State<NavigationMapView> {
       ),
       enableInteraction: false,
     );
+
+    await controller.addGeoJsonSource(_mapPoisSourceId, mapPoisGeoJson);
+    await _ensureMapPoiIconImages(controller);
+    await controller.addSymbolLayer(
+      _mapPoisSourceId,
+      _mapPoisSymbolLayerId,
+      const SymbolLayerProperties(
+        iconImage: [Expressions.get, 'icon'],
+        iconSize: 0.42,
+        iconAllowOverlap: true,
+        iconIgnorePlacement: true,
+        iconAnchor: 'center',
+        symbolPlacement: 'point',
+      ),
+      enableInteraction: false,
+    );
+
+    if (widget.showSpeedLimitSegments) {
+      await controller.addGeoJsonSource(_speedLimitsSourceId, speedLimitsGeoJson);
+      await controller.addLineLayer(
+        _speedLimitsSourceId,
+        _speedLimitsLineLayerId,
+        const LineLayerProperties(
+          lineColor: [Expressions.get, 'color'],
+          lineWidth: 7,
+          lineOpacity: 0.95,
+          lineJoin: 'round',
+          lineCap: 'round',
+        ),
+        enableInteraction: false,
+      );
+      await _ensureSpeedLimitSignImages(controller);
+      await controller.addGeoJsonSource(
+        _speedLimitsSignsSourceId,
+        speedLimitSignsGeoJson,
+      );
+      await controller.addSymbolLayer(
+        _speedLimitsSignsSourceId,
+        _speedLimitsSignsLayerId,
+        const SymbolLayerProperties(
+          iconImage: [Expressions.get, 'icon'],
+          iconSize: 0.48,
+          iconAllowOverlap: true,
+          iconIgnorePlacement: true,
+          iconAnchor: 'center',
+          symbolPlacement: 'point',
+        ),
+        enableInteraction: false,
+      );
+    }
+  }
+
+  Future<void> _ensureSpeedLimitSignImages(
+    MapLibreMapController controller,
+  ) async {
+    final diffs = widget.speedLimitDiffs;
+    if (diffs != null) {
+      final pairs = SpeedLimitMapGeoJson.uniqueDiffPairs(diffs);
+      try {
+        for (final pair in pairs) {
+          final id = SpeedLimitMapGeoJson.diffSignIconId(pair.$1, pair.$2);
+          if (_loadedDiffSignPairs.contains(pair)) {
+            continue;
+          }
+          await controller.addImage(
+            id,
+            await _buildDiffSignPng(pair.$1, pair.$2),
+          );
+          _loadedDiffSignPairs.add(pair);
+        }
+        _speedLimitSignIconsReady = true;
+      } catch (_) {}
+      return;
+    }
+
+    final needed = SpeedLimitMapGeoJson.uniqueLimits(widget.route);
+    if (needed.isEmpty) {
+      return;
+    }
+    if (_speedLimitSignIconsReady &&
+        needed.every(_loadedSpeedLimitSignKmh.contains)) {
+      return;
+    }
+    try {
+      for (final kmh in needed) {
+        if (_loadedSpeedLimitSignKmh.contains(kmh)) {
+          continue;
+        }
+        await controller.addImage(
+          SpeedLimitMapGeoJson.signIconId(kmh),
+          await _buildSpeedLimitSignPng(kmh),
+        );
+        _loadedSpeedLimitSignKmh.add(kmh);
+      }
+      _speedLimitSignIconsReady = true;
+    } catch (_) {}
+  }
+
+  /// Señal comparativa: MotoAMG (arriba) → TomTom (abajo).
+  Future<Uint8List> _buildDiffSignPng(int? motoAmgKmh, int? tomtomKmh) async {
+    const size = 108.0;
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+    final center = const Offset(size / 2, size / 2);
+    final outerR = size / 2 - 3;
+
+    canvas.drawCircle(
+      center,
+      outerR + 1,
+      Paint()
+        ..color = Colors.black.withValues(alpha: 0.2)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2),
+    );
+    canvas.drawCircle(center, outerR, Paint()..color = Colors.white);
+    canvas.drawCircle(
+      center,
+      outerR,
+      Paint()
+        ..color = const Color(0xFF7B1FA2)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 8,
+    );
+
+    void paintRow(String label, String value, double y, Color color) {
+      final labelPainter = TextPainter(
+        text: TextSpan(
+          text: label,
+          style: TextStyle(
+            color: color.withValues(alpha: 0.85),
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            height: 1,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      final valuePainter = TextPainter(
+        text: TextSpan(
+          text: value,
+          style: TextStyle(
+            color: Colors.black,
+            fontSize: 22,
+            fontWeight: FontWeight.w800,
+            height: 1,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      labelPainter.paint(canvas, Offset((size - labelPainter.width) / 2, y));
+      valuePainter.paint(
+        canvas,
+        Offset((size - valuePainter.width) / 2, y + 12),
+      );
+    }
+
+    paintRow(
+      'LM',
+      motoAmgKmh?.toString() ?? '—',
+      18,
+      const Color(0xFF1565C0),
+    );
+    paintRow(
+      'TT',
+      tomtomKmh?.toString() ?? '—',
+      58,
+      const Color(0xFFEF6C00),
+    );
+
+    final image =
+        await recorder.endRecording().toImage(size.toInt(), size.toInt());
+    final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+    return bytes!.buffer.asUint8List();
+  }
+
+  /// Señal circular europea: fondo blanco, borde rojo, número negro.
+  Future<Uint8List> _buildSpeedLimitSignPng(int kmh) async {
+    const size = 96.0;
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+    final center = const Offset(size / 2, size / 2);
+    final outerR = size / 2 - 3;
+
+    canvas.drawCircle(
+      center,
+      outerR + 1,
+      Paint()
+        ..color = Colors.black.withValues(alpha: 0.2)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2),
+    );
+    canvas.drawCircle(center, outerR, Paint()..color = Colors.white);
+    canvas.drawCircle(
+      center,
+      outerR,
+      Paint()
+        ..color = const Color(0xFFE53935)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 10,
+    );
+
+    final text = kmh.toString();
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: TextStyle(
+          color: Colors.black,
+          fontSize: text.length >= 3 ? 34 : 42,
+          fontWeight: FontWeight.w800,
+          height: 1,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    textPainter.paint(
+      canvas,
+      Offset(
+        (size - textPainter.width) / 2,
+        (size - textPainter.height) / 2 - 1,
+      ),
+    );
+
+    final image =
+        await recorder.endRecording().toImage(size.toInt(), size.toInt());
+    final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+    return bytes!.buffer.asUint8List();
   }
 
   Future<void> _ensureAlertIconImages(MapLibreMapController controller) async {
@@ -1589,17 +1951,61 @@ class _NavigationMapViewState extends State<NavigationMapView> {
           background: const Color(0xFF6A1B9A),
         ),
       );
+      // Fallback genérico + variantes por gravedad / sentido.
       await controller.addImage(
         _alertIconCurveId,
         await _buildAlertMarkerPng(
           icon: Icons.turn_sharp_right_rounded,
-          background: const Color(0xFF00897B),
+          background: Color(CurveSeverity.pronounced.mapColorArgb),
         ),
       );
+      for (final severity in CurveSeverity.values) {
+        for (final turn in CurveTurn.values) {
+          await controller.addImage(
+            _curveIconId(severity, turn),
+            await _buildAlertMarkerPng(
+              icon: turn == CurveTurn.left
+                  ? Icons.turn_sharp_left_rounded
+                  : Icons.turn_sharp_right_rounded,
+              background: Color(severity.mapColorArgb),
+            ),
+          );
+        }
+      }
       _alertIconsReady = true;
     } catch (_) {
       // Sin iconos: los avisos siguen en chips / HUD.
     }
+  }
+
+  Future<void> _ensureMapPoiIconImages(MapLibreMapController controller) async {
+    if (_mapPoiIconsReady) {
+      return;
+    }
+    try {
+      await controller.addImage(
+        _mapPoiIconSignalId,
+        await _buildAlertMarkerPng(
+          icon: Icons.traffic_rounded,
+          background: const Color(0xFF455A64),
+        ),
+      );
+      await controller.addImage(
+        _mapPoiIconStopId,
+        await _buildAlertMarkerPng(
+          icon: Icons.stop_circle_rounded,
+          background: const Color(0xFFC62828),
+        ),
+      );
+      await controller.addImage(
+        _mapPoiIconGiveWayId,
+        await _buildAlertMarkerPng(
+          icon: Icons.warning_amber_rounded,
+          background: const Color(0xFFF9A825),
+        ),
+      );
+      _mapPoiIconsReady = true;
+    } catch (_) {}
   }
 
   /// Marcador circular con icono Material (estilo app de navegación).
@@ -1724,7 +2130,7 @@ class _NavigationMapViewState extends State<NavigationMapView> {
   }
 
   bool _looksLikeMapLabelLayer(String id) {
-    if (id.startsWith('locmotos-')) {
+    if (id.startsWith('motoamg-')) {
       return false;
     }
     final lower = id.toLowerCase();

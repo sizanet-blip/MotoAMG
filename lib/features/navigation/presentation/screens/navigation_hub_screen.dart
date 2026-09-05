@@ -1,27 +1,27 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:loc_motos/core/constants/navigation_constants.dart';
-import 'package:loc_motos/core/widgets/app_popup_menu.dart';
-import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
-import 'package:loc_motos/features/navigation/domain/entities/geocoding_place.dart';
-import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
-import 'package:loc_motos/features/navigation/domain/entities/route_itinerary.dart';
-import 'package:loc_motos/features/navigation/domain/exceptions/navigation_user_message.dart';
-import 'package:loc_motos/features/navigation/presentation/providers/navigation_providers.dart';
-import 'package:loc_motos/features/navigation/presentation/screens/navigation_hud_screen.dart';
-import 'package:loc_motos/features/navigation/presentation/screens/route_preview_screen.dart';
-import 'package:loc_motos/features/navigation/presentation/widgets/destination_search_field.dart';
-import 'package:loc_motos/features/navigation/presentation/widgets/itinerary_sheet.dart';
-import 'package:loc_motos/features/navigation/presentation/widgets/map_network_resume_binder.dart';
-import 'package:loc_motos/features/navigation/presentation/widgets/navigation_map_zoom_controls.dart';
-import 'package:loc_motos/features/navigation/presentation/widgets/navigation_map_my_location_button.dart';
-import 'package:loc_motos/features/navigation/presentation/widgets/navigation_planner_map.dart';
-import 'package:loc_motos/features/navigation/presentation/widgets/offline_map_banner.dart';
-import 'package:loc_motos/features/tracking/presentation/providers/tracking_providers.dart';
-import 'package:loc_motos/features/tracking/presentation/widgets/own_position_watcher.dart';
+import 'package:moto_amg/core/constants/navigation_constants.dart';
+import 'package:moto_amg/core/widgets/app_popup_menu.dart';
+import 'package:moto_amg/features/auth/domain/entities/app_user.dart';
+import 'package:moto_amg/features/navigation/domain/entities/geocoding_place.dart';
+import 'package:moto_amg/features/navigation/domain/entities/geo_point.dart';
+import 'package:moto_amg/features/navigation/domain/entities/route_itinerary.dart';
+import 'package:moto_amg/features/navigation/domain/exceptions/navigation_user_message.dart';
+import 'package:moto_amg/features/navigation/presentation/providers/navigation_providers.dart';
+import 'package:moto_amg/features/navigation/presentation/screens/navigation_hud_screen.dart';
+import 'package:moto_amg/features/navigation/presentation/screens/route_preview_screen.dart';
+import 'package:moto_amg/features/navigation/presentation/widgets/destination_search_field.dart';
+import 'package:moto_amg/features/navigation/presentation/widgets/itinerary_sheet.dart';
+import 'package:moto_amg/features/navigation/presentation/widgets/map_network_resume_binder.dart';
+import 'package:moto_amg/features/navigation/presentation/widgets/navigation_map_zoom_controls.dart';
+import 'package:moto_amg/features/navigation/presentation/widgets/navigation_map_my_location_button.dart';
+import 'package:moto_amg/features/navigation/presentation/widgets/navigation_planner_map.dart';
+import 'package:moto_amg/features/navigation/presentation/widgets/offline_map_banner.dart';
+import 'package:moto_amg/features/tracking/presentation/providers/tracking_providers.dart';
+import 'package:moto_amg/features/tracking/presentation/widgets/own_position_watcher.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 
 class NavigationHubScreen extends ConsumerStatefulWidget {
@@ -366,6 +366,7 @@ class _NavigationHubScreenState extends ConsumerState<NavigationHubScreen> {
       if (route == null || !mounted) {
         return;
       }
+      // La ruta guardada ya se enriqueció al confirmar «Empezar navegación».
       await Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute<void>(
           builder: (_) => NavigationHudScreen(

@@ -1,7 +1,7 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:loc_motos/core/api_usage/api_usage_tracker.dart';
-import 'package:loc_motos/features/settings/data/repositories/emergency_contacts_repository.dart';
-import 'package:loc_motos/features/settings/data/repositories/radar_update_reminder_repository.dart';
+﻿import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:moto_amg/core/api_usage/api_usage_tracker.dart';
+import 'package:moto_amg/features/settings/data/repositories/emergency_contacts_repository.dart';
+import 'package:moto_amg/features/settings/data/repositories/radar_update_reminder_repository.dart';
 
 final apiUsageTrackerProvider = ChangeNotifierProvider<ApiUsageTracker>((ref) {
   return ApiUsageTracker.instance;

@@ -12,6 +12,27 @@ class TimestampConverter implements JsonConverter<DateTime, Object> {
   Object toJson(DateTime date) => Timestamp.fromDate(date);
 }
 
+/// Igual que [TimestampConverter], pero admite null.
+class NullableTimestampConverter implements JsonConverter<DateTime?, Object?> {
+  const NullableTimestampConverter();
+
+  @override
+  DateTime? fromJson(Object? json) {
+    if (json == null) {
+      return null;
+    }
+    return parseFirestoreDate(json);
+  }
+
+  @override
+  Object? toJson(DateTime? date) {
+    if (date == null) {
+      return null;
+    }
+    return Timestamp.fromDate(date);
+  }
+}
+
 DateTime parseFirestoreDate(Object? json) {
   if (json == null) {
     return DateTime.now();

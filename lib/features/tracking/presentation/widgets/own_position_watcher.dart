@@ -1,12 +1,12 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:loc_motos/core/utils/navigation_motion_filter.dart';
-import 'package:loc_motos/features/tracking/domain/entities/device_position.dart';
-import 'package:loc_motos/features/tracking/domain/exceptions/location_exceptions.dart';
-import 'package:loc_motos/features/tracking/presentation/providers/tracking_providers.dart';
+import 'package:moto_amg/core/utils/navigation_motion_filter.dart';
+import 'package:moto_amg/features/tracking/domain/entities/device_position.dart';
+import 'package:moto_amg/features/tracking/domain/exceptions/location_exceptions.dart';
+import 'package:moto_amg/features/tracking/presentation/providers/tracking_providers.dart';
 
 /// Escucha GPS para navegación (prioridad sobre el stream del grupo).
 class OwnPositionWatcher extends ConsumerStatefulWidget {

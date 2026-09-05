@@ -1,43 +1,50 @@
 {
   "project_info": {
-    "project_number": "128161523972",
-    "project_id": "locmotos-project",
-    "storage_bucket": "locmotos-project.firebasestorage.app",
-    "firebase_url": "https://locmotos-project-default-rtdb.europe-west1.firebasedatabase.app"
+    "project_number": "853611010116",
+    "firebase_url": "https://motoamg-default-rtdb.europe-west1.firebasedatabase.app",
+    "project_id": "motoamg",
+    "storage_bucket": "motoamg.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:128161523972:android:605f999525259554edc851",
+        "mobilesdk_app_id": "1:853611010116:android:f09cba58855911438b0411",
         "android_client_info": {
-          "package_name": "com.locmotos.loc_motos"
+          "package_name": "es.albertomaestre.motoamg"
         }
       },
       "oauth_client": [
         {
-          "client_id": "128161523972-o149r7fcls53tiamsll9090u6prkajak.apps.googleusercontent.com",
+          "client_id": "853611010116-mfbver1c8o17j3oc4i1ts3g31dfvlvqr.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
-            "package_name": "com.locmotos.loc_motos",
+            "package_name": "es.albertomaestre.motoamg",
             "certificate_hash": "74c22b0974609aab64185a8aa42e37e5f382e2c3"
           }
         },
         {
-          "client_id": "128161523972-povb28ju9fbrcq0jsg7ljlcj7sbef1an.apps.googleusercontent.com",
+          "client_id": "853611010116-06t64fsbs4d1jn28qhmsmfj8c4fhii89.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyCV7AJZ44QxyFneD8yo2W4d-uK6guYoxt0"
+          "current_key": "AIzaSyCZKZ01-jGDj0l7FJE6ocdIcc3pKitBxuk"
         }
       ],
       "services": {
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "128161523972-povb28ju9fbrcq0jsg7ljlcj7sbef1an.apps.googleusercontent.com",
+              "client_id": "853611010116-06t64fsbs4d1jn28qhmsmfj8c4fhii89.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "853611010116-1719vbon3r386q8ufb87o7qeab750nbg.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "es.albertomaestre.motoamg"
+              }
             }
           ]
         }

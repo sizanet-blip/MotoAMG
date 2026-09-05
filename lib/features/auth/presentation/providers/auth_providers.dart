@@ -1,11 +1,12 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:loc_motos/features/auth/data/datasources/auth_remote_datasource.dart';
-import 'package:loc_motos/features/auth/data/repositories/auth_repository_impl.dart';
-import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
-import 'package:loc_motos/features/auth/domain/entities/user_vehicle.dart';
-import 'package:loc_motos/features/auth/domain/exceptions/auth_exceptions.dart';
-import 'package:loc_motos/features/auth/domain/repositories/auth_repository.dart';
-import 'package:loc_motos/features/tracking/presentation/providers/tracking_providers.dart';
+﻿import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:moto_amg/features/auth/data/datasources/auth_remote_datasource.dart';
+import 'package:moto_amg/features/auth/data/repositories/auth_repository_impl.dart';
+import 'package:moto_amg/features/auth/domain/entities/app_user.dart';
+import 'package:moto_amg/features/auth/domain/entities/user_vehicle.dart';
+import 'package:moto_amg/features/auth/domain/exceptions/auth_exceptions.dart';
+import 'package:moto_amg/features/auth/domain/repositories/auth_repository.dart';
+import 'package:moto_amg/features/auth/presentation/providers/home_landing_provider.dart';
+import 'package:moto_amg/features/tracking/presentation/providers/tracking_providers.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return AuthRepositoryImpl(AuthRemoteDataSource());
@@ -169,6 +170,10 @@ class AuthActionController extends Notifier<AsyncValue<void>> {
     });
   }
 
+  Future<void> acceptPrivacyPolicy() {
+    return _run(() => _repo.acceptPrivacyPolicy());
+  }
+
   Future<void> signOut() {
     return _run(() async {
       final current = ref.read(signedInUserProvider);
@@ -185,6 +190,8 @@ class AuthActionController extends Notifier<AsyncValue<void>> {
       // Firestore emite permission-denied y el stream se queda roto.
       ref.read(signedInUserProvider.notifier).state = null;
       ref.read(pendingRecoveryKeyProvider.notifier).state = null;
+      ref.read(homeLandingSectionProvider.notifier).state =
+          HomeLandingSection.hub;
       ref.invalidate(groupLocationsProvider);
       ref.invalidate(ownDevicePositionProvider);
       ref.invalidate(ownGpsLostProvider);
@@ -202,8 +209,15 @@ class AuthActionController extends Notifier<AsyncValue<void>> {
       final user = await action();
       if (clearUser) {
         ref.read(signedInUserProvider.notifier).state = null;
-      } else if (user != null && user.displayName.trim().isNotEmpty) {
-        ref.read(signedInUserProvider.notifier).state = user;
+      } else if (user != null) {
+        // Mantener sesión local también sin displayName (p. ej. tras aceptar
+        // privacidad) para que AuthGate no pierda el progreso.
+        final previous = ref.read(signedInUserProvider);
+        if (user.displayName.trim().isNotEmpty ||
+            previous == null ||
+            previous.uid == user.uid) {
+          ref.read(signedInUserProvider.notifier).state = user;
+        }
       }
       ref.invalidate(authStateProvider);
       state = const AsyncData(null);
@@ -224,6 +238,17 @@ AppUser? resolveSessionUser(AppUser? local, AppUser? remote) {
       !local.needsDisplayName) {
     // El StateProvider local evita el flash del nombre, pero los campos de
     // peña/grupo deben seguir el documento de Firestore.
+    final remotePending = remote.pendingClubRequestId;
+    final remoteHasPending =
+        remotePending != null && remotePending.trim().isNotEmpty;
+    final remoteHasClub = remote.currentClubId != null &&
+        remote.currentClubId!.trim().isNotEmpty;
+    // Si el panel (o la app) ya asignó club y borró el pending en Firestore,
+    // no reinyectar un pending local antiguo.
+    final pendingClubRequestId = remoteHasPending
+        ? remotePending
+        : (remoteHasClub ? null : local.pendingClubRequestId);
+
     return AppUser(
       uid: local.uid,
       displayName: local.displayName,
@@ -234,15 +259,8 @@ AppUser? resolveSessionUser(AppUser? local, AppUser? remote) {
       username: remote.username ?? local.username,
       photoUrl: remote.photoUrl ?? local.photoUrl,
       currentGroupId: remote.currentGroupId,
-      currentClubId: remote.currentClubId,
-      // Pending remoto manda. Si hay club y no hay pending remoto, se limpia el
-      // local (aprobado). Si aún no hay club, el local puede ir por delante.
-      pendingClubRequestId: (remote.pendingClubRequestId != null &&
-              remote.pendingClubRequestId!.isNotEmpty)
-          ? remote.pendingClubRequestId
-          : ((remote.currentClubId != null && remote.currentClubId!.isNotEmpty)
-              ? null
-              : local.pendingClubRequestId),
+      currentClubId: remote.currentClubId ?? local.currentClubId,
+      pendingClubRequestId: pendingClubRequestId,
       allowSoloNavigation: remote.allowSoloNavigation,
       bikeBrand: remote.bikeBrand ?? local.bikeBrand,
       bikeModel: remote.bikeModel ?? local.bikeModel,
@@ -251,6 +269,9 @@ AppUser? resolveSessionUser(AppUser? local, AppUser? remote) {
       bikePlate: remote.bikePlate ?? local.bikePlate,
       vehicles: remote.vehicles.isNotEmpty ? remote.vehicles : local.vehicles,
       activeVehicleId: remote.activeVehicleId ?? local.activeVehicleId,
+      privacyAcceptedAt: remote.privacyAcceptedAt ?? local.privacyAcceptedAt,
+      privacyAcceptedVersion:
+          remote.privacyAcceptedVersion ?? local.privacyAcceptedVersion,
     );
   }
   if (local != null && !local.needsDisplayName) {

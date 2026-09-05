@@ -28,6 +28,10 @@ UserModel _$UserModelFromJson(Map<String, dynamic> json) => UserModel(
       bikePlate: json['bikePlate'] as String?,
       vehicles: parseUserVehicles(json['vehicles']),
       activeVehicleId: json['activeVehicleId'] as String?,
+      privacyAcceptedAt: const NullableTimestampConverter().fromJson(
+        json['privacyAcceptedAt'],
+      ),
+      privacyAcceptedVersion: json['privacyAcceptedVersion'] as String?,
     );
 
 Map<String, dynamic> _$UserModelToJson(UserModel instance) => <String, dynamic>{
@@ -50,4 +54,8 @@ Map<String, dynamic> _$UserModelToJson(UserModel instance) => <String, dynamic>{
       'bikePlate': instance.bikePlate,
       'vehicles': [for (final v in instance.vehicles) v.toJson()],
       'activeVehicleId': instance.activeVehicleId,
+      'privacyAcceptedAt': const NullableTimestampConverter().toJson(
+        instance.privacyAcceptedAt,
+      ),
+      'privacyAcceptedVersion': instance.privacyAcceptedVersion,
     };

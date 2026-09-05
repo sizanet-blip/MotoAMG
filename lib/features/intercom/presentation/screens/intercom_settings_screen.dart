@@ -1,8 +1,8 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:loc_motos/features/intercom/presentation/providers/intercom_providers.dart';
+import 'package:moto_amg/features/intercom/presentation/providers/intercom_providers.dart';
 
 /// Defaults personales de Hablar/Oír. El ON/OFF del canal lo marca el creador.
 class IntercomSettingsScreen extends ConsumerWidget {

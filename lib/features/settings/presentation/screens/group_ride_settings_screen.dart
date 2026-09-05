@@ -1,10 +1,10 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:loc_motos/core/utils/distance_format.dart';
-import 'package:loc_motos/features/groups/data/repositories/group_pack_alert_repository.dart';
-import 'package:loc_motos/features/groups/presentation/providers/group_providers.dart';
+import 'package:moto_amg/core/utils/distance_format.dart';
+import 'package:moto_amg/features/groups/data/repositories/group_pack_alert_repository.dart';
+import 'package:moto_amg/features/groups/presentation/providers/group_providers.dart';
 
 /// Configuración general de grupo en ruta (avisos + qué motos ver).
 class GroupRideSettingsScreen extends ConsumerWidget {
@@ -47,7 +47,7 @@ class GroupRideSettingsScreen extends ConsumerWidget {
             title: const Text('Navegar con Waze o Google Maps'),
             subtitle: const Text(
               'En el mapa de grupo verás Waze/Maps como opción principal '
-              'y LocMotos solo para seguir al pelotón.',
+              'y MotoAMG solo para seguir al pelotón.',
             ),
             value: prefs.preferExternalNavigation,
             onChanged: (value) =>

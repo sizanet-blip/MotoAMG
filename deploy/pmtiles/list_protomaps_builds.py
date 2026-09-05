@@ -23,7 +23,7 @@ from datetime import date, timedelta
 PROTOMAPS_BUILD_URL = "https://build.protomaps.com/{yyyymmdd}.pmtiles"
 PROTOMAPS_BUILDS_INDEX = "https://maps.protomaps.com/builds/"
 PROTOMAPS_BUILDS_JSON = "https://build-metadata.protomaps.dev/builds.json"
-USER_AGENT = "LocMotos-PMTilesList/1.0"
+USER_AGENT = "MotoAMG-PMTilesList/1.0"
 
 
 def parse_args() -> argparse.Namespace:

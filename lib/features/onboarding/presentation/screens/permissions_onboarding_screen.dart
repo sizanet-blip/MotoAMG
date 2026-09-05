@@ -1,11 +1,11 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:loc_motos/core/constants/app_constants.dart';
-import 'package:loc_motos/core/onboarding/app_onboarding_provider.dart';
+import 'package:moto_amg/core/constants/app_constants.dart';
+import 'package:moto_amg/core/onboarding/app_onboarding_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 /// Primera vez: explica y solicita permisos esenciales antes del login.
@@ -167,7 +167,7 @@ class _PermissionsOnboardingScreenState
               ),
               const SizedBox(height: 16),
               Text(
-                'Prepara LocMotos',
+                'Prepara MotoAMG',
                 textAlign: TextAlign.center,
                 style: textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.w700,
@@ -225,7 +225,7 @@ class _PermissionsOnboardingScreenState
                   title: 'Batería (recomendado)',
                   description:
                       'En Samsung, Xiaomi y otras marcas conviene excluir '
-                      'LocMotos de la optimización de batería para que el GPS '
+                      'MotoAMG de la optimización de batería para que el GPS '
                       'siga activo en ruta.',
                   granted: _batteryExempt,
                   checking: _checking,

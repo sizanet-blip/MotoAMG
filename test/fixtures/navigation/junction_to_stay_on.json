@@ -1,0 +1,50 @@
+{
+  "id": "junction_to_stay_on",
+  "description": "Cruce en X sin cambiar de vía (to_stay_on): no giro en cartel.",
+  "origin": { "lat": 41.0, "lng": -1.0 },
+  "destination": { "lat": 41.002, "lng": -0.999 },
+  "polyline": [
+    { "lat": 41.0, "lng": -1.0 },
+    { "lat": 41.001, "lng": -1.0 },
+    { "lat": 41.001, "lng": -0.999 },
+    { "lat": 41.002, "lng": -0.999 }
+  ],
+  "maneuvers": [
+    {
+      "index": 0,
+      "type": "depart",
+      "instruction": "Sal",
+      "distanceMeters": 200,
+      "location": { "lat": 41.0, "lng": -1.0 },
+      "beginShapeIndex": 0,
+      "streetName": "CV-500"
+    },
+    {
+      "index": 1,
+      "type": "turnRight",
+      "valhallaType": 10,
+      "toStayOn": true,
+      "instruction": "Gira a la derecha para permanecer en CV-500",
+      "distanceMeters": 800,
+      "location": { "lat": 41.001, "lng": -1.0 },
+      "beginShapeIndex": 1,
+      "streetName": "CV-500",
+      "beginStreetName": "Camino Secundario"
+    },
+    {
+      "index": 2,
+      "type": "arrive",
+      "instruction": "Has llegado",
+      "distanceMeters": 0,
+      "location": { "lat": 41.002, "lng": -0.999 },
+      "beginShapeIndex": 3
+    }
+  ],
+  "checkpoints": [
+    {
+      "position": { "lat": 41.0009, "lng": -1.0 },
+      "expectManeuverType": "arrive",
+      "minRemainingMeters": 100
+    }
+  ]
+}

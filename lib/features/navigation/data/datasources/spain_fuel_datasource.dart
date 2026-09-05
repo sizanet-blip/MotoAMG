@@ -1,12 +1,12 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:http/http.dart' as http;
-import 'package:loc_motos/core/constants/navigation_constants.dart';
-import 'package:loc_motos/features/auth/domain/entities/user_vehicle.dart';
-import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
-import 'package:loc_motos/features/navigation/domain/entities/route_alert.dart';
+import 'package:moto_amg/core/constants/navigation_constants.dart';
+import 'package:moto_amg/features/auth/domain/entities/user_vehicle.dart';
+import 'package:moto_amg/features/navigation/domain/entities/geo_point.dart';
+import 'package:moto_amg/features/navigation/domain/entities/route_alert.dart';
 
 class SpainFuelCacheStatus {
   const SpainFuelCacheStatus({
@@ -110,7 +110,7 @@ class _FuelStation {
   }
 }
 
-/// Inventario MITECO de gasolineras (bundle del servidor LocMotos).
+/// Inventario MITECO de gasolineras (bundle del servidor MotoAMG).
 class SpainFuelDatasource {
   SpainFuelDatasource({http.Client? client})
       : _client = client ?? http.Client();
@@ -459,7 +459,7 @@ class SpainFuelDatasource {
           .get(
             Uri.parse(NavigationConstants.spainFuelBundleUrl),
             headers: {
-              'User-Agent': 'LocMotos/1.0 (navigation; fuel bundle)',
+              'User-Agent': 'MotoAMG/1.0 (navigation; fuel bundle)',
               'Accept': 'application/json',
             },
           )

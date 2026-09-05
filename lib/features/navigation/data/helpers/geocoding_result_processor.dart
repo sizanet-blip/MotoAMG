@@ -1,4 +1,4 @@
-import 'package:loc_motos/features/navigation/domain/entities/geocoding_place.dart';
+﻿import 'package:moto_amg/features/navigation/domain/entities/geocoding_place.dart';
 
 /// Ordenación, deduplicación y número aproximado compartidos entre buscadores.
 abstract final class GeocodingResultProcessor {

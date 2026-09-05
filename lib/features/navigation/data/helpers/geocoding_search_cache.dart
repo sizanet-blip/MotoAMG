@@ -1,6 +1,6 @@
-import 'package:loc_motos/core/constants/navigation_constants.dart';
-import 'package:loc_motos/features/navigation/domain/entities/geocoding_place.dart';
-import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
+﻿import 'package:moto_amg/core/constants/navigation_constants.dart';
+import 'package:moto_amg/features/navigation/domain/entities/geocoding_place.dart';
+import 'package:moto_amg/features/navigation/domain/entities/geo_point.dart';
 
 /// Caché en memoria de búsquedas recientes por backend.
 final class GeocodingSearchCache {

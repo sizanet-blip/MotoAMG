@@ -1,9 +1,9 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:loc_motos/features/groups/presentation/providers/group_providers.dart';
-import 'package:loc_motos/features/intercom/presentation/providers/intercom_providers.dart';
+import 'package:moto_amg/features/groups/presentation/providers/group_providers.dart';
+import 'package:moto_amg/features/intercom/presentation/providers/intercom_providers.dart';
 
 /// Mantiene la sesión de intercom mientras el mapa o el HUD están montados.
 ///

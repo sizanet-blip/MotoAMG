@@ -1,20 +1,20 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
-import 'package:loc_motos/features/groups/domain/entities/group_incident.dart';
-import 'package:loc_motos/features/groups/domain/entities/group_voice_announcement.dart';
-import 'package:loc_motos/features/groups/domain/entities/ride_role.dart';
-import 'package:loc_motos/features/groups/domain/services/critical_emergency_actions.dart';
-import 'package:loc_motos/features/groups/domain/services/group_incident_service.dart';
-import 'package:loc_motos/features/groups/domain/services/group_ride_alert_feedback.dart';
-import 'package:loc_motos/features/groups/presentation/providers/group_providers.dart';
-import 'package:loc_motos/features/groups/presentation/widgets/group_incident_widgets.dart';
-import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
-import 'package:loc_motos/features/navigation/presentation/providers/navigation_providers.dart';
-import 'package:loc_motos/features/tracking/domain/entities/device_position.dart';
-import 'package:loc_motos/features/tracking/presentation/helpers/resolve_own_device_position.dart';
+import 'package:moto_amg/features/auth/domain/entities/app_user.dart';
+import 'package:moto_amg/features/groups/domain/entities/group_incident.dart';
+import 'package:moto_amg/features/groups/domain/entities/group_voice_announcement.dart';
+import 'package:moto_amg/features/groups/domain/entities/ride_role.dart';
+import 'package:moto_amg/features/groups/domain/services/critical_emergency_actions.dart';
+import 'package:moto_amg/features/groups/domain/services/group_incident_service.dart';
+import 'package:moto_amg/features/groups/domain/services/group_ride_alert_feedback.dart';
+import 'package:moto_amg/features/groups/presentation/providers/group_providers.dart';
+import 'package:moto_amg/features/groups/presentation/widgets/group_incident_widgets.dart';
+import 'package:moto_amg/features/navigation/domain/entities/geo_point.dart';
+import 'package:moto_amg/features/navigation/presentation/providers/navigation_providers.dart';
+import 'package:moto_amg/features/tracking/domain/entities/device_position.dart';
+import 'package:moto_amg/features/tracking/presentation/helpers/resolve_own_device_position.dart';
 
 /// Banner + barra de incidencias (mapa de grupo / HUD).
 class GroupIncidentSessionPanel extends ConsumerStatefulWidget {

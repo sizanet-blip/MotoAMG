@@ -1,17 +1,18 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
-import 'package:loc_motos/features/auth/presentation/providers/auth_providers.dart';
-import 'package:loc_motos/features/auth/presentation/screens/display_name_screen.dart';
-import 'package:loc_motos/features/auth/presentation/screens/home_screen.dart';
-import 'package:loc_motos/features/auth/presentation/screens/login_screen.dart';
-import 'package:loc_motos/features/auth/presentation/screens/recovery_key_screen.dart';
-import 'package:loc_motos/features/clubs/presentation/providers/club_providers.dart';
-import 'package:loc_motos/features/clubs/presentation/screens/club_entry_screen.dart';
-import 'package:loc_motos/features/clubs/presentation/screens/club_pending_screen.dart';
-import 'package:loc_motos/features/clubs/presentation/screens/club_select_screen.dart';
-import 'package:loc_motos/features/groups/presentation/providers/group_providers.dart';
-import 'package:loc_motos/features/tracking/presentation/providers/tracking_providers.dart';
+import 'package:moto_amg/features/auth/domain/entities/app_user.dart';
+import 'package:moto_amg/features/auth/presentation/providers/auth_providers.dart';
+import 'package:moto_amg/features/auth/presentation/screens/display_name_screen.dart';
+import 'package:moto_amg/features/auth/presentation/screens/home_screen.dart';
+import 'package:moto_amg/features/auth/presentation/screens/login_screen.dart';
+import 'package:moto_amg/features/auth/presentation/screens/recovery_key_screen.dart';
+import 'package:moto_amg/features/clubs/presentation/providers/club_providers.dart';
+import 'package:moto_amg/features/clubs/presentation/screens/club_entry_screen.dart';
+import 'package:moto_amg/features/clubs/presentation/screens/club_pending_screen.dart';
+import 'package:moto_amg/features/clubs/presentation/screens/club_select_screen.dart';
+import 'package:moto_amg/features/groups/presentation/providers/group_providers.dart';
+import 'package:moto_amg/features/onboarding/presentation/screens/privacy_onboarding_screen.dart';
+import 'package:moto_amg/features/tracking/presentation/providers/tracking_providers.dart';
 
 class AuthGate extends ConsumerWidget {
   const AuthGate({super.key});
@@ -59,6 +60,11 @@ class AuthGate extends ConsumerWidget {
       if (user == null) {
         return const LoginScreen();
       }
+      if (user.needsPrivacyAcceptance) {
+        return const PrivacyOnboardingScreen(
+          scope: PrivacyAcceptanceScope.account,
+        );
+      }
       if (user.needsDisplayName) {
         return DisplayNameScreen(
           alreadySignedIn: true,
@@ -74,22 +80,36 @@ class AuthGate extends ConsumerWidget {
     return auth.when(
       loading: () {
         final user = sessionUser;
-        if (user != null && !user.needsDisplayName) {
+        if (user != null &&
+            !user.needsPrivacyAcceptance &&
+            !user.needsDisplayName) {
           if (user.isAnonymous) {
             return HomeScreen(user: user);
           }
           return _clubGate(ref, user, dismissedPendingId);
+        }
+        if (user != null && user.needsPrivacyAcceptance) {
+          return const PrivacyOnboardingScreen(
+            scope: PrivacyAcceptanceScope.account,
+          );
         }
         return const Scaffold(
           body: Center(child: CircularProgressIndicator()),
         );
       },
       error: (error, _) {
-        if (sessionUser != null && !sessionUser.needsDisplayName) {
+        if (sessionUser != null &&
+            !sessionUser.needsPrivacyAcceptance &&
+            !sessionUser.needsDisplayName) {
           if (sessionUser.isAnonymous) {
             return HomeScreen(user: sessionUser);
           }
           return _clubGate(ref, sessionUser, dismissedPendingId);
+        }
+        if (sessionUser != null && sessionUser.needsPrivacyAcceptance) {
+          return const PrivacyOnboardingScreen(
+            scope: PrivacyAcceptanceScope.account,
+          );
         }
         return Scaffold(
           body: Center(

@@ -1,10 +1,10 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:loc_motos/features/groups/presentation/providers/group_providers.dart';
-import 'package:loc_motos/features/intercom/domain/entities/intercom_session_state.dart';
-import 'package:loc_motos/features/intercom/presentation/providers/intercom_providers.dart';
+import 'package:moto_amg/features/groups/presentation/providers/group_providers.dart';
+import 'package:moto_amg/features/intercom/domain/entities/intercom_session_state.dart';
+import 'package:moto_amg/features/intercom/presentation/providers/intercom_providers.dart';
 
 /// Solo Hablar / Oír (+ estado mínimo). El ON/OFF lo marca el creador del grupo.
 class IntercomControlsBar extends ConsumerWidget {

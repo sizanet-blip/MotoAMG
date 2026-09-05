@@ -1,6 +1,6 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:loc_motos/core/theme/app_color_theme.dart';
-import 'package:loc_motos/core/theme/app_color_theme_repository.dart';
+﻿import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:moto_amg/core/theme/app_color_theme.dart';
+import 'package:moto_amg/core/theme/app_color_theme_repository.dart';
 
 final appColorThemeRepositoryProvider = Provider<AppColorThemeRepository>((ref) {
   return AppColorThemeRepository();

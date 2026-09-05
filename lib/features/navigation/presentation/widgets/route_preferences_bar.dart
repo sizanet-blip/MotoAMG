@@ -1,8 +1,8 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:loc_motos/core/widgets/keyboard_safe_sheet_body.dart';
-import 'package:loc_motos/features/navigation/domain/entities/route_preferences.dart';
-import 'package:loc_motos/features/navigation/presentation/providers/navigation_providers.dart';
+import 'package:moto_amg/core/widgets/keyboard_safe_sheet_body.dart';
+import 'package:moto_amg/features/navigation/domain/entities/route_preferences.dart';
+import 'package:moto_amg/features/navigation/presentation/providers/navigation_providers.dart';
 
 /// Botones Curvatura / Evitaciones (estilo Kurviger) para el sheet del itinerario.
 class RoutePreferencesBar extends ConsumerWidget {

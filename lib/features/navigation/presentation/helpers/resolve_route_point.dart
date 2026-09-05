@@ -1,8 +1,8 @@
-import 'package:loc_motos/features/navigation/domain/entities/geocoding_place.dart';
-import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
-import 'package:loc_motos/features/navigation/domain/exceptions/navigation_exceptions.dart';
-import 'package:loc_motos/features/navigation/domain/repositories/geocoding_repository.dart';
-import 'package:loc_motos/features/navigation/presentation/models/route_endpoint_input_mode.dart';
+﻿import 'package:moto_amg/features/navigation/domain/entities/geocoding_place.dart';
+import 'package:moto_amg/features/navigation/domain/entities/geo_point.dart';
+import 'package:moto_amg/features/navigation/domain/exceptions/navigation_exceptions.dart';
+import 'package:moto_amg/features/navigation/domain/repositories/geocoding_repository.dart';
+import 'package:moto_amg/features/navigation/presentation/models/route_endpoint_input_mode.dart';
 
 GeoPoint? parseCoordinatePair(String latText, String lngText) {
   final lat = double.tryParse(latText.replaceAll(',', '.'));

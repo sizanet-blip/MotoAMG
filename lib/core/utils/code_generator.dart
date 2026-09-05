@@ -1,6 +1,6 @@
-import 'dart:math';
+﻿import 'dart:math';
 
-import 'package:loc_motos/core/constants/app_constants.dart';
+import 'package:moto_amg/core/constants/app_constants.dart';
 
 /// Genera códigos de grupo cortos y legibles (sin 0/O/1/I).
 abstract final class CodeGenerator {

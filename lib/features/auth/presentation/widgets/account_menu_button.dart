@@ -1,11 +1,12 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:loc_motos/core/widgets/app_popup_menu.dart';
-import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
-import 'package:loc_motos/features/auth/presentation/providers/auth_providers.dart';
-import 'package:loc_motos/features/auth/presentation/screens/profile_screen.dart';
-import 'package:loc_motos/features/auth/presentation/widgets/reveal_recovery_key_dialog.dart';
-import 'package:loc_motos/features/settings/presentation/screens/settings_screen.dart';
+import 'package:moto_amg/core/constants/app_constants.dart';
+import 'package:moto_amg/core/widgets/app_popup_menu.dart';
+import 'package:moto_amg/features/auth/domain/entities/app_user.dart';
+import 'package:moto_amg/features/auth/presentation/providers/auth_providers.dart';
+import 'package:moto_amg/features/auth/presentation/screens/profile_screen.dart';
+import 'package:moto_amg/features/auth/presentation/widgets/reveal_recovery_key_dialog.dart';
+import 'package:moto_amg/features/settings/presentation/screens/settings_screen.dart';
 
 class AccountMenuButton extends ConsumerWidget {
   const AccountMenuButton({super.key});
@@ -129,7 +130,7 @@ class _AccountMenuHeader extends StatelessWidget {
             ? user!.email!.trim()
             : (user?.username?.trim().isNotEmpty == true
                 ? '@${user!.username!.trim()}'
-                : 'LocMotos'));
+                : AppConstants.appName));
     final photoUrl = user?.photoUrl;
     final hasPhoto = photoUrl != null && photoUrl.isNotEmpty;
 

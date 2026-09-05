@@ -1,14 +1,14 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'package:loc_motos/core/api_usage/api_usage_tracker.dart';
-import 'package:loc_motos/core/constants/navigation_constants.dart';
-import 'package:loc_motos/features/navigation/data/models/navigation_route_model.dart';
-import 'package:loc_motos/features/navigation/data/services/route_guidance_service.dart';
-import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
-import 'package:loc_motos/features/navigation/domain/entities/speed_limit_segment.dart';
+import 'package:moto_amg/core/api_usage/api_usage_tracker.dart';
+import 'package:moto_amg/core/constants/navigation_constants.dart';
+import 'package:moto_amg/features/navigation/data/models/navigation_route_model.dart';
+import 'package:moto_amg/features/navigation/data/services/route_guidance_service.dart';
+import 'package:moto_amg/features/navigation/domain/entities/geo_point.dart';
+import 'package:moto_amg/features/navigation/domain/entities/speed_limit_segment.dart';
 
 /// TomTom Snap to Roads: límites legales a lo largo de una polilínea de ruta.
 ///
@@ -38,7 +38,7 @@ class TomTomSnapToRoadsDataSource {
     if (!isConfigured) {
       debugPrint('TomTom: sin API key (falta --dart-define=TOMTOM_API_KEY)');
       _usage.record(
-        api: LocMotosApi.tomtomSnapToRoads,
+        api: MotoAmgApi.tomtomSnapToRoads,
         outcome: ApiCallOutcome.skipped,
         message: 'Sin API key',
       );
@@ -80,7 +80,7 @@ class TomTomSnapToRoadsDataSource {
           all.addAll(result.segments!);
           okChunks++;
           _usage.record(
-            api: LocMotosApi.tomtomSnapToRoads,
+            api: MotoAmgApi.tomtomSnapToRoads,
             outcome: ApiCallOutcome.success,
             httpStatus: 200,
             message:
@@ -90,7 +90,7 @@ class TomTomSnapToRoadsDataSource {
           failChunks++;
           lastError = result.errorMessage;
           _usage.record(
-            api: LocMotosApi.tomtomSnapToRoads,
+            api: MotoAmgApi.tomtomSnapToRoads,
             outcome: ApiCallOutcome.failure,
             httpStatus: result.httpStatus,
             message: result.errorMessage ?? 'Error en tramo ${i + 1}',
@@ -112,7 +112,7 @@ class TomTomSnapToRoadsDataSource {
     } catch (e, st) {
       debugPrint('TomTom snapToRoads failed: $e\n$st');
       _usage.record(
-        api: LocMotosApi.tomtomSnapToRoads,
+        api: MotoAmgApi.tomtomSnapToRoads,
         outcome: ApiCallOutcome.failure,
         message: 'Error de red o timeout',
         detail: e.toString(),

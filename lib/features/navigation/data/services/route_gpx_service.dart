@@ -1,9 +1,9 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
-import 'package:loc_motos/features/navigation/data/services/gpx_route_codec.dart';
-import 'package:loc_motos/features/navigation/domain/entities/navigation_route.dart';
+import 'package:moto_amg/features/navigation/data/services/gpx_route_codec.dart';
+import 'package:moto_amg/features/navigation/domain/entities/navigation_route.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -16,18 +16,18 @@ class RouteGpxService {
 
   Future<void> shareRoute(
     NavigationRoute route, {
-    String name = 'Ruta LocMotos',
+    String name = 'Ruta MotoAMG',
   }) async {
     final gpx = _codec.encode(route, name: name);
     final dir = await getTemporaryDirectory();
     final stamp = DateTime.now().millisecondsSinceEpoch;
-    final file = File('${dir.path}/locmotos_ruta_$stamp.gpx');
+    final file = File('${dir.path}/motoamg_ruta_$stamp.gpx');
     await file.writeAsString(gpx, flush: true);
     await SharePlus.instance.share(
       ShareParams(
         files: [XFile(file.path, mimeType: 'application/gpx+xml')],
         subject: name,
-        text: 'Ruta compartida desde LocMotos',
+        text: 'Ruta compartida desde MotoAMG',
       ),
     );
   }

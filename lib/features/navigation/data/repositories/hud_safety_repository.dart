@@ -1,8 +1,8 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 
 import 'package:equatable/equatable.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:loc_motos/core/constants/navigation_constants.dart';
+import 'package:moto_amg/core/constants/navigation_constants.dart';
 
 /// Preferencias de seguridad / usabilidad del HUD en navegación.
 class HudSafetyPreferences extends Equatable {

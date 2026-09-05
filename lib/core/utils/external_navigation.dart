@@ -1,5 +1,5 @@
-import 'package:flutter/foundation.dart';
-import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
+﻿import 'package:flutter/foundation.dart';
+import 'package:moto_amg/features/navigation/domain/entities/geo_point.dart';
 
 /// Enlaces para abrir Waze o Google Maps con un destino.
 abstract final class ExternalNavigation {

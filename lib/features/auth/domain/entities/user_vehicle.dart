@@ -1,5 +1,5 @@
-import 'package:equatable/equatable.dart';
-import 'package:loc_motos/features/auth/domain/entities/vehicle_map_marker.dart';
+﻿import 'package:equatable/equatable.dart';
+import 'package:moto_amg/features/auth/domain/entities/vehicle_map_marker.dart';
 
 /// Tipo de vehículo para costing Valhalla.
 enum VehicleKind {

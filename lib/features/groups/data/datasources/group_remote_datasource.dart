@@ -1,16 +1,16 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+﻿import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart' hide Query;
-import 'package:loc_motos/core/constants/app_constants.dart';
-import 'package:loc_motos/core/utils/code_generator.dart';
-import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
-import 'package:loc_motos/features/groups/data/models/group_member_model.dart';
-import 'package:loc_motos/features/groups/data/models/group_membership_model.dart';
-import 'package:loc_motos/features/groups/data/models/group_model.dart';
-import 'package:loc_motos/features/groups/domain/entities/ride_role.dart';
-import 'package:loc_motos/features/groups/domain/exceptions/group_exceptions.dart';
-import 'package:loc_motos/features/navigation/data/models/navigation_route_model.dart';
-import 'package:loc_motos/firebase_options.dart';
+import 'package:moto_amg/core/constants/app_constants.dart';
+import 'package:moto_amg/core/utils/code_generator.dart';
+import 'package:moto_amg/features/auth/domain/entities/app_user.dart';
+import 'package:moto_amg/features/groups/data/models/group_member_model.dart';
+import 'package:moto_amg/features/groups/data/models/group_membership_model.dart';
+import 'package:moto_amg/features/groups/data/models/group_model.dart';
+import 'package:moto_amg/features/groups/domain/entities/ride_role.dart';
+import 'package:moto_amg/features/groups/domain/exceptions/group_exceptions.dart';
+import 'package:moto_amg/features/navigation/data/models/navigation_route_model.dart';
+import 'package:moto_amg/firebase_options.dart';
 
 class GroupRemoteDataSource {
   GroupRemoteDataSource({

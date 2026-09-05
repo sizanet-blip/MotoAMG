@@ -1,10 +1,10 @@
-import 'package:flutter/material.dart';
-import 'package:loc_motos/core/widgets/app_popup_menu.dart';
-import 'package:loc_motos/features/navigation/domain/entities/geocoding_place.dart';
-import 'package:loc_motos/features/navigation/presentation/models/route_endpoint_input_mode.dart';
-import 'package:loc_motos/features/navigation/presentation/widgets/coordinate_endpoint_field.dart';
-import 'package:loc_motos/features/navigation/presentation/widgets/destination_search_field.dart';
-import 'package:loc_motos/features/navigation/presentation/widgets/route_endpoint_mode_toggle.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:moto_amg/core/widgets/app_popup_menu.dart';
+import 'package:moto_amg/features/navigation/domain/entities/geocoding_place.dart';
+import 'package:moto_amg/features/navigation/presentation/models/route_endpoint_input_mode.dart';
+import 'package:moto_amg/features/navigation/presentation/widgets/coordinate_endpoint_field.dart';
+import 'package:moto_amg/features/navigation/presentation/widgets/destination_search_field.dart';
+import 'package:moto_amg/features/navigation/presentation/widgets/route_endpoint_mode_toggle.dart';
 
 /// Origen o destino con selector de formato (dirección / coordenadas).
 class RouteEndpointField extends StatelessWidget {

@@ -1,8 +1,8 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:loc_motos/features/navigation/domain/entities/hybrid_map_styles.dart';
-import 'package:loc_motos/features/navigation/domain/entities/route_itinerary.dart';
+import 'package:moto_amg/features/navigation/domain/entities/hybrid_map_styles.dart';
+import 'package:moto_amg/features/navigation/domain/entities/route_itinerary.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 
 /// Mapa libre del planificador (sin ruta obligatoria): GPS + pins de itinerario.

@@ -1,16 +1,16 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:loc_motos/core/widgets/app_brand_title.dart';
-import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
-import 'package:loc_motos/features/auth/presentation/providers/auth_providers.dart';
-import 'package:loc_motos/features/auth/presentation/widgets/account_menu_button.dart';
-import 'package:loc_motos/features/clubs/domain/entities/moto_club.dart';
-import 'package:loc_motos/features/clubs/presentation/providers/club_providers.dart';
-import 'package:loc_motos/features/clubs/presentation/screens/club_entry_screen.dart';
-import 'package:loc_motos/features/groups/domain/entities/group_membership.dart';
-import 'package:loc_motos/features/groups/presentation/providers/group_providers.dart';
-import 'package:loc_motos/features/groups/presentation/widgets/group_entry_dialogs.dart';
-import 'package:loc_motos/features/navigation/presentation/screens/navigation_hub_screen.dart';
+import 'package:moto_amg/features/auth/domain/entities/app_user.dart';
+import 'package:moto_amg/features/auth/presentation/providers/auth_providers.dart';
+import 'package:moto_amg/features/auth/presentation/providers/home_landing_provider.dart';
+import 'package:moto_amg/features/auth/presentation/widgets/account_menu_button.dart';
+import 'package:moto_amg/features/clubs/domain/entities/moto_club.dart';
+import 'package:moto_amg/features/clubs/presentation/providers/club_providers.dart';
+import 'package:moto_amg/features/clubs/presentation/screens/club_entry_screen.dart';
+import 'package:moto_amg/features/groups/domain/entities/group_membership.dart';
+import 'package:moto_amg/features/groups/presentation/providers/group_providers.dart';
+import 'package:moto_amg/features/groups/presentation/widgets/group_entry_dialogs.dart';
+import 'package:moto_amg/features/navigation/presentation/screens/navigation_hub_screen.dart';
 
 class MyGroupsView extends ConsumerWidget {
   const MyGroupsView({super.key, required this.user});
@@ -28,34 +28,56 @@ class MyGroupsView extends ConsumerWidget {
         membershipsAsync.asData?.value ?? const <MotoClubMembership>[];
     final activeClubName = _activeClubName(user, clubMemberships);
 
-    return Scaffold(
-      resizeToAvoidBottomInset: false,
-      appBar: AppBar(
-        titleSpacing: 12,
-        title: Row(
-          children: [
-            const Flexible(child: AppBrandTitle()),
-            if (activeClubName != null) ...[
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  activeClubName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w600,
-                      ),
-                ),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) {
+          return;
+        }
+        ref.read(homeLandingSectionProvider.notifier).state =
+            HomeLandingSection.hub;
+      },
+      child: Scaffold(
+        resizeToAvoidBottomInset: false,
+        appBar: AppBar(
+          titleSpacing: 12,
+          leading: IconButton(
+            tooltip: 'Inicio',
+            onPressed: () {
+              ref.read(homeLandingSectionProvider.notifier).state =
+                  HomeLandingSection.hub;
+            },
+            icon: const Icon(Icons.arrow_back),
+          ),
+          title: Row(
+            children: [
+              Text(
+                'Mis grupos',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
               ),
-            ] else
-              const Spacer(),
-          ],
+              if (activeClubName != null) ...[
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    activeClubName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.end,
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          color:
+                              Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w600,
+                        ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          actions: const [AccountMenuButton()],
         ),
-        actions: const [AccountMenuButton()],
-      ),
-      body: groupsAsync.when(
+        body: groupsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => const Center(
           child: Padding(
@@ -172,6 +194,7 @@ class MyGroupsView extends ConsumerWidget {
           );
         },
       ),
+    ),
     );
   }
 

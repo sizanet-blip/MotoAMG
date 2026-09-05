@@ -1,15 +1,15 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:loc_motos/core/constants/navigation_constants.dart';
-import 'package:loc_motos/core/widgets/map_quick_action_tile.dart';
-import 'package:loc_motos/features/auth/domain/entities/user_vehicle.dart';
-import 'package:loc_motos/features/auth/presentation/providers/auth_providers.dart';
-import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
-import 'package:loc_motos/features/navigation/domain/entities/route_itinerary.dart';
-import 'package:loc_motos/features/navigation/domain/entities/route_preferences.dart';
-import 'package:loc_motos/features/navigation/presentation/providers/navigation_providers.dart';
-import 'package:loc_motos/features/navigation/presentation/widgets/collapsible_map_bottom_panel.dart';
-import 'package:loc_motos/features/navigation/presentation/widgets/route_preferences_bar.dart';
+import 'package:moto_amg/core/constants/navigation_constants.dart';
+import 'package:moto_amg/core/widgets/map_quick_action_tile.dart';
+import 'package:moto_amg/features/auth/domain/entities/user_vehicle.dart';
+import 'package:moto_amg/features/auth/presentation/providers/auth_providers.dart';
+import 'package:moto_amg/features/navigation/domain/entities/geo_point.dart';
+import 'package:moto_amg/features/navigation/domain/entities/route_itinerary.dart';
+import 'package:moto_amg/features/navigation/domain/entities/route_preferences.dart';
+import 'package:moto_amg/features/navigation/presentation/providers/navigation_providers.dart';
+import 'package:moto_amg/features/navigation/presentation/widgets/collapsible_map_bottom_panel.dart';
+import 'package:moto_amg/features/navigation/presentation/widgets/route_preferences_bar.dart';
 
 /// Panel inferior del itinerario: vehículo, puntos y acciones al estilo mapa.
 class ItinerarySheet extends ConsumerWidget {
@@ -103,6 +103,7 @@ class ItinerarySheet extends ConsumerWidget {
       MapQuickActionTile(
         icon: Icons.add_location_alt_outlined,
         label: 'Parada',
+        tooltip: 'Añadir una parada intermedia al itinerario',
         enabled: !busy,
         onTap: busy ? null : onAddStop,
       ),
@@ -110,6 +111,8 @@ class ItinerarySheet extends ConsumerWidget {
         MapQuickActionTile(
           icon: Icons.loop,
           label: 'Circuito',
+          tooltip:
+              'Cierra el recorrido en bucle: añade el origen como destino final',
           enabled: !busy,
           onTap: busy ? null : onCloseLoop,
         ),
@@ -117,6 +120,9 @@ class ItinerarySheet extends ConsumerWidget {
         MapQuickActionTile(
           icon: Icons.route,
           label: prefs.curvature.label,
+          tooltip:
+              'Tipo de ruta: ${prefs.curvature.label}. '
+              '${prefs.curvature.shortHint}. Toca para cambiar.',
           emphasized: prefs.curvature != RouteCurvatureLevel.balanced,
           enabled: !busy,
           onTap: busy
@@ -126,6 +132,11 @@ class ItinerarySheet extends ConsumerWidget {
       MapQuickActionTile(
         icon: Icons.block,
         label: 'Evitaciones',
+        tooltip: prefs.activeAvoidanceCount > 0
+            ? '${prefs.activeAvoidanceCount} '
+                '${prefs.activeAvoidanceCount == 1 ? 'evitación activa' : 'evitaciones activas'}. '
+                'Autopistas, peajes, sin asfaltar, ferries…'
+            : 'Evitar autopistas, peajes, caminos sin asfaltar o ferries',
         emphasized: prefs.activeAvoidanceCount > 0,
         badge: prefs.activeAvoidanceCount > 0
             ? '${prefs.activeAvoidanceCount}'
@@ -321,29 +332,34 @@ class ItinerarySheet extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: 12),
-              FilledButton(
-                onPressed: busy || !itinerary.canPlan ? null : onPlanRoute,
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size.fromHeight(44),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+              Tooltip(
+                message: itinerary.hasIntermediateStops
+                    ? 'Calcular el recorrido con todas las paradas del itinerario'
+                    : 'Calcular la ruta entre origen y destino',
+                child: FilledButton(
+                  onPressed: busy || !itinerary.canPlan ? null : onPlanRoute,
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(44),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                   ),
-                ),
-                child: busy
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
+                  child: busy
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Text(
+                          itinerary.hasIntermediateStops
+                              ? 'Ver circuito'
+                              : 'Ver ruta',
+                          style: const TextStyle(fontWeight: FontWeight.w700),
                         ),
-                      )
-                    : Text(
-                        itinerary.hasIntermediateStops
-                            ? 'Ver circuito'
-                            : 'Ver ruta',
-                        style: const TextStyle(fontWeight: FontWeight.w700),
-                      ),
+                ),
               ),
             ],
           ),

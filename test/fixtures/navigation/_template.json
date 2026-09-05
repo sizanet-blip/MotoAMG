@@ -1,0 +1,54 @@
+{
+  "_comment": "Plantilla: copia este archivo, quita _template del nombre y rellena. También puedes pegar respuesta Valhalla en 'valhalla' en lugar de polyline+maneuvers.",
+  "id": "ejemplo_nuevo_caso",
+  "description": "Qué falló en carretera y qué debería mostrar el HUD",
+  "origin": { "lat": 0.0, "lng": 0.0 },
+  "destination": { "lat": 0.01, "lng": 0.01 },
+  "polyline": [
+    { "lat": 0.0, "lng": 0.0 },
+    { "lat": 0.005, "lng": 0.0 },
+    { "lat": 0.01, "lng": 0.01 }
+  ],
+  "maneuvers": [
+    {
+      "index": 0,
+      "type": "depart",
+      "instruction": "Sal",
+      "distanceMeters": 500,
+      "location": { "lat": 0.0, "lng": 0.0 },
+      "beginShapeIndex": 0
+    },
+    {
+      "index": 1,
+      "type": "turnRight",
+      "valhallaType": 10,
+      "instruction": "Gira a la derecha hacia Calle X",
+      "distanceMeters": 300,
+      "location": { "lat": 0.005, "lng": 0.0 },
+      "beginShapeIndex": 1,
+      "streetName": "Calle X",
+      "beginStreetName": "Carretera Y",
+      "toStayOn": false
+    }
+  ],
+  "checkpoints": [
+    {
+      "position": { "lat": 0.0048, "lng": 0.0 },
+      "expectManeuverType": "turnRight",
+      "maxRemainingMeters": 200,
+      "expectCurveAlert": false,
+      "curveSearchMeters": 120
+    }
+  ],
+  "valhalla_optional": {
+    "trip": {
+      "legs": [
+        {
+          "summary": { "length": 1.0, "time": 120 },
+          "shape": "PEGAR_SHAPE6_AQUI",
+          "maneuvers": []
+        }
+      ]
+    }
+  }
+}

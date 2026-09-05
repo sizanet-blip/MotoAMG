@@ -1,8 +1,8 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:loc_motos/features/auth/domain/exceptions/auth_exceptions.dart';
-import 'package:loc_motos/features/auth/presentation/providers/auth_providers.dart';
-import 'package:loc_motos/features/auth/presentation/utils/auth_validators.dart';
+import 'package:moto_amg/features/auth/domain/exceptions/auth_exceptions.dart';
+import 'package:moto_amg/features/auth/presentation/providers/auth_providers.dart';
+import 'package:moto_amg/features/auth/presentation/utils/auth_validators.dart';
 
 class RevealRecoveryKeyDialog extends ConsumerStatefulWidget {
   const RevealRecoveryKeyDialog({super.key, required this.username});

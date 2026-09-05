@@ -1,4 +1,4 @@
-import 'package:loc_motos/features/navigation/domain/exceptions/navigation_user_message.dart';
+﻿import 'package:moto_amg/features/navigation/domain/exceptions/navigation_user_message.dart';
 
 class NavigationException implements Exception {
   const NavigationException(this.message);

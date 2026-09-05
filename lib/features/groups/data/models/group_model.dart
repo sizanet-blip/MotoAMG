@@ -1,6 +1,6 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:loc_motos/core/utils/timestamp_converter.dart';
-import 'package:loc_motos/features/groups/domain/entities/ride_group.dart';
+﻿import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:moto_amg/core/utils/timestamp_converter.dart';
+import 'package:moto_amg/features/groups/domain/entities/ride_group.dart';
 
 class GroupModel extends RideGroup {
   const GroupModel({

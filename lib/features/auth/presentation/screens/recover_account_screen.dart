@@ -1,7 +1,7 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:loc_motos/features/auth/presentation/providers/auth_providers.dart';
-import 'package:loc_motos/features/auth/presentation/utils/auth_validators.dart';
+import 'package:moto_amg/features/auth/presentation/providers/auth_providers.dart';
+import 'package:moto_amg/features/auth/presentation/utils/auth_validators.dart';
 
 class RecoverAccountScreen extends ConsumerStatefulWidget {
   const RecoverAccountScreen({super.key});
@@ -231,7 +231,7 @@ class _KeyResetFormState extends ConsumerState<_KeyResetForm> {
             autocorrect: false,
             decoration: const InputDecoration(
               labelText: 'Clave de recuperación',
-              hintText: 'LM-XXXX-XXXX-XXXX-XXXX',
+              hintText: 'MA-XXXX-XXXX-XXXX-XXXX',
               border: OutlineInputBorder(),
             ),
             validator: AuthValidators.recoveryKey,

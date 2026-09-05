@@ -1,8 +1,8 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 
 import 'package:equatable/equatable.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:loc_motos/core/constants/app_constants.dart';
+import 'package:moto_amg/core/constants/app_constants.dart';
 
 /// Qué motos del grupo se pintan en el mapa / navegación.
 enum GroupMateDisplayMode {
@@ -70,7 +70,7 @@ class GroupPackAlertPreferences extends Equatable {
   /// Si al abrir la navegación del grupo se muestran las motos por defecto.
   final bool showGroupOnNavigation;
 
-  /// Navegar con Waze/Maps en lugar del HUD de LocMotos.
+  /// Navegar con Waze/Maps en lugar del HUD de MotoAMG.
   final bool preferExternalNavigation;
 
   /// Hasta cuándo están silenciados los avisos de distancia (no emergencias).

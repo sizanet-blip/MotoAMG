@@ -1,6 +1,6 @@
-import 'package:loc_motos/features/navigation/data/datasources/geocoding_remote_datasource.dart';
-import 'package:loc_motos/features/navigation/domain/entities/geocoding_place.dart';
-import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
+﻿import 'package:moto_amg/features/navigation/data/datasources/geocoding_remote_datasource.dart';
+import 'package:moto_amg/features/navigation/domain/entities/geocoding_place.dart';
+import 'package:moto_amg/features/navigation/domain/entities/geo_point.dart';
 
 /// Intenta el buscador principal; si falla (caída, timeout, 5xx), usa el de respaldo.
 class FallbackGeocodingDataSource implements GeocodingRemoteDataSource {

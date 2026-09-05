@@ -1,11 +1,11 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
-import 'package:loc_motos/core/constants/app_constants.dart';
-import 'package:loc_motos/features/groups/domain/entities/group_incident.dart';
-import 'package:loc_motos/features/groups/domain/exceptions/group_exceptions.dart';
-import 'package:loc_motos/firebase_options.dart';
+import 'package:moto_amg/core/constants/app_constants.dart';
+import 'package:moto_amg/features/groups/domain/entities/group_incident.dart';
+import 'package:moto_amg/features/groups/domain/exceptions/group_exceptions.dart';
+import 'package:moto_amg/firebase_options.dart';
 
 class GroupIncidentRemoteDataSource {
   GroupIncidentRemoteDataSource({FirebaseDatabase? database})

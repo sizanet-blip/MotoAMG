@@ -1,8 +1,9 @@
-import 'package:equatable/equatable.dart';
-import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
-import 'package:loc_motos/features/navigation/domain/entities/navigation_maneuver.dart';
-import 'package:loc_motos/features/navigation/domain/entities/route_alert.dart';
-import 'package:loc_motos/features/navigation/domain/entities/speed_limit_segment.dart';
+﻿import 'package:equatable/equatable.dart';
+import 'package:moto_amg/features/navigation/domain/entities/geo_point.dart';
+import 'package:moto_amg/features/navigation/domain/entities/navigation_maneuver.dart';
+import 'package:moto_amg/features/navigation/domain/entities/route_alert.dart';
+import 'package:moto_amg/features/navigation/domain/entities/route_map_poi.dart';
+import 'package:moto_amg/features/navigation/domain/entities/speed_limit_segment.dart';
 
 /// Ruta calculada lista para navegar (online o desde caché).
 class NavigationRoute extends Equatable {
@@ -19,6 +20,7 @@ class NavigationRoute extends Equatable {
     this.speedLimitKmh,
     this.speedLimitSegments = const [],
     this.alerts = const [],
+    this.mapPois = const [],
     this.originLabel,
     this.destinationLabel,
   });
@@ -44,6 +46,9 @@ class NavigationRoute extends Equatable {
 
   /// Avisos moto enriquecidos (peajes, gasolineras, radares, curvas).
   final List<RouteAlert> alerts;
+
+  /// Semáforos / STOP / ceda (solo mapa, sin voz ni distancia HUD).
+  final List<RouteMapPoi> mapPois;
 
   /// Texto legible del origen (dirección o "Mi ubicación").
   final String? originLabel;
@@ -91,6 +96,7 @@ class NavigationRoute extends Equatable {
         speedLimitKmh,
         speedLimitSegments,
         alerts,
+        mapPois,
         originLabel,
         destinationLabel,
       ];

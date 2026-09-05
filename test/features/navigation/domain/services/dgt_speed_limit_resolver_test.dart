@@ -1,5 +1,5 @@
-import 'package:flutter_test/flutter_test.dart';
-import 'package:loc_motos/features/navigation/domain/services/dgt_speed_limit_resolver.dart';
+﻿import 'package:flutter_test/flutter_test.dart';
+import 'package:moto_amg/features/navigation/domain/services/dgt_speed_limit_resolver.dart';
 
 void main() {
   group('DgtSpeedLimitResolver', () {

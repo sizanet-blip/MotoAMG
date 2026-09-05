@@ -1,5 +1,5 @@
-import 'package:flutter_test/flutter_test.dart';
-import 'package:loc_motos/features/navigation/data/helpers/geocoding_query_normalizer.dart';
+﻿import 'package:flutter_test/flutter_test.dart';
+import 'package:moto_amg/features/navigation/data/helpers/geocoding_query_normalizer.dart';
 
 void main() {
   group('GeocodingQueryNormalizer', () {

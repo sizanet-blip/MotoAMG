@@ -1,9 +1,9 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:flutter/services.dart';
-import 'package:loc_motos/features/groups/domain/entities/group_incident.dart';
-import 'package:loc_motos/features/groups/domain/entities/group_voice_announcement.dart';
-import 'package:loc_motos/features/navigation/data/services/navigation_voice_service.dart';
+import 'package:moto_amg/features/groups/domain/entities/group_incident.dart';
+import 'package:moto_amg/features/groups/domain/entities/group_voice_announcement.dart';
+import 'package:moto_amg/features/navigation/data/services/navigation_voice_service.dart';
 
 /// Feedback háptico / sonido / voz para incidencias y pelotón.
 ///

@@ -1,7 +1,7 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:loc_motos/features/settings/data/repositories/emergency_contacts_repository.dart';
-import 'package:loc_motos/features/settings/presentation/providers/settings_providers.dart';
+import 'package:moto_amg/features/settings/data/repositories/emergency_contacts_repository.dart';
+import 'package:moto_amg/features/settings/presentation/providers/settings_providers.dart';
 
 /// Configura 1–2 contactos personales (SMS/WhatsApp tras Urgente · 112).
 class EmergencyContactsSettingsScreen extends ConsumerStatefulWidget {

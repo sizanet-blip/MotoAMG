@@ -1,8 +1,8 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:loc_motos/core/constants/navigation_constants.dart';
-import 'package:loc_motos/features/navigation/domain/entities/alert_preferences.dart';
+import 'package:moto_amg/core/constants/navigation_constants.dart';
+import 'package:moto_amg/features/navigation/domain/entities/alert_preferences.dart';
 
 /// Persistencia local de preferencias de avisos (HUD / mapa / voz).
 class AlertPreferencesRepository {

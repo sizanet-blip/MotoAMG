@@ -1,6 +1,6 @@
-import 'package:flutter/services.dart';
-import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
-import 'package:loc_motos/features/settings/data/repositories/emergency_contacts_repository.dart';
+﻿import 'package:flutter/services.dart';
+import 'package:moto_amg/features/navigation/domain/entities/geo_point.dart';
+import 'package:moto_amg/features/settings/data/repositories/emergency_contacts_repository.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Acciones al marcar emergencia crítica (Urgente · 112): texto de ubicación y marcador.
@@ -12,7 +12,7 @@ abstract final class CriticalEmergencyActions {
     final name = displayName.trim().isEmpty ? 'Motero' : displayName.trim();
     final lat = point.lat.toStringAsFixed(5);
     final lng = point.lng.toStringAsFixed(5);
-    return 'Emergencia LocMotos — $name\n'
+    return 'Emergencia MotoAMG — $name\n'
         '$lat, $lng\n'
         '${mapsSearchUrl(point)}';
   }

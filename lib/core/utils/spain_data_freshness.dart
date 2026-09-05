@@ -1,4 +1,4 @@
-import 'package:loc_motos/core/constants/navigation_constants.dart';
+﻿import 'package:moto_amg/core/constants/navigation_constants.dart';
 
 /// Antigüedad legible de datos España descargados (radares, gasolineras).
 String formatSpainDataAge(DateTime? fetchedAt, {DateTime? now}) {

@@ -1,9 +1,9 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:loc_motos/core/constants/app_constants.dart';
-import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
-import 'package:loc_motos/features/auth/presentation/providers/auth_providers.dart';
-import 'package:loc_motos/features/clubs/presentation/providers/club_providers.dart';
+import 'package:moto_amg/core/constants/app_constants.dart';
+import 'package:moto_amg/features/auth/domain/entities/app_user.dart';
+import 'package:moto_amg/features/auth/presentation/providers/auth_providers.dart';
+import 'package:moto_amg/features/clubs/presentation/providers/club_providers.dart';
 
 class RegisterClubScreen extends ConsumerStatefulWidget {
   const RegisterClubScreen({super.key, required this.user});

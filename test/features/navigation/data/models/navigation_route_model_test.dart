@@ -1,7 +1,7 @@
-import 'package:flutter_test/flutter_test.dart';
-import 'package:loc_motos/features/navigation/data/models/navigation_route_model.dart';
-import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
-import 'package:loc_motos/features/navigation/domain/entities/navigation_maneuver.dart';
+﻿import 'package:flutter_test/flutter_test.dart';
+import 'package:moto_amg/features/navigation/data/models/navigation_route_model.dart';
+import 'package:moto_amg/features/navigation/domain/entities/geo_point.dart';
+import 'package:moto_amg/features/navigation/domain/entities/navigation_maneuver.dart';
 
 void main() {
   group('NavigationRouteModel.fromValhalla', () {

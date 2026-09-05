@@ -1,15 +1,15 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:loc_motos/core/constants/app_constants.dart';
-import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
-import 'package:loc_motos/features/navigation/presentation/providers/navigation_providers.dart';
-import 'package:loc_motos/features/tracking/domain/entities/device_position.dart';
-import 'package:loc_motos/features/tracking/domain/entities/live_location.dart';
-import 'package:loc_motos/features/tracking/domain/exceptions/location_exceptions.dart';
-import 'package:loc_motos/features/tracking/presentation/providers/tracking_providers.dart';
+import 'package:moto_amg/core/constants/app_constants.dart';
+import 'package:moto_amg/features/auth/domain/entities/app_user.dart';
+import 'package:moto_amg/features/navigation/presentation/providers/navigation_providers.dart';
+import 'package:moto_amg/features/tracking/domain/entities/device_position.dart';
+import 'package:moto_amg/features/tracking/domain/entities/live_location.dart';
+import 'package:moto_amg/features/tracking/domain/exceptions/location_exceptions.dart';
+import 'package:moto_amg/features/tracking/presentation/providers/tracking_providers.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 /// Pide GPS y lo envía a Firebase mientras el usuario está en el grupo.

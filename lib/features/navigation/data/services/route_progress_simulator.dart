@@ -1,6 +1,6 @@
-import 'dart:math' as math;
+﻿import 'dart:math' as math;
 
-import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
+import 'package:moto_amg/features/navigation/domain/entities/geo_point.dart';
 
 /// Avanza una posición ficticia a lo largo de la polilínea de la ruta.
 class RouteProgressSimulator {

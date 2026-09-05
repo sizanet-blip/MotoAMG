@@ -1,11 +1,11 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:loc_motos/core/constants/app_constants.dart';
-import 'package:loc_motos/features/auth/presentation/providers/auth_providers.dart';
-import 'package:loc_motos/features/auth/presentation/screens/display_name_screen.dart';
-import 'package:loc_motos/features/auth/presentation/screens/recover_account_screen.dart';
-import 'package:loc_motos/features/auth/presentation/screens/register_options_screen.dart';
-import 'package:loc_motos/features/auth/presentation/utils/auth_validators.dart';
+import 'package:moto_amg/core/constants/app_constants.dart';
+import 'package:moto_amg/features/auth/presentation/providers/auth_providers.dart';
+import 'package:moto_amg/features/auth/presentation/screens/display_name_screen.dart';
+import 'package:moto_amg/features/auth/presentation/screens/recover_account_screen.dart';
+import 'package:moto_amg/features/auth/presentation/screens/register_options_screen.dart';
+import 'package:moto_amg/features/auth/presentation/utils/auth_validators.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -82,6 +82,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                       fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    AppConstants.appTagline,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                   const SizedBox(height: 8),

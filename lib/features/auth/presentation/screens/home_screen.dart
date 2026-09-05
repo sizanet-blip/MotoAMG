@@ -1,20 +1,21 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:loc_motos/core/constants/app_constants.dart';
-import 'package:loc_motos/core/widgets/app_brand_title.dart';
-import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
-import 'package:loc_motos/features/auth/presentation/providers/auth_providers.dart';
-import 'package:loc_motos/features/auth/presentation/widgets/account_menu_button.dart';
-import 'package:loc_motos/features/groups/presentation/providers/group_providers.dart';
-import 'package:loc_motos/features/groups/presentation/screens/group_options_screen.dart';
-import 'package:loc_motos/features/groups/presentation/screens/my_groups_view.dart';
-import 'package:loc_motos/features/groups/presentation/widgets/group_entry_dialogs.dart';
-import 'package:loc_motos/features/intercom/presentation/widgets/intercom_session_binder.dart';
-import 'package:loc_motos/features/map/presentation/screens/group_map_screen.dart';
-import 'package:loc_motos/features/navigation/presentation/screens/navigation_hub_screen.dart';
-import 'package:loc_motos/features/settings/presentation/widgets/radar_update_reminder_binder.dart';
-import 'package:loc_motos/features/tracking/presentation/providers/tracking_providers.dart';
-import 'package:loc_motos/features/tracking/presentation/widgets/location_binder.dart';
+import 'package:moto_amg/core/constants/app_constants.dart';
+import 'package:moto_amg/core/widgets/app_brand_title.dart';
+import 'package:moto_amg/features/auth/domain/entities/app_user.dart';
+import 'package:moto_amg/features/auth/presentation/providers/auth_providers.dart';
+import 'package:moto_amg/features/auth/presentation/providers/home_landing_provider.dart';
+import 'package:moto_amg/features/auth/presentation/screens/home_hub_screen.dart';
+import 'package:moto_amg/features/auth/presentation/widgets/account_menu_button.dart';
+import 'package:moto_amg/features/groups/presentation/providers/group_providers.dart';
+import 'package:moto_amg/features/groups/presentation/screens/group_options_screen.dart';
+import 'package:moto_amg/features/groups/presentation/screens/my_groups_view.dart';
+import 'package:moto_amg/features/groups/presentation/widgets/group_entry_dialogs.dart';
+import 'package:moto_amg/features/intercom/presentation/widgets/intercom_session_binder.dart';
+import 'package:moto_amg/features/map/presentation/screens/group_map_screen.dart';
+import 'package:moto_amg/features/navigation/presentation/screens/navigation_hub_screen.dart';
+import 'package:moto_amg/features/settings/presentation/widgets/radar_update_reminder_binder.dart';
+import 'package:moto_amg/features/tracking/presentation/widgets/location_binder.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key, required this.user});
@@ -72,7 +73,10 @@ class HomeScreen extends ConsumerWidget {
     } else if (effective.isAnonymous) {
       body = _GuestJoinView(user: effective);
     } else {
-      body = MyGroupsView(user: effective);
+      final landing = ref.watch(homeLandingSectionProvider);
+      body = landing == HomeLandingSection.groups
+          ? MyGroupsView(user: effective)
+          : HomeHubScreen(user: effective);
     }
 
     return RadarUpdateReminderBinder(child: body);
@@ -191,15 +195,19 @@ class _InGroupView extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         toolbarHeight: landscape ? 44 : kToolbarHeight,
-        leading: user.isAnonymous
+                leading: user.isAnonymous
             ? null
             : IconButton(
                 tooltip: 'Mis grupos',
                 onPressed: busy
                     ? null
-                    : () => ref
-                          .read(groupActionControllerProvider.notifier)
-                          .closeMap(user: user),
+                    : () {
+                        ref.read(homeLandingSectionProvider.notifier).state =
+                            HomeLandingSection.groups;
+                        ref
+                            .read(groupActionControllerProvider.notifier)
+                            .closeMap(user: user);
+                      },
                 icon: const Icon(Icons.arrow_back),
               ),
         title: landscape

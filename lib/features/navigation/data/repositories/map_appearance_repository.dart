@@ -1,7 +1,7 @@
-import 'package:equatable/equatable.dart';
+﻿import 'package:equatable/equatable.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:loc_motos/core/constants/navigation_constants.dart';
-import 'package:loc_motos/core/utils/solar_daylight.dart';
+import 'package:moto_amg/core/constants/navigation_constants.dart';
+import 'package:moto_amg/core/utils/solar_daylight.dart';
 
 /// Preferencia de aspecto del mapa en navegación.
 enum MapAppearanceMode {

@@ -1,15 +1,15 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:loc_motos/core/widgets/app_popup_menu.dart';
-import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
-import 'package:loc_motos/features/auth/domain/entities/user_vehicle.dart';
-import 'package:loc_motos/features/auth/domain/entities/vehicle_map_marker.dart';
-import 'package:loc_motos/features/auth/presentation/providers/auth_providers.dart';
-import 'package:loc_motos/features/auth/presentation/utils/auth_validators.dart';
-import 'package:loc_motos/features/auth/presentation/widgets/reveal_recovery_key_dialog.dart';
-import 'package:loc_motos/features/auth/presentation/widgets/vehicle_navigation_marker.dart';
+import 'package:moto_amg/core/widgets/app_popup_menu.dart';
+import 'package:moto_amg/features/auth/domain/entities/app_user.dart';
+import 'package:moto_amg/features/auth/domain/entities/user_vehicle.dart';
+import 'package:moto_amg/features/auth/domain/entities/vehicle_map_marker.dart';
+import 'package:moto_amg/features/auth/presentation/providers/auth_providers.dart';
+import 'package:moto_amg/features/auth/presentation/utils/auth_validators.dart';
+import 'package:moto_amg/features/auth/presentation/widgets/reveal_recovery_key_dialog.dart';
+import 'package:moto_amg/features/auth/presentation/widgets/vehicle_navigation_marker.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key, required this.user});

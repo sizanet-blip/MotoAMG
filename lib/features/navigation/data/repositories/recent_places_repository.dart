@@ -1,9 +1,9 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:loc_motos/core/constants/navigation_constants.dart';
-import 'package:loc_motos/features/navigation/domain/entities/geocoding_place.dart';
-import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
+import 'package:moto_amg/core/constants/navigation_constants.dart';
+import 'package:moto_amg/features/navigation/domain/entities/geocoding_place.dart';
+import 'package:moto_amg/features/navigation/domain/entities/geo_point.dart';
 
 /// Historial local de sitios recientes para el planificador de rutas.
 class RecentPlacesRepository {

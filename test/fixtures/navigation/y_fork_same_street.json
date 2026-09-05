@@ -1,0 +1,53 @@
+{
+  "id": "y_fork_same_street",
+  "description": "Bifurcación en Y con mismo nombre OSM: debe anunciar Derecha cerca, no saltar a 2 km.",
+  "origin": { "lat": 41.0, "lng": -1.0 },
+  "destination": { "lat": 41.001, "lng": -0.999 },
+  "polyline": [
+    { "lat": 41.0, "lng": -1.0 },
+    { "lat": 41.0005, "lng": -1.0 },
+    { "lat": 41.0005, "lng": -0.9995 },
+    { "lat": 41.001, "lng": -0.999 }
+  ],
+  "maneuvers": [
+    {
+      "index": 0,
+      "type": "depart",
+      "instruction": "Sal",
+      "distanceMeters": 50,
+      "location": { "lat": 41.0, "lng": -1.0 },
+      "beginShapeIndex": 0,
+      "streetName": "Camino Rural"
+    },
+    {
+      "index": 1,
+      "type": "turnRight",
+      "valhallaType": 10,
+      "instruction": "Gira a la derecha",
+      "distanceMeters": 2000,
+      "location": { "lat": 41.0005, "lng": -1.0 },
+      "beginShapeIndex": 1,
+      "streetName": "Camino Rural",
+      "beginStreetName": "Camino Rural",
+      "turnDegree": 85
+    },
+    {
+      "index": 2,
+      "type": "turnLeft",
+      "valhallaType": 10,
+      "instruction": "Gira a la izquierda hacia Pueblo",
+      "distanceMeters": 500,
+      "location": { "lat": 41.001, "lng": -0.999 },
+      "beginShapeIndex": 3,
+      "streetName": "Pueblo",
+      "beginStreetName": "Camino Rural"
+    }
+  ],
+  "checkpoints": [
+    {
+      "position": { "lat": 41.00045, "lng": -1.0 },
+      "expectManeuverType": "turnRight",
+      "maxRemainingMeters": 80
+    }
+  ]
+}

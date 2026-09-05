@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
-import 'package:loc_motos/features/settings/presentation/help/app_help_content.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:moto_amg/features/settings/presentation/help/app_help_content.dart';
 
 enum AppHelpDocumentKind { quickGuide, fullManual, faq }
 

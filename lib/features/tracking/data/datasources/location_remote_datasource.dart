@@ -1,10 +1,10 @@
-import 'package:firebase_core/firebase_core.dart';
+﻿import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
-import 'package:loc_motos/core/constants/app_constants.dart';
-import 'package:loc_motos/features/tracking/data/models/live_location_model.dart';
-import 'package:loc_motos/features/tracking/domain/entities/live_location.dart';
-import 'package:loc_motos/features/tracking/domain/exceptions/location_exceptions.dart';
-import 'package:loc_motos/firebase_options.dart';
+import 'package:moto_amg/core/constants/app_constants.dart';
+import 'package:moto_amg/features/tracking/data/models/live_location_model.dart';
+import 'package:moto_amg/features/tracking/domain/entities/live_location.dart';
+import 'package:moto_amg/features/tracking/domain/exceptions/location_exceptions.dart';
+import 'package:moto_amg/firebase_options.dart';
 
 class LocationRemoteDataSource {
   LocationRemoteDataSource({FirebaseDatabase? database})

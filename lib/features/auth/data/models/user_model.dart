@@ -1,9 +1,9 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+﻿import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:json_annotation/json_annotation.dart';
-import 'package:loc_motos/core/utils/timestamp_converter.dart';
-import 'package:loc_motos/features/auth/data/models/auth_provider_converter.dart';
-import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
-import 'package:loc_motos/features/auth/domain/entities/user_vehicle.dart';
+import 'package:moto_amg/core/utils/timestamp_converter.dart';
+import 'package:moto_amg/features/auth/data/models/auth_provider_converter.dart';
+import 'package:moto_amg/features/auth/domain/entities/app_user.dart';
+import 'package:moto_amg/features/auth/domain/entities/user_vehicle.dart';
 
 part 'user_model.g.dart';
 
@@ -33,6 +33,8 @@ class UserModel extends AppUser {
     super.bikePlate,
     super.vehicles,
     super.activeVehicleId,
+    super.privacyAcceptedAt,
+    super.privacyAcceptedVersion,
   });
 
   factory UserModel.fromEntity(AppUser user) {
@@ -56,6 +58,8 @@ class UserModel extends AppUser {
       bikePlate: user.bikePlate,
       vehicles: user.vehicles,
       activeVehicleId: user.activeVehicleId,
+      privacyAcceptedAt: user.privacyAcceptedAt,
+      privacyAcceptedVersion: user.privacyAcceptedVersion,
     );
   }
 

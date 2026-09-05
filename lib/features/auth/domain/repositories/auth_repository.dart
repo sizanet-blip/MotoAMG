@@ -1,6 +1,6 @@
-import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
-import 'package:loc_motos/features/auth/domain/entities/user_vehicle.dart';
-import 'package:loc_motos/features/auth/domain/entities/username_registration.dart';
+﻿import 'package:moto_amg/features/auth/domain/entities/app_user.dart';
+import 'package:moto_amg/features/auth/domain/entities/user_vehicle.dart';
+import 'package:moto_amg/features/auth/domain/entities/username_registration.dart';
 
 abstract class AuthRepository {
   Stream<AppUser?> watchCurrentUser();
@@ -62,6 +62,9 @@ abstract class AuthRepository {
     required String currentPassword,
     required String newPassword,
   });
+
+  /// Aceptación de política/términos ligada a la cuenta autenticada.
+  Future<AppUser> acceptPrivacyPolicy();
 
   Stream<AppUser?> watchUser(String uid);
 

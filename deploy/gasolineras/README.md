@@ -23,22 +23,22 @@ En el mismo `server` de Valhalla:
 ```
 
 ```bash
-sudo mkdir -p /var/www/gasolineras /opt/locmotos/gasolineras
+sudo mkdir -p /var/www/gasolineras /opt/motoamg/gasolineras
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
 ## Instalación
 
 ```bash
-sudo cp build_es_json.py /opt/locmotos/gasolineras/
-sudo python3 /opt/locmotos/gasolineras/build_es_json.py
+sudo cp build_es_json.py /opt/motoamg/gasolineras/
+sudo python3 /opt/motoamg/gasolineras/build_es_json.py
 curl -I https://valhalla.albertomaestre.es/gasolineras/es.json
 ```
 
 ## Cron diario
 
 ```
-45 4 * * * /usr/bin/python3 /opt/locmotos/gasolineras/build_es_json.py >> /var/log/gasolineras-build.log 2>&1
+45 4 * * * /usr/bin/python3 /opt/motoamg/gasolineras/build_es_json.py >> /var/log/gasolineras-build.log 2>&1
 ```
 
 ## Formato

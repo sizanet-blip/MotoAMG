@@ -1,7 +1,7 @@
-import 'package:flutter/material.dart';
-import 'package:loc_motos/core/widgets/keyboard_safe_sheet_body.dart';
-import 'package:loc_motos/features/groups/domain/entities/group_voice_announcement.dart';
-import 'package:loc_motos/features/navigation/presentation/widgets/route_preferences_bar.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:moto_amg/core/widgets/keyboard_safe_sheet_body.dart';
+import 'package:moto_amg/features/groups/domain/entities/group_voice_announcement.dart';
+import 'package:moto_amg/features/navigation/presentation/widgets/route_preferences_bar.dart';
 
 enum CatchUpCabeceraChoice { chase, destination }
 

@@ -1,8 +1,8 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:loc_motos/features/navigation/domain/exceptions/navigation_exceptions.dart';
-import 'package:loc_motos/features/tracking/domain/entities/device_position.dart';
-import 'package:loc_motos/features/tracking/domain/exceptions/location_exceptions.dart';
-import 'package:loc_motos/features/tracking/presentation/providers/tracking_providers.dart';
+﻿import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:moto_amg/features/navigation/domain/exceptions/navigation_exceptions.dart';
+import 'package:moto_amg/features/tracking/domain/entities/device_position.dart';
+import 'package:moto_amg/features/tracking/domain/exceptions/location_exceptions.dart';
+import 'package:moto_amg/features/tracking/presentation/providers/tracking_providers.dart';
 
 /// Obtiene la posición GPS: caché del provider o lectura directa del GPS.
 ///

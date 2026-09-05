@@ -1,14 +1,16 @@
-import 'package:loc_motos/features/navigation/data/datasources/hive_route_cache_datasource.dart';
-import 'package:loc_motos/features/navigation/data/datasources/tomtom_snap_to_roads_datasource.dart';
-import 'package:loc_motos/features/navigation/data/datasources/valhalla_remote_datasource.dart';
-import 'package:loc_motos/features/navigation/data/models/navigation_route_model.dart';
-import 'package:loc_motos/features/navigation/data/services/speed_limit_merge.dart';
-import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
-import 'package:loc_motos/features/navigation/domain/entities/navigation_route.dart';
-import 'package:loc_motos/features/navigation/domain/entities/route_plan.dart';
-import 'package:loc_motos/features/navigation/domain/entities/route_preferences.dart';
-import 'package:loc_motos/features/navigation/domain/exceptions/navigation_exceptions.dart';
-import 'package:loc_motos/features/navigation/domain/repositories/navigation_repository.dart';
+﻿import 'package:moto_amg/features/navigation/data/datasources/hive_route_cache_datasource.dart';
+import 'package:moto_amg/features/navigation/data/datasources/tomtom_snap_to_roads_datasource.dart';
+import 'package:moto_amg/features/navigation/data/datasources/valhalla_remote_datasource.dart';
+import 'package:moto_amg/features/navigation/data/models/navigation_route_model.dart';
+import 'package:moto_amg/features/navigation/data/services/speed_limit_merge.dart';
+import 'package:moto_amg/features/navigation/domain/entities/geo_point.dart';
+import 'package:moto_amg/features/navigation/domain/entities/navigation_route.dart';
+import 'package:moto_amg/features/navigation/domain/entities/route_plan.dart';
+import 'package:moto_amg/features/navigation/domain/entities/route_preferences.dart';
+import 'package:moto_amg/features/navigation/domain/entities/speed_limit_segment.dart';
+import 'package:moto_amg/features/navigation/domain/entities/tomtom_route_enrichment.dart';
+import 'package:moto_amg/features/navigation/domain/exceptions/navigation_exceptions.dart';
+import 'package:moto_amg/features/navigation/domain/repositories/navigation_repository.dart';
 
 class NavigationRepositoryImpl implements NavigationRepository {
   NavigationRepositoryImpl(
@@ -53,19 +55,9 @@ class NavigationRepositoryImpl implements NavigationRepository {
       ];
     }
 
-    // TomTom solo en la ruta elegida (la 1ª): enriquecer las 3 en paralelo
-    // alargaba mucho el cálculo y a veces dejaba la preview “colgada”.
-    final withLimits = <NavigationRouteModel>[];
-    for (var i = 0; i < baseRoutes.length; i++) {
-      if (i == 0) {
-        withLimits.add(await _enrichWithTomTomLimits(baseRoutes[i]));
-      } else {
-        withLimits.add(baseRoutes[i]);
-      }
-    }
-
+    // Límites TomTom: solo al confirmar «Empezar navegación», no aquí.
     final labeled = [
-      for (final route in withLimits)
+      for (final route in baseRoutes)
         route.copyWithLabels(
           originLabel: originLabel,
           destinationLabel: destinationLabel,
@@ -101,32 +93,56 @@ class NavigationRepositoryImpl implements NavigationRepository {
     if (route is! NavigationRouteModel) {
       return route;
     }
-    var updated = route;
-    if (_valhalla.isConfigured) {
-      updated = await _valhalla.attachSpeedLimitsToRoute(route);
+    if (!_valhalla.isConfigured) {
+      return route;
     }
-    return _enrichWithTomTomLimits(updated);
+    return _valhalla.attachSpeedLimitsToRoute(route);
   }
 
-  Future<NavigationRouteModel> _enrichWithTomTomLimits(
+  @override
+  Future<NavigationRoute> enrichSpeedLimitsWithTomTom(
+    NavigationRoute route,
+  ) async {
+    final details = await enrichRouteWithTomTomDetails(route);
+    return details?.route ?? route;
+  }
+
+  @override
+  Future<TomTomRouteEnrichment?> enrichRouteWithTomTomDetails(
+    NavigationRoute route,
+  ) async {
+    if (route is! NavigationRouteModel) {
+      return null;
+    }
+    return _enrichWithTomTomLimitsDetailed(route);
+  }
+
+  Future<TomTomRouteEnrichment?> _enrichWithTomTomLimitsDetailed(
     NavigationRouteModel route,
   ) async {
     if (!_tomtom.isConfigured || route.polyline.length < 2) {
-      return route;
+      return null;
     }
+    final motoAmgSegments = List<SpeedLimitSegment>.from(
+      route.speedLimitSegments,
+    );
     final tomtomSegments =
         await _tomtom.fetchSpeedLimitSegments(route.polyline);
     if (tomtomSegments.isEmpty) {
-      return route;
+      return null;
     }
     final merged = SpeedLimitMerge.mergePreferringOverlay(
-      base: route.speedLimitSegments,
+      base: motoAmgSegments,
       overlay: tomtomSegments,
       polylineLength: route.polyline.length,
     );
     if (merged.isEmpty) {
-      return route;
+      return null;
     }
-    return route.copyWithSpeedLimits(merged);
+    return TomTomRouteEnrichment(
+      route: route.copyWithSpeedLimits(merged),
+      motoAmgSegments: motoAmgSegments,
+      tomtomSegments: tomtomSegments,
+    );
   }
 }

@@ -15,16 +15,25 @@
     "platforms": {
       "android": {
         "default": {
-          "projectId": "locmotos-project",
-          "appId": "1:128161523972:android:605f999525259554edc851",
+          "projectId": "motoamg",
+          "appId": "1:853611010116:android:f09cba58855911438b0411",
           "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "ios": {
+        "default": {
+          "projectId": "motoamg",
+          "appId": "1:853611010116:ios:0d4cf0f1bea4ae058b0411",
+          "uploadDebugSymbols": false,
+          "fileOutput": "ios/Runner/GoogleService-Info.plist"
         }
       },
       "dart": {
         "lib/firebase_options.dart": {
-          "projectId": "locmotos-project",
+          "projectId": "motoamg",
           "configurations": {
-            "android": "1:128161523972:android:605f999525259554edc851"
+            "android": "1:853611010116:android:f09cba58855911438b0411",
+            "ios": "1:853611010116:ios:0d4cf0f1bea4ae058b0411"
           }
         }
       }

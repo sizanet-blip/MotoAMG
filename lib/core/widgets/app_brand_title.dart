@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
-import 'package:loc_motos/core/constants/app_constants.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:moto_amg/core/constants/app_constants.dart';
 
 /// Marca compacta para AppBars: icono + nombre.
 class AppBrandTitle extends StatelessWidget {
@@ -13,7 +13,6 @@ class AppBrandTitle extends StatelessWidget {
     );
 
     return Row(
-      mainAxisSize: MainAxisSize.min,
       children: [
         ClipRRect(
           borderRadius: BorderRadius.circular(8),
@@ -25,7 +24,18 @@ class AppBrandTitle extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 10),
-        Text(AppConstants.appName, style: titleStyle),
+        Expanded(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              AppConstants.appName,
+              style: titleStyle,
+              maxLines: 1,
+              softWrap: false,
+            ),
+          ),
+        ),
       ],
     );
   }

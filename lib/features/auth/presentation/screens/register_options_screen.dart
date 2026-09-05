@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
-import 'package:loc_motos/features/auth/presentation/screens/register_screen.dart';
-import 'package:loc_motos/features/auth/presentation/screens/username_register_screen.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:moto_amg/features/auth/presentation/screens/register_screen.dart';
+import 'package:moto_amg/features/auth/presentation/screens/username_register_screen.dart';
 
 class RegisterOptionsScreen extends StatelessWidget {
   const RegisterOptionsScreen({super.key});

@@ -1,9 +1,9 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
-import 'package:loc_motos/core/constants/navigation_constants.dart';
-import 'package:loc_motos/features/navigation/data/services/map_basemap_assets_service.dart';
+import 'package:moto_amg/core/constants/navigation_constants.dart';
+import 'package:moto_amg/features/navigation/data/services/map_basemap_assets_service.dart';
 
 /// Resuelve qué estilo MapLibre usar en navegación (online vs PMTiles local).
 abstract final class NavigationMapStyleService {
@@ -11,7 +11,7 @@ abstract final class NavigationMapStyleService {
   static const _onlineStylePatchVersion = 5;
 
   /// Capa de edificios 3D en estilos Protomaps (visibilidad la controla el HUD).
-  static const buildings3dLayerId = 'locmotos-buildings-3d';
+  static const buildings3dLayerId = 'motoamg-buildings-3d';
 
   static String? _cachedOnlineStyleJson;
   static int? _cachedOnlineStyleVersion;

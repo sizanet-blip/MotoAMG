@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+﻿import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 /// Perfil gráfico Android: MapLibre se cae en emuladores API ≤30 (GLES débil).
@@ -15,7 +15,7 @@ class AndroidGraphicsCompat {
   bool get useLowGlMapMode =>
       !kIsWeb && ((isEmulator && sdkInt <= 30) || sdkInt <= 28);
 
-  static const _channel = MethodChannel('com.locmotos.loc_motos/storage');
+  static const _channel = MethodChannel('es.albertomaestre.motoamg/storage');
 
   static Future<AndroidGraphicsCompat> detect() async {
     if (kIsWeb) {

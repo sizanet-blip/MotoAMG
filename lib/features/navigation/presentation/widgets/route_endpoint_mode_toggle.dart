@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
-import 'package:loc_motos/features/navigation/presentation/models/route_endpoint_input_mode.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:moto_amg/features/navigation/presentation/models/route_endpoint_input_mode.dart';
 
 /// Conmutador compacto dirección ↔ coordenadas.
 class RouteEndpointModeToggle extends StatelessWidget {

@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
-import 'package:loc_motos/core/constants/app_constants.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:moto_amg/core/constants/app_constants.dart';
 
 enum LegalDocumentKind { privacy, terms }
 
@@ -9,7 +9,7 @@ class LegalDocumentScreen extends StatelessWidget {
 
   final LegalDocumentKind kind;
 
-  static const String _lastUpdated = '29 de agosto de 2026';
+  static const String _lastUpdated = '5 de septiembre de 2026';
 
   String _body(LegalDocumentKind kind) {
     final contact = 'Contacto del responsable: ${AppConstants.supportEmail}';
@@ -42,7 +42,7 @@ Intercom (voz)
 • Si el creador del grupo activa el intercom y tú usas Hablar/Oír, se trata audio en tiempo real a través del servicio de voz (LiveKit) para que los miembros del canal puedan comunicarse. No está pensado como archivo de grabaciones permanentes de conversaciones.
 
 Contactos de emergencia
-• Nombre y teléfono que configures se guardan en tu dispositivo (almacenamiento local). LocMotos no envía SMS ni WhatsApp automáticamente: tú decides si avisar a esas personas tras una emergencia urgente.
+• Nombre y teléfono que configures se guardan en tu dispositivo (almacenamiento local). MotoAMG no envía SMS ni WhatsApp automáticamente: tú decides si avisar a esas personas tras una emergencia urgente.
 
 Datos en el dispositivo
 • Preferencias (tema, avisos, intercom, pantalla al navegar, recordatorios de radares, etc.), cachés de mapas offline, inventarios de radares y gasolineras descargados, y datos técnicos de sesión.
@@ -70,7 +70,7 @@ Tratamos datos porque son necesarios para prestar el servicio que solicitas (con
 • Fuentes de datos públicos o institucionales que descargas o consultas a través de nuestros servidores o APIs (p. ej. cartografía OpenStreetMap/Protomaps, inventarios de radares, precios de carburantes). Esas fuentes no reciben tu perfil de usuario por el solo hecho de descargar el inventario.
 • No vendemos tus datos personales a terceros con fines publicitarios.
 
-Tú puedes abrir apps externas (Waze, Maps, WhatsApp, SMS, marcador telefónico). Esas apps tienen sus propias políticas; LocMotos solo facilita el enlace o el contenido que tú envías.
+Tú puedes abrir apps externas (Waze, Maps, WhatsApp, SMS, marcador telefónico). Esas apps tienen sus propias políticas; MotoAMG solo facilita el enlace o el contenido que tú envías.
 
 5. Conservación
 
@@ -94,7 +94,7 @@ Aplicamos medidas razonables (acceso autenticado, comunicación cifrada en trán
 
 8. Menores
 
-LocMotos está pensada para usuarios con capacidad legal para usar servicios de geolocalización y conducción responsable. Si eres menor, usa la app solo con supervisión y consentimiento de quien corresponda.
+MotoAMG está pensada para usuarios con capacidad legal para usar servicios de geolocalización y conducción responsable. Si eres menor, usa la app solo con supervisión y consentimiento de quien corresponda.
 
 9. Transferencias y ubicación de tratamiento
 
@@ -115,7 +115,7 @@ Al descargar, instalar o usar ${AppConstants.appName} aceptas estos términos. S
 
 1. Descripción del servicio
 
-LocMotos ofrece herramientas para moteros y usuarios de vehículo: mapa de grupo en vivo, navegación GPS integrada, avisos en ruta, paradas e incidencias, y, si el grupo lo activa, intercom de voz. También puedes usar la navegación sin pertenecer a un grupo.
+MotoAMG ofrece herramientas para moteros y usuarios de vehículo: mapa de grupo en vivo, navegación GPS integrada, avisos en ruta, paradas e incidencias, y, si el grupo lo activa, intercom de voz. También puedes usar la navegación sin pertenecer a un grupo.
 
 2. Cuenta y acceso
 
@@ -140,7 +140,7 @@ LocMotos ofrece herramientas para moteros y usuarios de vehículo: mapa de grupo
 5. Emergencias y contactos
 
 • Los avisos de emergencia, avería o separado son herramientas de coordinación del grupo; no sustituyen a los servicios de emergencia.
-• LocMotos no llama al 112 ni envía mensajes a contactos personales de forma automática. Tú decides si llamar o avisar.
+• MotoAMG no llama al 112 ni envía mensajes a contactos personales de forma automática. Tú decides si llamar o avisar.
 • El uso indebido de avisos de emergencia puede molestar al grupo y, en casos graves, tener consecuencias legales.
 
 6. Navegación y datos de terceros
@@ -160,7 +160,7 @@ LocMotos ofrece herramientas para moteros y usuarios de vehículo: mapa de grupo
 • Acosar, amenazar, suplantar, publicar datos falsos o difundir contenido ilícito.
 • Intentar acceder a grupos, cuentas o datos ajenos sin autorización.
 • Interferir con el servicio, automatizar abusos o eludir medidas de seguridad.
-• Usar LocMotos para actividades ilegales.
+• Usar MotoAMG para actividades ilegales.
 
 9. Disponibilidad y cambios
 
@@ -169,12 +169,12 @@ LocMotos ofrece herramientas para moteros y usuarios de vehículo: mapa de grupo
 
 10. Propiedad intelectual
 
-• LocMotos, su marca, diseño y código propio pertenecen a $developer o a sus licenciantes.
+• MotoAMG, su marca, diseño y código propio pertenecen a $developer o a sus licenciantes.
 • Las bibliotecas de terceros, mapas y conjuntos de datos se usan bajo sus respectivas licencias y condiciones (consulta Licencias y atribuciones en Acerca de).
 
 11. Exención y limitación
 
-• LocMotos es una ayuda; no garantiza precisión absoluta ni disponibilidad continua.
+• MotoAMG es una ayuda; no garantiza precisión absoluta ni disponibilidad continua.
 • En la máxima medida permitida por la ley aplicable, $developer no responde de daños derivados del uso de la app, de decisiones de conducción, de datos de terceros (mapas, radares, precios, etc.) ni de la conducta de otros usuarios del grupo.
 • Nada en estos términos excluye responsabilidad que no pueda limitarse legalmente.
 

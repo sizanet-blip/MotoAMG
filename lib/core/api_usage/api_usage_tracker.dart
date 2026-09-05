@@ -1,13 +1,16 @@
-import 'package:flutter/foundation.dart';
+﻿import 'package:flutter/foundation.dart';
+import 'package:moto_amg/core/api_usage/tomtom_route_preview_snapshot.dart';
+import 'package:moto_amg/features/navigation/data/models/navigation_route_model.dart';
+import 'package:moto_amg/features/navigation/domain/entities/tomtom_route_enrichment.dart';
 
-/// Identificador de APIs externas que LocMotos puede consumir.
-enum LocMotosApi {
+/// Identificador de APIs externas que MotoAMG puede consumir.
+enum MotoAmgApi {
   tomtomSnapToRoads,
 }
 
-extension LocMotosApiX on LocMotosApi {
+extension MotoAmgApiX on MotoAmgApi {
   String get label => switch (this) {
-        LocMotosApi.tomtomSnapToRoads => 'TomTom · Snap to Roads (límites)',
+        MotoAmgApi.tomtomSnapToRoads => 'TomTom · Snap to Roads (límites)',
       };
 }
 
@@ -24,7 +27,7 @@ class ApiCallRecord {
     this.detail,
   });
 
-  final LocMotosApi api;
+  final MotoAmgApi api;
   final ApiCallOutcome outcome;
   final DateTime at;
   final int? httpStatus;
@@ -68,15 +71,37 @@ class ApiUsageTracker extends ChangeNotifier {
   ApiUsageTracker._();
   static final ApiUsageTracker instance = ApiUsageTracker._();
 
-  final Map<LocMotosApi, ApiUsageStats> _byApi = {};
+  final Map<MotoAmgApi, ApiUsageStats> _byApi = {};
+  TomTomRoutePreviewSnapshot? _lastTomTomRoute;
 
-  ApiUsageStats statsFor(LocMotosApi api) =>
+  TomTomRoutePreviewSnapshot? get lastTomTomRoute => _lastTomTomRoute;
+
+  ApiUsageStats statsFor(MotoAmgApi api) =>
       _byApi[api] ?? const ApiUsageStats();
 
-  Map<LocMotosApi, ApiUsageStats> get all => Map.unmodifiable(_byApi);
+  Map<MotoAmgApi, ApiUsageStats> get all => Map.unmodifiable(_byApi);
+
+  /// Guarda la última ruta enriquecida con TomTom (solo memoria, esta sesión).
+  void saveTomTomRoutePreview(TomTomRouteEnrichment enrichment) {
+    final route = enrichment.route;
+    if (route is! NavigationRouteModel || route.speedLimitSegments.isEmpty) {
+      return;
+    }
+    _lastTomTomRoute = TomTomRoutePreviewSnapshot(
+      routeJson: route.toJson(),
+      enrichedAt: DateTime.now(),
+      motoAmgSegmentsJson: TomTomRoutePreviewSnapshot.segmentsToJson(
+        enrichment.motoAmgSegments,
+      ),
+      tomtomSegmentsJson: TomTomRoutePreviewSnapshot.segmentsToJson(
+        enrichment.tomtomSegments,
+      ),
+    );
+    notifyListeners();
+  }
 
   void record({
-    required LocMotosApi api,
+    required MotoAmgApi api,
     required ApiCallOutcome outcome,
     int? httpStatus,
     String? message,
@@ -111,6 +136,7 @@ class ApiUsageTracker extends ChangeNotifier {
 
   void reset() {
     _byApi.clear();
+    _lastTomTomRoute = null;
     notifyListeners();
   }
 }

@@ -1,6 +1,6 @@
-import 'package:equatable/equatable.dart';
-import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
-import 'package:loc_motos/features/navigation/domain/entities/lane_guidance.dart';
+﻿import 'package:equatable/equatable.dart';
+import 'package:moto_amg/features/navigation/domain/entities/geo_point.dart';
+import 'package:moto_amg/features/navigation/domain/entities/lane_guidance.dart';
 
 enum ManeuverType {
   depart,
@@ -27,6 +27,11 @@ class NavigationManeuver extends Equatable {
     required this.location,
     this.beginShapeIndex = 0,
     this.streetName,
+    this.beginStreetName,
+    this.valhallaType,
+    this.toStayOn = false,
+    this.turnDegree,
+    this.polylineTurnDegrees,
     this.laneHint,
     this.lanes = const [],
     this.roundaboutExit,
@@ -47,6 +52,22 @@ class NavigationManeuver extends Equatable {
   final int beginShapeIndex;
 
   final String? streetName;
+
+  /// Vía al inicio del tramo (Valhalla `begin_street_names`).
+  final String? beginStreetName;
+
+  /// Código crudo Valhalla (`type`); 9/14 = giro leve en la misma vía.
+  final int? valhallaType;
+
+  /// Valhalla `to_stay_on`: sigues en la misma vía (cruce sin cambiar de carretera).
+  final bool toStayOn;
+
+  /// Grados de giro Valhalla (`turn_degree`); curvas reviradas suelen ser < 38°.
+  final int? turnDegree;
+
+  /// Ángulo firmado inferido de la polilínea (+ izquierda, − derecha).
+  final double? polylineTurnDegrees;
+
   final String? laneHint;
 
   /// Carriles Valhalla (`turn_lanes`); vacío si no hay datos OSM/servidor.
@@ -70,6 +91,11 @@ class NavigationManeuver extends Equatable {
         location,
         beginShapeIndex,
         streetName,
+        beginStreetName,
+        valhallaType,
+        toStayOn,
+        turnDegree,
+        polylineTurnDegrees,
         laneHint,
         lanes,
         roundaboutExit,

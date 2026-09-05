@@ -1,5 +1,5 @@
-import 'package:equatable/equatable.dart';
-import 'package:loc_motos/features/navigation/domain/entities/geo_bounds.dart';
+﻿import 'package:equatable/equatable.dart';
+import 'package:moto_amg/features/navigation/domain/entities/geo_bounds.dart';
 
 /// Cobertura por CCAA (PMTiles) + fallback online fuera de España.
 class HybridMapStyles extends Equatable {

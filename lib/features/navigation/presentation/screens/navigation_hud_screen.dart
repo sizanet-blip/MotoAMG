@@ -1,54 +1,56 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:loc_motos/core/constants/navigation_constants.dart';
-import 'package:loc_motos/core/utils/distance_format.dart';
-import 'package:loc_motos/core/utils/gps_status.dart';
-import 'package:loc_motos/core/utils/navigation_bearing.dart';
-import 'package:loc_motos/features/navigation/presentation/helpers/route_progress_split.dart';
-import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
-import 'package:loc_motos/features/auth/presentation/providers/auth_providers.dart';
-import 'package:loc_motos/features/groups/data/repositories/group_pack_alert_repository.dart';
-import 'package:loc_motos/features/groups/domain/entities/group_incident.dart';
-import 'package:loc_motos/features/groups/domain/entities/group_member.dart';
-import 'package:loc_motos/features/groups/domain/entities/ride_role.dart';
-import 'package:loc_motos/features/groups/domain/services/group_pack_proximity_tracker.dart';
-import 'package:loc_motos/features/groups/domain/services/group_ride_alert_feedback.dart';
-import 'package:loc_motos/features/groups/presentation/providers/group_providers.dart';
-import 'package:loc_motos/features/groups/presentation/widgets/group_incident_session_panel.dart';
-import 'package:loc_motos/features/groups/presentation/widgets/group_pack_list_sheet.dart';
-import 'package:loc_motos/features/intercom/presentation/widgets/intercom_controls_bar.dart';
-import 'package:loc_motos/features/intercom/presentation/widgets/intercom_session_binder.dart';
-import 'package:loc_motos/features/navigation/data/repositories/map_appearance_repository.dart';
-import 'package:loc_motos/features/navigation/data/services/route_alerts_service.dart';
-import 'package:loc_motos/features/navigation/data/services/route_guidance_service.dart';
-import 'package:loc_motos/features/navigation/data/services/route_progress_simulator.dart';
-import 'package:loc_motos/features/navigation/domain/entities/alert_preferences.dart';
-import 'package:loc_motos/features/navigation/domain/entities/fuel_alert_display.dart';
-import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
-import 'package:loc_motos/features/navigation/domain/entities/hybrid_map_styles.dart';
-import 'package:loc_motos/features/navigation/domain/entities/navigation_maneuver.dart';
-import 'package:loc_motos/features/navigation/domain/entities/navigation_route.dart';
-import 'package:loc_motos/features/navigation/domain/entities/route_alert.dart';
-import 'package:loc_motos/features/navigation/domain/exceptions/navigation_exceptions.dart';
-import 'package:loc_motos/features/navigation/domain/exceptions/navigation_user_message.dart';
-import 'package:loc_motos/features/navigation/presentation/providers/navigation_providers.dart';
-import 'package:loc_motos/features/navigation/presentation/theme/fuel_brand_style.dart';
-import 'package:loc_motos/features/navigation/presentation/theme/navigation_hud_theme.dart';
-import 'package:loc_motos/features/navigation/presentation/widgets/map_network_resume_binder.dart';
-import 'package:loc_motos/features/navigation/presentation/widgets/navigation_map_view.dart';
-import 'package:loc_motos/features/navigation/presentation/widgets/offline_map_banner.dart';
-import 'package:loc_motos/features/navigation/presentation/widgets/navigation_lane_guidance_panel.dart';
-import 'package:loc_motos/features/navigation/presentation/widgets/navigation_maneuver_card.dart';
-import 'package:loc_motos/features/navigation/presentation/widgets/navigation_status_bar.dart';
-import 'package:loc_motos/features/tracking/domain/entities/device_position.dart';
-import 'package:loc_motos/features/tracking/domain/entities/live_location.dart';
-import 'package:loc_motos/features/tracking/presentation/providers/tracking_providers.dart';
-import 'package:loc_motos/features/tracking/presentation/widgets/group_live_location_publisher.dart';
-import 'package:loc_motos/features/tracking/presentation/widgets/own_position_watcher.dart';
+import 'package:moto_amg/core/constants/navigation_constants.dart';
+import 'package:moto_amg/core/utils/distance_format.dart';
+import 'package:moto_amg/core/utils/gps_status.dart';
+import 'package:moto_amg/core/utils/navigation_bearing.dart';
+import 'package:moto_amg/features/navigation/presentation/helpers/route_progress_split.dart';
+import 'package:moto_amg/features/auth/domain/entities/app_user.dart';
+import 'package:moto_amg/features/auth/presentation/providers/auth_providers.dart';
+import 'package:moto_amg/features/groups/data/repositories/group_pack_alert_repository.dart';
+import 'package:moto_amg/features/groups/domain/entities/group_incident.dart';
+import 'package:moto_amg/features/groups/domain/entities/group_member.dart';
+import 'package:moto_amg/features/groups/domain/entities/ride_role.dart';
+import 'package:moto_amg/features/groups/domain/services/group_pack_proximity_tracker.dart';
+import 'package:moto_amg/features/groups/domain/services/group_ride_alert_feedback.dart';
+import 'package:moto_amg/features/groups/presentation/providers/group_providers.dart';
+import 'package:moto_amg/features/groups/presentation/widgets/group_incident_session_panel.dart';
+import 'package:moto_amg/features/groups/presentation/widgets/group_pack_list_sheet.dart';
+import 'package:moto_amg/features/intercom/presentation/widgets/intercom_controls_bar.dart';
+import 'package:moto_amg/features/intercom/presentation/widgets/intercom_session_binder.dart';
+import 'package:moto_amg/features/navigation/data/repositories/map_appearance_repository.dart';
+import 'package:moto_amg/features/navigation/data/services/route_alerts_service.dart';
+import 'package:moto_amg/features/navigation/data/services/route_guidance_service.dart';
+import 'package:moto_amg/features/navigation/data/services/route_progress_simulator.dart';
+import 'package:moto_amg/features/navigation/domain/entities/alert_preferences.dart';
+import 'package:moto_amg/features/navigation/domain/entities/fuel_alert_display.dart';
+import 'package:moto_amg/features/navigation/domain/entities/geo_point.dart';
+import 'package:moto_amg/features/navigation/domain/entities/hybrid_map_styles.dart';
+import 'package:moto_amg/features/navigation/domain/entities/navigation_maneuver.dart';
+import 'package:moto_amg/features/navigation/domain/services/maneuver_significance.dart';
+import 'package:moto_amg/features/navigation/domain/entities/navigation_route.dart';
+import 'package:moto_amg/features/navigation/domain/entities/route_alert.dart';
+import 'package:moto_amg/features/navigation/domain/exceptions/navigation_exceptions.dart';
+import 'package:moto_amg/features/navigation/domain/exceptions/navigation_user_message.dart';
+import 'package:moto_amg/features/navigation/presentation/providers/navigation_providers.dart';
+import 'package:moto_amg/features/navigation/presentation/theme/fuel_brand_style.dart';
+import 'package:moto_amg/features/navigation/presentation/theme/navigation_hud_theme.dart';
+import 'package:moto_amg/features/navigation/presentation/widgets/map_network_resume_binder.dart';
+import 'package:moto_amg/features/navigation/presentation/widgets/navigation_map_view.dart';
+import 'package:moto_amg/features/navigation/presentation/widgets/offline_map_banner.dart';
+import 'package:moto_amg/features/navigation/presentation/widgets/curve_approach_banner.dart';
+import 'package:moto_amg/features/navigation/presentation/widgets/navigation_lane_guidance_panel.dart';
+import 'package:moto_amg/features/navigation/presentation/widgets/navigation_maneuver_card.dart';
+import 'package:moto_amg/features/navigation/presentation/widgets/navigation_status_bar.dart';
+import 'package:moto_amg/features/tracking/domain/entities/device_position.dart';
+import 'package:moto_amg/features/tracking/domain/entities/live_location.dart';
+import 'package:moto_amg/features/tracking/presentation/providers/tracking_providers.dart';
+import 'package:moto_amg/features/tracking/presentation/widgets/group_live_location_publisher.dart';
+import 'package:moto_amg/features/tracking/presentation/widgets/own_position_watcher.dart';
 import 'package:screen_brightness/screen_brightness.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
@@ -113,6 +115,8 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
   RouteAlert? _upcomingToll;
   String? _lastSharedRouteFingerprint;
   double _upcomingTollMeters = 0;
+  RouteAlert? _upcomingCurve;
+  double _upcomingCurveMeters = 0;
   final _announcedAlertIds = <String>{};
   final _announcedManeuverIndices = <int>{};
   var _arrivalAnnounced = false;
@@ -363,6 +367,28 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
       _upcomingToll = null;
       _upcomingTollMeters = 0;
     }
+
+    if (prefs.curvesEnabled) {
+      final curve = alerts.nextCurve(
+        route: route,
+        alongMeters: along,
+        graceMeters: grace,
+        accept: prefs.acceptsCurveAlert,
+      );
+      final curveMeters = curve == null
+          ? 0.0
+          : (curve.distanceAlongRouteMeters - along).clamp(0.0, 1e9);
+      if (curve != null && curveMeters <= prefs.curveHudMeters) {
+        _upcomingCurve = curve;
+        _upcomingCurveMeters = curveMeters;
+      } else {
+        _upcomingCurve = null;
+        _upcomingCurveMeters = 0;
+      }
+    } else {
+      _upcomingCurve = null;
+      _upcomingCurveMeters = 0;
+    }
   }
 
   @override
@@ -410,7 +436,10 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
       _route.maneuvers.elementAtOrNull(_maneuverIndex);
 
   NavigationManeuver? get _nextManeuver =>
-      _route.maneuvers.elementAtOrNull(_maneuverIndex + 1);
+      ManeuverSignificance.nextSignificantAfter(
+        _route.maneuvers,
+        _maneuverIndex,
+      );
 
   void _updateGuidance() {
     if (_arrived) {
@@ -560,11 +589,12 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
           nextToll != null && nextTollMeters <= prefs.tollAnnounceMeters;
     }
 
-    final nextCurve = prefs.curvesEnabled && prefs.curvesVoiceEnabled
+    final nextCurve = prefs.curvesEnabled
         ? alertsService.nextCurve(
             route: _route,
             alongMeters: along,
             graceMeters: grace,
+            accept: prefs.acceptsCurveAlert,
           )
         : null;
     final nextCurveMeters = nextCurve == null
@@ -586,6 +616,12 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
     final tollChanged =
         (showToll ? nextToll!.id : null) != _upcomingToll?.id ||
             (showToll && (nextTollMeters - _upcomingTollMeters).abs() > 15);
+    final showCurve = prefs.curvesEnabled &&
+        nextCurve != null &&
+        nextCurveMeters <= prefs.curveHudMeters;
+    final curveChanged =
+        (showCurve ? nextCurve.id : null) != _upcomingCurve?.id ||
+            (showCurve && (nextCurveMeters - _upcomingCurveMeters).abs() > 10);
 
     if (maneuverChanged ||
         metersChanged ||
@@ -594,7 +630,8 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
         limitChanged ||
         alertChanged ||
         fuelChanged ||
-        tollChanged) {
+        tollChanged ||
+        curveChanged) {
       setState(() {
         _maneuverIndex = upcomingIndex;
         _remainingMeters = remaining;
@@ -607,6 +644,8 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
         _upcomingFuelMeters = showFuel ? nextFuelMeters : 0;
         _upcomingToll = showToll ? nextToll : null;
         _upcomingTollMeters = showToll ? nextTollMeters : 0;
+        _upcomingCurve = showCurve ? nextCurve : null;
+        _upcomingCurveMeters = showCurve ? nextCurveMeters : 0;
       });
     }
     final upcoming = _route.maneuvers.elementAtOrNull(upcomingIndex);
@@ -627,9 +666,27 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
       _maybeAnnounceTypedAlert(nextToll, nextTollMeters, prefs: prefs);
     }
     if (nextCurve != null &&
+        prefs.curvesVoiceEnabled &&
+        prefs.acceptsCurveAlert(nextCurve) &&
         nextCurveMeters <= prefs.announceMetersFor(RouteAlertType.sharpCurve)) {
-      _maybeAnnounceTypedAlert(nextCurve, nextCurveMeters, prefs: prefs);
+      _maybeAnnounceCurve(nextCurve, nextCurveMeters);
     }
+  }
+
+  void _maybeAnnounceCurve(RouteAlert alert, double metersAhead) {
+    final key = '${alert.id}_curve_${NavigationConstants.curveAnnounceMeters.round()}';
+    if (_announcedAlertIds.contains(key)) {
+      return;
+    }
+    _announcedAlertIds.add(key);
+    unawaited(
+      ref.read(navigationSessionProvider.notifier).announceManeuver(
+            alert.announcementForDistance(
+              metersAhead,
+              imminent: metersAhead <= NavigationConstants.curveAnnounceMeters,
+            ),
+          ),
+    );
   }
 
   void _maybeAnnounceTypedAlert(
@@ -948,6 +1005,8 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
       _upcomingFuelMeters = 0;
       _upcomingToll = null;
       _upcomingTollMeters = 0;
+      _upcomingCurve = null;
+      _upcomingCurveMeters = 0;
       _announcedAlertIds.clear();
       _announcedManeuverIndices
         ..clear()
@@ -1558,6 +1617,12 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
                 ? _HudSecondarySlot.fuel
                 : null;
     final maneuver = _currentManeuver;
+    final showManeuverCard = maneuver != null &&
+        ref.read(routeGuidanceServiceProvider).shouldShowManeuverCard(
+              route: _route,
+              upcomingIndex: _maneuverIndex,
+              remainingMeters: _remainingMeters,
+            );
     final remaining = _remainingDuration;
     final eta = TimeOfDay.fromDateTime(
       DateTime.now().add(remaining),
@@ -1659,7 +1724,7 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
                   width: landscape ? 220 : null,
                   child: _WeakGpsBanner(lost: gpsLost),
                 )
-              else if (maneuver != null) ...[
+              else if (showManeuverCard && maneuver != null) ...[
                 Positioned(
                   top: topInset + (showOffRouteBanner ? 64 : 8),
                   left: 12,
@@ -1682,6 +1747,15 @@ class _NavigationHudScreenState extends ConsumerState<NavigationHudScreen> {
                               NavigationConstants.laneGuidanceHideMeters) ...[
                         const SizedBox(height: 6),
                         NavigationLaneGuidancePanel(lanes: maneuver.lanes),
+                      ],
+                      if (_upcomingCurve != null &&
+                          alertPrefs.curvesEnabled) ...[
+                        const SizedBox(height: 6),
+                        CurveApproachBanner(
+                          alert: _upcomingCurve!,
+                          remainingMeters: _upcomingCurveMeters,
+                          compact: landscape,
+                        ),
                       ],
                       if (weakGps) ...[
                         const SizedBox(height: 6),
@@ -2351,10 +2425,13 @@ class _SimulationSpeedSlider extends StatelessWidget {
                       NavigationHudTheme.textPrimary.withValues(alpha: 0.12),
                 ),
                 child: Slider(
-                  value: speedKmh.clamp(20, 140),
-                  min: 20,
-                  max: 140,
-                  divisions: 24,
+                  value: speedKmh.clamp(
+                    NavigationConstants.simulationSpeedMinKmh,
+                    NavigationConstants.simulationSpeedMaxKmh,
+                  ),
+                  min: NavigationConstants.simulationSpeedMinKmh,
+                  max: NavigationConstants.simulationSpeedMaxKmh,
+                  divisions: 56,
                   onChanged: onChanged,
                 ),
               ),

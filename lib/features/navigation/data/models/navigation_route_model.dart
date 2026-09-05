@@ -1,11 +1,14 @@
-import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
-import 'package:loc_motos/features/navigation/domain/entities/lane_guidance.dart';
-import 'package:loc_motos/features/navigation/domain/entities/navigation_maneuver.dart';
-import 'package:loc_motos/features/navigation/domain/entities/navigation_route.dart';
-import 'package:loc_motos/features/navigation/domain/entities/route_alert.dart';
-import 'package:loc_motos/features/navigation/domain/entities/speed_limit_segment.dart';
-import 'package:loc_motos/features/navigation/domain/exceptions/navigation_exceptions.dart';
-import 'package:loc_motos/features/navigation/domain/services/dgt_speed_limit_resolver.dart';
+﻿import 'dart:math' as math;
+
+import 'package:moto_amg/features/navigation/domain/entities/geo_point.dart';
+import 'package:moto_amg/features/navigation/domain/entities/lane_guidance.dart';
+import 'package:moto_amg/features/navigation/domain/entities/navigation_maneuver.dart';
+import 'package:moto_amg/features/navigation/domain/entities/navigation_route.dart';
+import 'package:moto_amg/features/navigation/domain/entities/route_alert.dart';
+import 'package:moto_amg/features/navigation/domain/entities/route_map_poi.dart';
+import 'package:moto_amg/features/navigation/domain/entities/speed_limit_segment.dart';
+import 'package:moto_amg/features/navigation/domain/exceptions/navigation_exceptions.dart';
+import 'package:moto_amg/features/navigation/domain/services/dgt_speed_limit_resolver.dart';
 
 class NavigationRouteModel extends NavigationRoute {
   const NavigationRouteModel({
@@ -21,6 +24,7 @@ class NavigationRouteModel extends NavigationRoute {
     super.speedLimitKmh,
     super.speedLimitSegments,
     super.alerts,
+    super.mapPois,
     super.originLabel,
     super.destinationLabel,
   });
@@ -42,6 +46,7 @@ class NavigationRouteModel extends NavigationRoute {
       speedLimitKmh: speedLimitKmh,
       speedLimitSegments: speedLimitSegments,
       alerts: alerts,
+      mapPois: mapPois,
       originLabel: originLabel ?? this.originLabel,
       destinationLabel: destinationLabel ?? this.destinationLabel,
     );
@@ -63,6 +68,7 @@ class NavigationRouteModel extends NavigationRoute {
       speedLimitKmh: segments.isEmpty ? speedLimitKmh : segments.first.speedLimitKmh,
       speedLimitSegments: segments,
       alerts: alerts,
+      mapPois: mapPois,
       originLabel: originLabel,
       destinationLabel: destinationLabel,
     );
@@ -82,6 +88,50 @@ class NavigationRouteModel extends NavigationRoute {
       speedLimitKmh: speedLimitKmh,
       speedLimitSegments: speedLimitSegments,
       alerts: List.unmodifiable(alerts),
+      mapPois: mapPois,
+      originLabel: originLabel,
+      destinationLabel: destinationLabel,
+    );
+  }
+
+  NavigationRouteModel copyWithMapPois(List<RouteMapPoi> mapPois) {
+    return NavigationRouteModel(
+      id: id,
+      origin: origin,
+      destination: destination,
+      waypoints: waypoints,
+      polyline: polyline,
+      maneuvers: maneuvers,
+      distanceMeters: distanceMeters,
+      durationSeconds: durationSeconds,
+      createdAt: createdAt,
+      speedLimitKmh: speedLimitKmh,
+      speedLimitSegments: speedLimitSegments,
+      alerts: alerts,
+      mapPois: List.unmodifiable(mapPois),
+      originLabel: originLabel,
+      destinationLabel: destinationLabel,
+    );
+  }
+
+  NavigationRouteModel copyWithAlertsAndMapPois({
+    required List<RouteAlert> alerts,
+    required List<RouteMapPoi> mapPois,
+  }) {
+    return NavigationRouteModel(
+      id: id,
+      origin: origin,
+      destination: destination,
+      waypoints: waypoints,
+      polyline: polyline,
+      maneuvers: maneuvers,
+      distanceMeters: distanceMeters,
+      durationSeconds: durationSeconds,
+      createdAt: createdAt,
+      speedLimitKmh: speedLimitKmh,
+      speedLimitSegments: speedLimitSegments,
+      alerts: List.unmodifiable(alerts),
+      mapPois: List.unmodifiable(mapPois),
       originLabel: originLabel,
       destinationLabel: destinationLabel,
     );
@@ -152,6 +202,7 @@ class NavigationRouteModel extends NavigationRoute {
           NavigationManeuver(
             index: maneuverIndex++,
             type: _maneuverType(m['type'] as int? ?? 0),
+            valhallaType: (m['type'] as num?)?.toInt(),
             instruction: shortInstruction ?? verbal ?? 'Continúa',
             voiceInstruction: verbal,
             distanceMeters:
@@ -162,12 +213,43 @@ class NavigationRouteModel extends NavigationRoute {
                     (m['street_names'] as List).isNotEmpty
                 ? (m['street_names'] as List).first.toString()
                 : null,
+            beginStreetName: m['begin_street_names'] is List &&
+                    (m['begin_street_names'] as List).isNotEmpty
+                ? (m['begin_street_names'] as List).first.toString()
+                : null,
+            toStayOn: m['to_stay_on'] == true,
+            turnDegree: (m['turn_degree'] as num?)?.round(),
             lanes: List.unmodifiable(lanes),
             roundaboutExit: m['roundabout_exit_count'] as int?,
           ),
         );
       }
     }
+
+    final enrichedManeuvers = [
+      for (final maneuver in maneuvers)
+        NavigationManeuver(
+          index: maneuver.index,
+          type: maneuver.type,
+          instruction: maneuver.instruction,
+          distanceMeters: maneuver.distanceMeters,
+          location: maneuver.location,
+          beginShapeIndex: maneuver.beginShapeIndex,
+          streetName: maneuver.streetName,
+          beginStreetName: maneuver.beginStreetName,
+          valhallaType: maneuver.valhallaType,
+          toStayOn: maneuver.toStayOn,
+          turnDegree: maneuver.turnDegree,
+          polylineTurnDegrees: polylineTurnDegreesAt(
+            polyline,
+            maneuver.beginShapeIndex,
+          ),
+          laneHint: maneuver.laneHint,
+          lanes: maneuver.lanes,
+          roundaboutExit: maneuver.roundaboutExit,
+          voiceInstruction: maneuver.voiceInstruction,
+        ),
+    ];
 
     // Preferir resumen global del viaje si Valhalla lo envía.
     final tripSummary = trip?['summary'] as Map<String, dynamic>?;
@@ -184,7 +266,7 @@ class NavigationRouteModel extends NavigationRoute {
       destination: destination,
       waypoints: List.unmodifiable(waypoints),
       polyline: List.unmodifiable(polyline),
-      maneuvers: List.unmodifiable(maneuvers),
+      maneuvers: List.unmodifiable(enrichedManeuvers),
       distanceMeters: totalDistanceMeters,
       durationSeconds: totalDurationSeconds,
       createdAt: now,
@@ -365,6 +447,13 @@ class NavigationRouteModel extends NavigationRoute {
             .whereType<Map>()
             .map((raw) => RouteAlert.fromJson(asMap(raw)))
             .toList(growable: false);
+    final mapPoisJson = json['mapPois'] as List<dynamic>?;
+    final mapPois = mapPoisJson == null
+        ? const <RouteMapPoi>[]
+        : mapPoisJson
+            .whereType<Map>()
+            .map((raw) => RouteMapPoi.fromJson(asMap(raw)))
+            .toList(growable: false);
     return NavigationRouteModel(
       id: json['id'] as String,
       origin: GeoPoint(
@@ -401,6 +490,10 @@ class NavigationRouteModel extends NavigationRoute {
               ),
               beginShapeIndex: (m['beginShapeIndex'] as num?)?.toInt() ?? 0,
               streetName: m['streetName'] as String?,
+              beginStreetName: m['beginStreetName'] as String?,
+              valhallaType: (m['valhallaType'] as num?)?.toInt(),
+              toStayOn: m['toStayOn'] as bool? ?? false,
+              turnDegree: (m['turnDegree'] as num?)?.toInt(),
               laneHint: m['laneHint'] as String?,
               lanes: (m['lanes'] as List<dynamic>? ?? const [])
                   .whereType<Map>()
@@ -417,6 +510,7 @@ class NavigationRouteModel extends NavigationRoute {
       speedLimitKmh: (json['speedLimitKmh'] as num?)?.toInt(),
       speedLimitSegments: segments,
       alerts: alerts,
+      mapPois: mapPois,
       originLabel: json['originLabel'] as String?,
       destinationLabel: json['destinationLabel'] as String?,
     );
@@ -448,6 +542,10 @@ class NavigationRouteModel extends NavigationRoute {
               'lng': m.location.lng,
               'beginShapeIndex': m.beginShapeIndex,
               'streetName': m.streetName,
+              'beginStreetName': m.beginStreetName,
+              'valhallaType': m.valhallaType,
+              'toStayOn': m.toStayOn,
+              'turnDegree': m.turnDegree,
               'laneHint': m.laneHint,
               'lanes': m.lanes.map((l) => l.toJson()).toList(growable: false),
               'roundaboutExit': m.roundaboutExit,
@@ -462,6 +560,7 @@ class NavigationRouteModel extends NavigationRoute {
       'speedLimitSegments':
           speedLimitSegments.map((s) => s.toJson()).toList(growable: false),
       'alerts': alerts.map((a) => a.toJson()).toList(growable: false),
+      'mapPois': mapPois.map((p) => p.toJson()).toList(growable: false),
     };
   }
 
@@ -484,6 +583,43 @@ class NavigationRouteModel extends NavigationRoute {
 
   /// Expone el mapeo Valhalla→dominio para tests.
   static ManeuverType mapValhallaManeuverType(int type) => _maneuverType(type);
+
+  /// Ángulo de giro firmado inferido de la polilínea en [shapeIndex].
+  static double? polylineTurnDegreesAt(List<GeoPoint> polyline, int shapeIndex) {
+    if (polyline.length < 3) {
+      return null;
+    }
+    final idx = shapeIndex.clamp(0, polyline.length - 1);
+    final before = (idx - 8).clamp(0, polyline.length - 1);
+    final after = (idx + 8).clamp(0, polyline.length - 1);
+    if (before >= idx || idx >= after) {
+      return null;
+    }
+    return _polylineTurnDegrees(polyline[before], polyline[idx], polyline[after]);
+  }
+
+  static double _polylineTurnDegrees(GeoPoint a, GeoPoint b, GeoPoint c) {
+    final bax = _localDelta(a, b);
+    final bcx = _localDelta(b, c);
+    final dot = bax.$1 * bcx.$1 + bax.$2 * bcx.$2;
+    final cross = bax.$1 * bcx.$2 - bax.$2 * bcx.$1;
+    final mag1 = (bax.$1 * bax.$1 + bax.$2 * bax.$2);
+    final mag2 = (bcx.$1 * bcx.$1 + bcx.$2 * bcx.$2);
+    if (mag1 == 0 || mag2 == 0) {
+      return 0;
+    }
+    final cos = (dot / (math.sqrt(mag1) * math.sqrt(mag2))).clamp(-1.0, 1.0);
+    final rad = math.acos(cos);
+    final sign = cross >= 0 ? 1.0 : -1.0;
+    return rad * 180 / math.pi * sign;
+  }
+
+  static (double, double) _localDelta(GeoPoint from, GeoPoint to) {
+    final lat = (from.lat + to.lat) / 2;
+    final x = (to.lng - from.lng) * math.cos(lat * math.pi / 180);
+    final y = to.lat - from.lat;
+    return (x, y);
+  }
 
   /// Decodifica polyline6 de Valhalla (precisión 1e6).
   static List<GeoPoint> decodePolyline6(String encoded) {

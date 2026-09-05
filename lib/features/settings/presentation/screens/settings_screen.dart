@@ -1,25 +1,25 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:loc_motos/core/utils/spain_data_freshness.dart';
-import 'package:loc_motos/features/navigation/data/datasources/spain_fuel_datasource.dart';
-import 'package:loc_motos/features/navigation/data/datasources/spain_radar_datasource.dart';
-import 'package:loc_motos/features/navigation/data/repositories/map_appearance_repository.dart';
-import 'package:loc_motos/features/navigation/presentation/providers/navigation_providers.dart';
-import 'package:loc_motos/core/theme/app_color_theme.dart';
-import 'package:loc_motos/core/theme/app_color_theme_provider.dart';
-import 'package:loc_motos/features/settings/presentation/screens/about_app_screen.dart';
-import 'package:loc_motos/features/settings/presentation/screens/alert_preferences_screen.dart';
-import 'package:loc_motos/features/settings/presentation/screens/api_usage_settings_screen.dart';
-import 'package:loc_motos/features/settings/presentation/screens/app_help_screen.dart';
-import 'package:loc_motos/features/settings/presentation/screens/app_theme_settings_screen.dart';
-import 'package:loc_motos/features/settings/presentation/screens/emergency_contacts_settings_screen.dart';
-import 'package:loc_motos/features/settings/presentation/screens/fuel_cache_settings_screen.dart';
-import 'package:loc_motos/features/intercom/presentation/screens/intercom_settings_screen.dart';
-import 'package:loc_motos/features/settings/presentation/screens/group_ride_settings_screen.dart';
-import 'package:loc_motos/features/settings/presentation/screens/hud_safety_settings_screen.dart';
-import 'package:loc_motos/features/settings/presentation/screens/map_appearance_settings_screen.dart';
-import 'package:loc_motos/features/settings/presentation/screens/offline_maps_settings_screen.dart';
-import 'package:loc_motos/features/settings/presentation/screens/radar_cache_settings_screen.dart';
+import 'package:moto_amg/core/utils/spain_data_freshness.dart';
+import 'package:moto_amg/features/navigation/data/datasources/spain_fuel_datasource.dart';
+import 'package:moto_amg/features/navigation/data/datasources/spain_radar_datasource.dart';
+import 'package:moto_amg/features/navigation/data/repositories/map_appearance_repository.dart';
+import 'package:moto_amg/features/navigation/presentation/providers/navigation_providers.dart';
+import 'package:moto_amg/core/theme/app_color_theme.dart';
+import 'package:moto_amg/core/theme/app_color_theme_provider.dart';
+import 'package:moto_amg/features/settings/presentation/screens/about_app_screen.dart';
+import 'package:moto_amg/features/settings/presentation/screens/alert_preferences_screen.dart';
+import 'package:moto_amg/features/settings/presentation/screens/api_usage_settings_screen.dart';
+import 'package:moto_amg/features/settings/presentation/screens/app_help_screen.dart';
+import 'package:moto_amg/features/settings/presentation/screens/app_theme_settings_screen.dart';
+import 'package:moto_amg/features/settings/presentation/screens/emergency_contacts_settings_screen.dart';
+import 'package:moto_amg/features/settings/presentation/screens/fuel_cache_settings_screen.dart';
+import 'package:moto_amg/features/intercom/presentation/screens/intercom_settings_screen.dart';
+import 'package:moto_amg/features/settings/presentation/screens/group_ride_settings_screen.dart';
+import 'package:moto_amg/features/settings/presentation/screens/hud_safety_settings_screen.dart';
+import 'package:moto_amg/features/settings/presentation/screens/map_appearance_settings_screen.dart';
+import 'package:moto_amg/features/settings/presentation/screens/offline_maps_settings_screen.dart';
+import 'package:moto_amg/features/settings/presentation/screens/radar_cache_settings_screen.dart';
 
 /// Hub de configuración de la app. Aquí se irán añadiendo más opciones.
 class SettingsScreen extends ConsumerWidget {
@@ -201,8 +201,10 @@ class SettingsScreen extends ConsumerWidget {
           ListTile(
             leading: const Icon(Icons.cloud_outlined),
             title: const Text('Uso de APIs'),
-            subtitle: const Text(
-              'TomTom límites: OK, fallos y último error de esta sesión',
+            subtitle: Text(
+              ref.watch(tomtomPreferencesProvider).enabled
+                  ? 'TomTom límites: activado · contadores de sesión'
+                  : 'TomTom límites: desactivado · contadores de sesión',
             ),
             trailing: const Icon(Icons.chevron_right),
             onTap: () {
@@ -215,7 +217,7 @@ class SettingsScreen extends ConsumerWidget {
           ),
           ListTile(
             leading: const Icon(Icons.info_outline),
-            title: const Text('Acerca de LocMotos'),
+            title: const Text('Acerca de MotoAMG'),
             subtitle: const Text('Versión, contacto y legal'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () {
@@ -234,7 +236,7 @@ class SettingsScreen extends ConsumerWidget {
 
   static String _fuelCacheSubtitle(SpainFuelCacheStatus? status) {
     if (status == null || !status.isReady) {
-      return 'Descargar precios MITECO desde el servidor LocMotos';
+      return 'Descargar precios MITECO desde el servidor MotoAMG';
     }
     final age = formatSpainDataAge(status.fetchedAt);
     final stale = isSpainFuelDataStale(status.fetchedAt);
@@ -244,7 +246,7 @@ class SettingsScreen extends ConsumerWidget {
 
   static String _radarCacheSubtitle(SpainRadarCacheStatus? status) {
     if (status == null || !status.isReady) {
-      return 'Descargar inventario desde el servidor LocMotos';
+      return 'Descargar inventario desde el servidor MotoAMG';
     }
     final total = status.officialCount + status.osmCount;
     final stale = isSpainRadarCacheStale(

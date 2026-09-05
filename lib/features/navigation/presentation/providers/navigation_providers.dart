@@ -1,46 +1,47 @@
-import 'package:connectivity_plus/connectivity_plus.dart';
+﻿import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:loc_motos/core/constants/navigation_constants.dart';
-import 'package:loc_motos/core/platform/android_graphics_compat.dart';
-import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
-import 'package:loc_motos/features/auth/domain/entities/user_vehicle.dart';
-import 'package:loc_motos/features/auth/domain/entities/vehicle_map_marker.dart';
-import 'package:loc_motos/features/auth/presentation/providers/auth_providers.dart';
-import 'package:loc_motos/features/navigation/data/datasources/hive_route_cache_datasource.dart';
-import 'package:loc_motos/features/navigation/data/datasources/geocoding_datasource_factory.dart';
-import 'package:loc_motos/features/navigation/data/datasources/tomtom_snap_to_roads_datasource.dart';
-import 'package:loc_motos/features/navigation/data/datasources/valhalla_remote_datasource.dart';
-import 'package:loc_motos/features/navigation/data/repositories/geocoding_repository_impl.dart';
-import 'package:loc_motos/features/navigation/data/repositories/map_region_repository_impl.dart';
-import 'package:loc_motos/features/navigation/data/repositories/navigation_repository_impl.dart';
-import 'package:loc_motos/features/navigation/data/repositories/alert_preferences_repository.dart';
-import 'package:loc_motos/features/navigation/data/repositories/hud_safety_repository.dart';
-import 'package:loc_motos/features/navigation/data/repositories/map_appearance_repository.dart';
-import 'package:loc_motos/features/navigation/data/repositories/favorite_places_repository.dart';
-import 'package:loc_motos/features/navigation/data/repositories/recent_places_repository.dart';
-import 'package:loc_motos/features/navigation/data/repositories/route_preferences_repository.dart';
-import 'package:loc_motos/features/navigation/data/services/navigation_map_style_service.dart';
-import 'package:loc_motos/features/navigation/data/services/navigation_voice_service.dart';
-import 'package:loc_motos/features/navigation/data/datasources/spain_fuel_datasource.dart';
-import 'package:loc_motos/features/navigation/data/datasources/spain_radar_datasource.dart';
-import 'package:loc_motos/features/navigation/data/services/route_alerts_service.dart';
-import 'package:loc_motos/features/navigation/data/services/route_deviation_service.dart';
-import 'package:loc_motos/features/navigation/data/services/route_guidance_service.dart';
-import 'package:loc_motos/features/navigation/data/services/route_gpx_service.dart';
-import 'package:loc_motos/features/navigation/domain/entities/alert_preferences.dart';
-import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
-import 'package:loc_motos/features/navigation/domain/entities/hybrid_map_styles.dart';
-import 'package:loc_motos/features/navigation/domain/entities/map_region.dart';
-import 'package:loc_motos/features/navigation/domain/entities/navigation_route.dart';
-import 'package:loc_motos/features/navigation/domain/entities/route_plan.dart';
-import 'package:loc_motos/features/navigation/domain/entities/route_preferences.dart';
-import 'package:loc_motos/features/navigation/domain/exceptions/navigation_exceptions.dart';
-import 'package:loc_motos/features/navigation/domain/exceptions/navigation_user_message.dart';
-import 'package:loc_motos/features/navigation/domain/repositories/geocoding_repository.dart';
-import 'package:loc_motos/features/navigation/domain/repositories/map_region_repository.dart';
-import 'package:loc_motos/features/navigation/domain/repositories/navigation_repository.dart';
-import 'package:loc_motos/features/tracking/presentation/helpers/resolve_own_device_position.dart';
-import 'package:loc_motos/features/tracking/presentation/providers/tracking_providers.dart';
+import 'package:moto_amg/core/constants/navigation_constants.dart';
+import 'package:moto_amg/core/platform/android_graphics_compat.dart';
+import 'package:moto_amg/features/auth/domain/entities/app_user.dart';
+import 'package:moto_amg/features/auth/domain/entities/user_vehicle.dart';
+import 'package:moto_amg/features/auth/domain/entities/vehicle_map_marker.dart';
+import 'package:moto_amg/features/auth/presentation/providers/auth_providers.dart';
+import 'package:moto_amg/features/navigation/data/datasources/hive_route_cache_datasource.dart';
+import 'package:moto_amg/features/navigation/data/datasources/geocoding_datasource_factory.dart';
+import 'package:moto_amg/features/navigation/data/datasources/tomtom_snap_to_roads_datasource.dart';
+import 'package:moto_amg/features/navigation/data/datasources/valhalla_remote_datasource.dart';
+import 'package:moto_amg/features/navigation/data/repositories/geocoding_repository_impl.dart';
+import 'package:moto_amg/features/navigation/data/repositories/map_region_repository_impl.dart';
+import 'package:moto_amg/features/navigation/data/repositories/navigation_repository_impl.dart';
+import 'package:moto_amg/features/navigation/data/repositories/alert_preferences_repository.dart';
+import 'package:moto_amg/features/navigation/data/repositories/hud_safety_repository.dart';
+import 'package:moto_amg/features/navigation/data/repositories/map_appearance_repository.dart';
+import 'package:moto_amg/features/navigation/data/repositories/favorite_places_repository.dart';
+import 'package:moto_amg/features/navigation/data/repositories/recent_places_repository.dart';
+import 'package:moto_amg/features/navigation/data/repositories/route_preferences_repository.dart';
+import 'package:moto_amg/features/navigation/data/repositories/tomtom_preferences_repository.dart';
+import 'package:moto_amg/features/navigation/data/services/navigation_map_style_service.dart';
+import 'package:moto_amg/features/navigation/data/services/navigation_voice_service.dart';
+import 'package:moto_amg/features/navigation/data/datasources/spain_fuel_datasource.dart';
+import 'package:moto_amg/features/navigation/data/datasources/spain_radar_datasource.dart';
+import 'package:moto_amg/features/navigation/data/services/route_alerts_service.dart';
+import 'package:moto_amg/features/navigation/data/services/route_deviation_service.dart';
+import 'package:moto_amg/features/navigation/data/services/route_guidance_service.dart';
+import 'package:moto_amg/features/navigation/data/services/route_gpx_service.dart';
+import 'package:moto_amg/features/navigation/domain/entities/alert_preferences.dart';
+import 'package:moto_amg/features/navigation/domain/entities/geo_point.dart';
+import 'package:moto_amg/features/navigation/domain/entities/hybrid_map_styles.dart';
+import 'package:moto_amg/features/navigation/domain/entities/map_region.dart';
+import 'package:moto_amg/features/navigation/domain/entities/navigation_route.dart';
+import 'package:moto_amg/features/navigation/domain/entities/route_plan.dart';
+import 'package:moto_amg/features/navigation/domain/entities/route_preferences.dart';
+import 'package:moto_amg/features/navigation/domain/exceptions/navigation_exceptions.dart';
+import 'package:moto_amg/features/navigation/domain/exceptions/navigation_user_message.dart';
+import 'package:moto_amg/features/navigation/domain/repositories/geocoding_repository.dart';
+import 'package:moto_amg/features/navigation/domain/repositories/map_region_repository.dart';
+import 'package:moto_amg/features/navigation/domain/repositories/navigation_repository.dart';
+import 'package:moto_amg/features/tracking/presentation/helpers/resolve_own_device_position.dart';
+import 'package:moto_amg/features/tracking/presentation/providers/tracking_providers.dart';
 
 final navigationRepositoryProvider = Provider<NavigationRepository>((ref) {
   return NavigationRepositoryImpl(
@@ -106,6 +107,16 @@ final hudSafetyRepositoryProvider = Provider<HudSafetyRepository>((ref) {
 final hudSafetyProvider =
     NotifierProvider<HudSafetyController, HudSafetyPreferences>(
   HudSafetyController.new,
+);
+
+final tomtomPreferencesRepositoryProvider =
+    Provider<TomTomPreferencesRepository>((ref) {
+  return TomTomPreferencesRepository();
+});
+
+final tomtomPreferencesProvider =
+    NotifierProvider<TomTomPreferencesController, TomTomPreferences>(
+  TomTomPreferencesController.new,
 );
 
 /// Preferencia de mapa oscuro efectiva (modo + amanecer/atardecer + GPS).
@@ -250,6 +261,24 @@ class HudSafetyController extends Notifier<HudSafetyPreferences> {
 
   Future<void> setShowRouteSimulator(bool value) {
     return _persist(state.copyWith(showRouteSimulator: value));
+  }
+}
+
+class TomTomPreferencesController extends Notifier<TomTomPreferences> {
+  @override
+  TomTomPreferences build() {
+    Future.microtask(_hydrate);
+    return TomTomPreferences.defaults;
+  }
+
+  Future<void> _hydrate() async {
+    final loaded = await ref.read(tomtomPreferencesRepositoryProvider).load();
+    state = loaded;
+  }
+
+  Future<void> setEnabled(bool value) async {
+    state = state.copyWith(enabled: value);
+    await ref.read(tomtomPreferencesRepositoryProvider).save(state);
   }
 }
 

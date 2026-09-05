@@ -1,4 +1,4 @@
-import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
+﻿import 'package:moto_amg/features/auth/domain/entities/app_user.dart';
 
 class UsernameRegistration {
   const UsernameRegistration({

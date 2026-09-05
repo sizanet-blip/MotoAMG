@@ -1,7 +1,7 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:loc_motos/features/navigation/data/repositories/map_appearance_repository.dart';
-import 'package:loc_motos/features/navigation/presentation/providers/navigation_providers.dart';
+import 'package:moto_amg/features/navigation/data/repositories/map_appearance_repository.dart';
+import 'package:moto_amg/features/navigation/presentation/providers/navigation_providers.dart';
 
 /// Elección persistente del estilo de mapa en navegación.
 class MapAppearanceSettingsScreen extends ConsumerWidget {

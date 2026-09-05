@@ -1,29 +1,30 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:loc_motos/core/utils/spain_data_freshness.dart';
-import 'package:loc_motos/core/utils/distance_format.dart';
-import 'package:loc_motos/core/utils/navigation_duration_format.dart';
-import 'package:loc_motos/core/widgets/map_quick_action_tile.dart';
-import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
-import 'package:loc_motos/features/groups/presentation/providers/group_providers.dart';
-import 'package:loc_motos/features/navigation/domain/entities/alert_preferences.dart';
-import 'package:loc_motos/features/navigation/domain/entities/hybrid_map_styles.dart';
-import 'package:loc_motos/features/navigation/domain/entities/navigation_route.dart';
-import 'package:loc_motos/features/navigation/domain/entities/route_alert.dart';
-import 'package:loc_motos/features/navigation/domain/entities/route_plan.dart';
-import 'package:loc_motos/features/navigation/presentation/models/navigation_map_camera_mode.dart';
-import 'package:loc_motos/features/navigation/presentation/providers/navigation_providers.dart';
-import 'package:loc_motos/features/navigation/presentation/screens/navigation_hud_screen.dart';
-import 'package:loc_motos/features/navigation/presentation/widgets/collapsible_map_bottom_panel.dart';
-import 'package:loc_motos/features/navigation/presentation/widgets/map_network_resume_binder.dart';
-import 'package:loc_motos/features/navigation/presentation/widgets/navigation_map_view.dart';
-import 'package:loc_motos/features/navigation/presentation/widgets/navigation_map_zoom_controls.dart';
-import 'package:loc_motos/features/navigation/presentation/widgets/navigation_map_my_location_button.dart';
-import 'package:loc_motos/features/navigation/presentation/widgets/offline_map_banner.dart';
-import 'package:loc_motos/features/tracking/presentation/providers/tracking_providers.dart';
-import 'package:loc_motos/features/tracking/presentation/widgets/own_position_watcher.dart';
+import 'package:moto_amg/core/utils/spain_data_freshness.dart';
+import 'package:moto_amg/core/utils/distance_format.dart';
+import 'package:moto_amg/core/utils/navigation_duration_format.dart';
+import 'package:moto_amg/core/widgets/map_quick_action_tile.dart';
+import 'package:moto_amg/features/auth/domain/entities/app_user.dart';
+import 'package:moto_amg/features/groups/presentation/providers/group_providers.dart';
+import 'package:moto_amg/features/navigation/domain/entities/alert_preferences.dart';
+import 'package:moto_amg/features/navigation/domain/entities/hybrid_map_styles.dart';
+import 'package:moto_amg/features/navigation/domain/entities/navigation_route.dart';
+import 'package:moto_amg/features/navigation/domain/entities/route_alert.dart';
+import 'package:moto_amg/features/navigation/domain/entities/route_plan.dart';
+import 'package:moto_amg/features/navigation/presentation/models/navigation_map_camera_mode.dart';
+import 'package:moto_amg/features/navigation/presentation/providers/navigation_providers.dart';
+import 'package:moto_amg/features/navigation/presentation/screens/navigation_hud_screen.dart';
+import 'package:moto_amg/features/navigation/presentation/helpers/enrich_route_limits_before_navigation.dart';
+import 'package:moto_amg/features/navigation/presentation/widgets/collapsible_map_bottom_panel.dart';
+import 'package:moto_amg/features/navigation/presentation/widgets/map_network_resume_binder.dart';
+import 'package:moto_amg/features/navigation/presentation/widgets/navigation_map_view.dart';
+import 'package:moto_amg/features/navigation/presentation/widgets/navigation_map_zoom_controls.dart';
+import 'package:moto_amg/features/navigation/presentation/widgets/navigation_map_my_location_button.dart';
+import 'package:moto_amg/features/navigation/presentation/widgets/offline_map_banner.dart';
+import 'package:moto_amg/features/tracking/presentation/providers/tracking_providers.dart';
+import 'package:moto_amg/features/tracking/presentation/widgets/own_position_watcher.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 
 class RoutePreviewScreen extends ConsumerStatefulWidget {
@@ -70,31 +71,6 @@ class _RoutePreviewScreenState extends ConsumerState<RoutePreviewScreen> {
     }
     setState(() => _plan = next);
     ref.read(activeNavigationRouteProvider.notifier).state = next.selected;
-    unawaited(_enrichTomTomForSelected());
-  }
-
-  /// TomTom solo se aplica a la ruta activa (no a todas al calcular).
-  Future<void> _enrichTomTomForSelected() async {
-    final route = _plan.selected;
-    try {
-      final updated = await ref
-          .read(navigationRepositoryProvider)
-          .refreshSpeedLimits(route);
-      if (!mounted || updated.id != route.id) {
-        return;
-      }
-      final alts = [
-        for (final r in _plan.alternatives)
-          if (r.id == updated.id) updated else r,
-      ];
-      setState(() {
-        _plan = RoutePlan(
-          alternatives: alts,
-          selectedIndex: _plan.selectedIndex,
-        );
-      });
-      ref.read(activeNavigationRouteProvider.notifier).state = updated;
-    } catch (_) {}
   }
 
   bool _fuelVisibleOnMap(AlertPreferences prefs) {
@@ -225,12 +201,25 @@ class _RoutePreviewScreenState extends ConsumerState<RoutePreviewScreen> {
         _enrichedRouteIds.add(route.id);
       } catch (_) {}
     }
+    if (!mounted) {
+      return;
+    }
+
+    route = await enrichRouteLimitsBeforeNavigation(
+      context: context,
+      ref: ref,
+      route: route,
+    );
+    if (!mounted) {
+      return;
+    }
+
     ref.read(activeNavigationRouteProvider.notifier).state = route;
     await ref.read(navigationRepositoryProvider).saveActiveRoute(route);
     if (!mounted) {
       return;
     }
-    // Sustituye la preview: dos MapLibre a la vez tumba el proceso Android 11.
+    // Sustituye la preview: dos MapLibre a la vez tumba el emulador Android 11.
     await Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute<void>(
         builder: (_) => NavigationHudScreen(
@@ -247,7 +236,7 @@ class _RoutePreviewScreenState extends ConsumerState<RoutePreviewScreen> {
     final route = _plan.selected;
     final name = route.destinationLabel?.trim().isNotEmpty == true
         ? 'Ruta a ${route.destinationLabel!.trim()}'
-        : 'Ruta LocMotos';
+        : 'Ruta MotoAMG';
     try {
       await ref.read(routeGpxServiceProvider).shareRoute(route, name: name);
     } catch (_) {
@@ -355,8 +344,10 @@ class _RoutePreviewScreenState extends ConsumerState<RoutePreviewScreen> {
     final group = groupId == null || groupId.isEmpty
         ? null
         : ref.watch(rideGroupProvider(groupId)).asData?.value;
-    final canPublishGroupRoute =
-        group != null && group.isActive && group.isAdmin(widget.user.uid);
+    final canPublishGroupRoute = widget.enableGroupFeatures &&
+        group != null &&
+        group.isActive &&
+        group.isAdmin(widget.user.uid);
     final hasSharedRoute = groupId != null &&
         groupId.isNotEmpty &&
         (ref.watch(groupHasSharedRouteProvider(groupId)).asData?.value ==
@@ -927,6 +918,9 @@ class _RoutePreviewSheet extends StatelessWidget {
                 ? Icons.sync_rounded
                 : Icons.groups_rounded,
             label: updatingGroupRoute ? 'Actualizar' : 'Grupo',
+            tooltip: updatingGroupRoute
+                ? 'Actualizar la ruta publicada del grupo'
+                : 'Publicar esta ruta para el grupo',
             emphasized: true,
             enabled: !enriching && !publishBusy,
             onTap: enriching || publishBusy ? null : onPublishToGroup,
@@ -935,12 +929,14 @@ class _RoutePreviewSheet extends StatelessWidget {
           MapQuickActionTile(
             icon: Icons.playlist_remove_rounded,
             label: 'Quitar',
+            tooltip: 'Quitar la ruta del grupo',
             enabled: !enriching,
             onTap: enriching ? null : onClearGroupRoute,
           ),
         MapQuickActionTile(
           icon: Icons.ios_share_rounded,
           label: 'GPX',
+          tooltip: 'Compartir o exportar la ruta en formato GPX',
           enabled: !enriching,
           onTap: enriching ? null : onShare,
         ),
@@ -976,17 +972,20 @@ class _RoutePreviewSheet extends StatelessWidget {
               ],
             ),
             SizedBox(height: dense ? 10 : 12),
-            FilledButton(
-              onPressed: enriching ? null : onStart,
-              style: FilledButton.styleFrom(
-                minimumSize: Size.fromHeight(dense ? 44 : 48),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+            Tooltip(
+              message: 'Iniciar la navegación con la ruta seleccionada',
+              child: FilledButton(
+                onPressed: enriching ? null : onStart,
+                style: FilledButton.styleFrom(
+                  minimumSize: Size.fromHeight(dense ? 44 : 48),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
                 ),
-              ),
-              child: const Text(
-                'Empezar navegación',
-                style: TextStyle(fontWeight: FontWeight.w700),
+                child: const Text(
+                  'Empezar navegación',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
               ),
             ),
           ],

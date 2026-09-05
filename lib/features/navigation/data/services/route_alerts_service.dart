@@ -1,37 +1,46 @@
-import 'dart:math' as math;
+﻿import 'dart:math' as math;
 
 import 'package:geolocator/geolocator.dart';
-import 'package:loc_motos/core/constants/navigation_constants.dart';
-import 'package:loc_motos/features/auth/domain/entities/user_vehicle.dart';
-import 'package:loc_motos/features/navigation/data/datasources/spain_fuel_datasource.dart';
-import 'package:loc_motos/features/navigation/data/datasources/spain_radar_datasource.dart';
-import 'package:loc_motos/features/navigation/data/datasources/valhalla_remote_datasource.dart';
-import 'package:loc_motos/features/navigation/data/models/navigation_route_model.dart';
-import 'package:loc_motos/features/navigation/data/services/route_guidance_service.dart';
-import 'package:loc_motos/features/navigation/data/services/sharp_curve_detector.dart';
-import 'package:loc_motos/features/navigation/domain/entities/alert_preferences.dart';
-import 'package:loc_motos/features/navigation/domain/entities/fuel_alert_display.dart';
-import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
-import 'package:loc_motos/features/navigation/domain/entities/navigation_route.dart';
-import 'package:loc_motos/features/navigation/domain/entities/route_alert.dart';
-/// Enriquece una ruta con avisos (peajes, gasolineras MITECO, radares, curvas).
+import 'package:moto_amg/core/constants/navigation_constants.dart';
+import 'package:moto_amg/features/auth/domain/entities/user_vehicle.dart';
+import 'package:moto_amg/features/navigation/data/datasources/overpass_poi_datasource.dart';
+import 'package:moto_amg/features/navigation/data/datasources/spain_fuel_datasource.dart';
+import 'package:moto_amg/features/navigation/data/datasources/spain_radar_datasource.dart';
+import 'package:moto_amg/features/navigation/data/datasources/valhalla_remote_datasource.dart';
+import 'package:moto_amg/features/navigation/data/models/navigation_route_model.dart';
+import 'package:moto_amg/features/navigation/data/services/route_guidance_service.dart';
+import 'package:moto_amg/features/navigation/data/services/sharp_curve_detector.dart';
+import 'package:moto_amg/features/navigation/domain/entities/alert_preferences.dart';
+import 'package:moto_amg/features/navigation/domain/entities/fuel_alert_display.dart';
+import 'package:moto_amg/features/navigation/domain/entities/geo_point.dart';
+import 'package:moto_amg/features/navigation/domain/entities/navigation_route.dart';
+import 'package:moto_amg/features/navigation/domain/entities/navigation_route.dart';
+import 'package:moto_amg/features/navigation/domain/entities/route_alert.dart';
+import 'package:moto_amg/features/navigation/domain/services/maneuver_significance.dart';
+import 'package:moto_amg/features/navigation/domain/entities/route_map_poi.dart';
+
+/// Enriquece una ruta con avisos (peajes, gasolineras MITECO, radares, curvas)
+/// y POI de mapa (semáforos / STOP / ceda vía Overpass).
 class RouteAlertsService {
   RouteAlertsService({
     ValhallaRemoteDataSource? valhalla,
     SpainFuelDatasource? spainFuel,
     SpainRadarDatasource? spainRadars,
+    OverpassPoiDatasource? overpass,
     RouteGuidanceService? guidance,
   })  : _valhalla = valhalla ?? ValhallaRemoteDataSource(),
         _spainFuel = spainFuel ?? SpainFuelDatasource(),
         _spainRadars = spainRadars ?? SpainRadarDatasource(),
+        _overpass = overpass ?? OverpassPoiDatasource(),
         _guidance = guidance ?? RouteGuidanceService();
 
   final ValhallaRemoteDataSource _valhalla;
   final SpainFuelDatasource _spainFuel;
   final SpainRadarDatasource _spainRadars;
+  final OverpassPoiDatasource _overpass;
   final RouteGuidanceService _guidance;
 
-  final _cache = <String, List<RouteAlert>>{};
+  final _cache = <String, ({List<RouteAlert> alerts, List<RouteMapPoi> mapPois})>{};
 
   Future<NavigationRoute> enrich(
     NavigationRoute route, {
@@ -42,10 +51,10 @@ class RouteAlertsService {
       return route;
     }
     final cacheKey =
-        '${route.id}_${preferredFuel?.name ?? 'all'}_${preferences.enrichCacheSuffix}_radar75';
+        '${route.id}_${preferredFuel?.name ?? 'all'}_${preferences.enrichCacheSuffix}_radar75_tc1';
     final cached = _cache[cacheKey];
     if (cached != null) {
-      return _withAlerts(route, cached);
+      return _withAlertsAndMapPois(route, cached.alerts, cached.mapPois);
     }
 
     final futures = <Future<List<RouteAlert>>>[
@@ -66,25 +75,42 @@ class RouteAlertsService {
       else
         Future.value(const <RouteAlert>[]),
       if (preferences.curvesEnabled)
-        Future.value(SharpCurveDetector.detect(route.polyline))
+        Future.value(_detectCurves(route))
       else
         Future.value(const <RouteAlert>[]),
     ];
 
-    final results = await Future.wait(futures);
+    final alertsFuture = Future.wait(futures);
+    final mapPoisFuture =
+        _overpass.fetchTrafficControlsNearRoute(route.polyline);
+    final alertLists = await alertsFuture;
+    final mapPois = await mapPoisFuture;
 
     final merged = <RouteAlert>[
-      ...results[0],
-      ...results[1],
-      ..._withRouteSpeedLimits(route, results[2]),
-      ...results[3],
+      ...alertLists[0],
+      ...alertLists[1],
+      ..._withRouteSpeedLimits(route, alertLists[2]),
+      ...alertLists[3],
     ]..sort(
         (a, b) =>
             a.distanceAlongRouteMeters.compareTo(b.distanceAlongRouteMeters),
       );
 
-    _cache[cacheKey] = List.unmodifiable(merged);
-    return _withAlerts(route, merged);
+    _cache[cacheKey] = (
+      alerts: List.unmodifiable(merged),
+      mapPois: List.unmodifiable(mapPois),
+    );
+    return _withAlertsAndMapPois(route, merged, mapPois);
+  }
+
+  List<RouteAlert> _detectCurves(NavigationRoute route) {
+    final raw = SharpCurveDetector.detect(route.polyline);
+    return ManeuverSignificance.filterCurvesAtSignificantTurns(
+      raw,
+      route,
+      maneuverAlongMeters: (maneuver) =>
+          _guidance.distanceAlongRouteMeters(maneuver.location, route.polyline),
+    );
   }
 
   /// Rellena velocidad del radar con el límite Valhalla del tramo si falta.
@@ -135,9 +161,13 @@ class RouteAlertsService {
     }
   }
 
-  NavigationRoute _withAlerts(NavigationRoute route, List<RouteAlert> alerts) {
+  NavigationRoute _withAlertsAndMapPois(
+    NavigationRoute route,
+    List<RouteAlert> alerts,
+    List<RouteMapPoi> mapPois,
+  ) {
     if (route is NavigationRouteModel) {
-      return route.copyWithAlerts(alerts);
+      return route.copyWithAlertsAndMapPois(alerts: alerts, mapPois: mapPois);
     }
     return NavigationRouteModel(
       id: route.id,
@@ -152,6 +182,7 @@ class RouteAlertsService {
       speedLimitKmh: route.speedLimitKmh,
       speedLimitSegments: route.speedLimitSegments,
       alerts: alerts,
+      mapPois: mapPois,
       originLabel: route.originLabel,
       destinationLabel: route.destinationLabel,
     );
@@ -257,13 +288,20 @@ class RouteAlertsService {
     required NavigationRoute route,
     required double alongMeters,
     double graceMeters = 40,
+    bool Function(RouteAlert alert)? accept,
   }) {
-    return nextAlert(
-      route: route,
-      alongMeters: alongMeters,
-      graceMeters: graceMeters,
-      onlyType: RouteAlertType.sharpCurve,
-    );
+    for (final alert in route.alerts) {
+      if (alert.type != RouteAlertType.sharpCurve) {
+        continue;
+      }
+      if (accept != null && !accept(alert)) {
+        continue;
+      }
+      if (alongMeters <= alert.distanceAlongRouteMeters + graceMeters) {
+        return alert;
+      }
+    }
+    return null;
   }
 
   Map<RouteAlertType, int> counts(List<RouteAlert> alerts) {

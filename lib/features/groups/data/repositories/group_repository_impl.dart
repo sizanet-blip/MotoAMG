@@ -1,12 +1,12 @@
-import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
-import 'package:loc_motos/features/groups/data/datasources/group_remote_datasource.dart';
-import 'package:loc_motos/features/groups/domain/entities/group_member.dart';
-import 'package:loc_motos/features/groups/domain/entities/group_membership.dart';
-import 'package:loc_motos/features/groups/domain/entities/ride_group.dart';
-import 'package:loc_motos/features/groups/domain/entities/ride_role.dart';
-import 'package:loc_motos/features/groups/domain/repositories/group_repository.dart';
-import 'package:loc_motos/features/navigation/data/models/navigation_route_model.dart';
-import 'package:loc_motos/features/navigation/domain/entities/navigation_route.dart';
+﻿import 'package:moto_amg/features/auth/domain/entities/app_user.dart';
+import 'package:moto_amg/features/groups/data/datasources/group_remote_datasource.dart';
+import 'package:moto_amg/features/groups/domain/entities/group_member.dart';
+import 'package:moto_amg/features/groups/domain/entities/group_membership.dart';
+import 'package:moto_amg/features/groups/domain/entities/ride_group.dart';
+import 'package:moto_amg/features/groups/domain/entities/ride_role.dart';
+import 'package:moto_amg/features/groups/domain/repositories/group_repository.dart';
+import 'package:moto_amg/features/navigation/data/models/navigation_route_model.dart';
+import 'package:moto_amg/features/navigation/domain/entities/navigation_route.dart';
 
 class GroupRepositoryImpl implements GroupRepository {
   GroupRepositoryImpl(this._remote);
@@ -117,6 +117,7 @@ class GroupRepositoryImpl implements GroupRepository {
             speedLimitKmh: route.speedLimitKmh,
             speedLimitSegments: route.speedLimitSegments,
             alerts: route.alerts,
+            mapPois: route.mapPois,
             originLabel: route.originLabel,
             destinationLabel: route.destinationLabel,
           );

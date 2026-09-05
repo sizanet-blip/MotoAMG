@@ -1,8 +1,8 @@
 {
-  "name": "locmotos-livekit-token",
+  "name": "motoamg-livekit-token",
   "version": "1.0.0",
   "private": true,
-  "description": "Emite JWT LiveKit tras validar Firebase Auth + membresía Firestore",
+  "description": "Emite JWT LiveKit tras validar Firebase Auth y membresia Firestore",
   "main": "server.js",
   "engines": {
     "node": ">=20"

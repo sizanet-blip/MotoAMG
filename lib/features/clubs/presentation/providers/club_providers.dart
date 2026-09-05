@@ -1,7 +1,7 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:loc_motos/features/auth/presentation/providers/auth_providers.dart';
-import 'package:loc_motos/features/clubs/data/datasources/club_remote_datasource.dart';
-import 'package:loc_motos/features/clubs/domain/entities/moto_club.dart';
+﻿import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:moto_amg/features/auth/presentation/providers/auth_providers.dart';
+import 'package:moto_amg/features/clubs/data/datasources/club_remote_datasource.dart';
+import 'package:moto_amg/features/clubs/domain/entities/moto_club.dart';
 
 final clubRemoteDataSourceProvider = Provider<ClubRemoteDataSource>((ref) {
   return ClubRemoteDataSource();

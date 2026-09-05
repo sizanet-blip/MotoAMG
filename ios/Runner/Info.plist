@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>LocMotos</string>
+	<string>MotoAMG</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -15,7 +15,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>LocMotos</string>
+	<string>MotoAMG</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -29,14 +29,14 @@
 			<string>Editor</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>com.googleusercontent.apps.128161523972-vg8amrsabjr0l2anj7jimop61p1uue61</string>
+				<string>com.googleusercontent.apps.853611010116-1719vbon3r386q8ufb87o7qeab750nbg</string>
 			</array>
 		</dict>
 	</array>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>GIDClientID</key>
-	<string>128161523972-vg8amrsabjr0l2anj7jimop61p1uue61.apps.googleusercontent.com</string>
+	<string>853611010116-1719vbon3r386q8ufb87o7qeab750nbg.apps.googleusercontent.com</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>LSApplicationQueriesSchemes</key>
@@ -51,15 +51,15 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>LocMotos usa tu ubicación en segundo plano para que el pelotón te vea en el mapa mientras circulas, aunque bloquees la pantalla.</string>
+	<string>MotoAMG usa tu ubicación en segundo plano para que el pelotón te vea en el mapa mientras circulas, aunque bloquees la pantalla.</string>
 	<key>NSLocationAlwaysUsageDescription</key>
-	<string>LocMotos usa tu ubicación en segundo plano para que el pelotón te vea en el mapa mientras circulas.</string>
+	<string>MotoAMG usa tu ubicación en segundo plano para que el pelotón te vea en el mapa mientras circulas.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>LocMotos necesita tu ubicación para mostrarte en el mapa del grupo y guiarte en la ruta.</string>
+	<string>MotoAMG necesita tu ubicación para mostrarte en el mapa del grupo y guiarte en la ruta.</string>
 	<key>NSLocationUsageDescription</key>
-	<string>LocMotos necesita tu ubicación para el mapa del grupo y la navegación.</string>
+	<string>MotoAMG necesita tu ubicación para el mapa del grupo y la navegación.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>LocMotos usa el micrófono para el intercom de voz del pelotón mientras la app está abierta.</string>
+	<string>MotoAMG usa el micrófono para el intercom de voz del pelotón mientras la app está abierta.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

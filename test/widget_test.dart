@@ -1,12 +1,12 @@
-import 'package:flutter_test/flutter_test.dart';
-import 'package:loc_motos/app.dart';
-import 'package:loc_motos/core/constants/app_constants.dart';
-import 'package:loc_motos/features/auth/presentation/providers/auth_providers.dart';
+﻿import 'package:flutter_test/flutter_test.dart';
+import 'package:moto_amg/app.dart';
+import 'package:moto_amg/core/constants/app_constants.dart';
+import 'package:moto_amg/features/auth/presentation/providers/auth_providers.dart';
 
 void main() {
   testWidgets('muestra las dos formas de entrar', (tester) async {
     await tester.pumpWidget(
-      LocMotosApp(
+      MotoAmgApp(
         overrides: [
           authStateProvider.overrideWith((ref) => Stream.value(null)),
         ],

@@ -1,7 +1,7 @@
-import 'package:flutter/foundation.dart';
+﻿import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:loc_motos/core/constants/app_constants.dart';
-import 'package:loc_motos/features/tracking/domain/exceptions/location_exceptions.dart';
+import 'package:moto_amg/core/constants/app_constants.dart';
+import 'package:moto_amg/features/tracking/domain/exceptions/location_exceptions.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 class DeviceLocationService {

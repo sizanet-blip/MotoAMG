@@ -1,5 +1,5 @@
-import 'package:json_annotation/json_annotation.dart';
-import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
+﻿import 'package:json_annotation/json_annotation.dart';
+import 'package:moto_amg/features/auth/domain/entities/app_user.dart';
 
 class AuthProviderTypeConverter
     implements JsonConverter<AuthProviderType, String> {

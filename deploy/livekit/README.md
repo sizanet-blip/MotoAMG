@@ -1,4 +1,4 @@
-# LiveKit + tokens (LocMotos intercom)
+# LiveKit + tokens (MotoAMG intercom)
 
 Servidor de salas: `livekit-server` (Docker, `network_mode: host`).  
 Tokens de acceso: servicio Node en `127.0.0.1:7882`, expuesto como `https://livekit.albertomaestre.es/token`.
@@ -6,7 +6,7 @@ Tokens de acceso: servicio Node en `127.0.0.1:7882`, expuesto como `https://live
 ## Requisitos
 
 - LiveKit ya en marcha (`wss://livekit.albertomaestre.es`)
-- Cuenta de servicio Firebase (`locmotos-project`) con acceso a Auth + Firestore
+- Cuenta de servicio Firebase (proyecto `motoamg`) con acceso a Auth + Firestore
 - Node.js 20+ o Docker
 
 ## 1. Credenciales en el VPS
@@ -19,13 +19,15 @@ sudo mkdir -p /home/ubuntu/livekit/token-server
 sudo tee /home/ubuntu/livekit/token-server/.env >/dev/null <<EOF
 PORT=7882
 LIVEKIT_URL=wss://livekit.albertomaestre.es
-LIVEKIT_API_KEY=locmotos
-LIVEKIT_API_SECRET=$(sudo awk '/^[[:space:]]*locmotos:/{print $2; exit}' /home/ubuntu/livekit/livekit.yaml)
+LIVEKIT_API_KEY=motoamg
+LIVEKIT_API_SECRET=$(sudo awk '/^[[:space:]]*motoamg:/{print $2; exit}' /home/ubuntu/livekit/livekit.yaml)
 GOOGLE_APPLICATION_CREDENTIALS=/home/ubuntu/livekit/token-server/serviceAccount.json
 EOF
 sudo chmod 600 /home/ubuntu/livekit/token-server/.env
 sudo chmod 600 /home/ubuntu/livekit/token-server/serviceAccount.json
 ```
+
+> Si en `livekit.yaml` la API key sigue llamándose `locmotos`, usa ese nombre en `LIVEKIT_API_KEY` y en el `awk` hasta que la renombres a `motoamg`.
 
 ## 2. Desplegar el token server
 
@@ -40,10 +42,10 @@ npm ci --omit=dev
 Systemd (recomendado):
 
 ```bash
-sudo cp locmotos-livekit-token.service /etc/systemd/system/
+sudo cp motoamg-livekit-token.service /etc/systemd/system/
 sudo systemctl daemon-reload
-sudo systemctl enable --now locmotos-livekit-token
-sudo systemctl status locmotos-livekit-token
+sudo systemctl enable --now motoamg-livekit-token
+sudo systemctl status motoamg-livekit-token
 ```
 
 Prueba local:
@@ -113,7 +115,7 @@ Respuesta 200:
 
 Errores: `401` token Firebase inválido, `403` no es miembro del grupo, `400` body inválido.
 
-## 5. App LocMotos
+## 5. App MotoAMG
 
 Constantes en `lib/core/constants/app_constants.dart`:
 

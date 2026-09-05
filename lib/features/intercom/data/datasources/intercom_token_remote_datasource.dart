@@ -1,9 +1,9 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
-import 'package:loc_motos/core/constants/app_constants.dart';
-import 'package:loc_motos/features/intercom/domain/entities/intercom_token_credentials.dart';
+import 'package:moto_amg/core/constants/app_constants.dart';
+import 'package:moto_amg/features/intercom/domain/entities/intercom_token_credentials.dart';
 
 class IntercomTokenRemoteDataSource {
   IntercomTokenRemoteDataSource({

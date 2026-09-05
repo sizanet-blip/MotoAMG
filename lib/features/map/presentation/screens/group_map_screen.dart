@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
@@ -6,46 +6,47 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:loc_motos/core/constants/navigation_constants.dart';
-import 'package:loc_motos/core/utils/distance_format.dart';
-import 'package:loc_motos/core/utils/external_navigation.dart';
-import 'package:loc_motos/core/utils/gps_status.dart';
-import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
-import 'package:loc_motos/features/auth/domain/entities/vehicle_map_marker.dart';
-import 'package:loc_motos/features/auth/presentation/widgets/vehicle_navigation_marker.dart';
-import 'package:loc_motos/features/groups/domain/entities/group_incident.dart';
-import 'package:loc_motos/features/groups/domain/entities/group_member.dart';
-import 'package:loc_motos/features/groups/domain/entities/group_voice_announcement.dart';
-import 'package:loc_motos/features/groups/domain/entities/ride_role.dart';
-import 'package:loc_motos/features/groups/domain/services/group_pack_proximity_tracker.dart';
-import 'package:loc_motos/features/groups/domain/services/group_ride_alert_feedback.dart';
-import 'package:loc_motos/features/groups/presentation/providers/group_providers.dart';
-import 'package:loc_motos/features/groups/presentation/widgets/catch_up_cabecera_sheet.dart';
-import 'package:loc_motos/features/groups/presentation/widgets/group_incident_session_panel.dart';
-import 'package:loc_motos/features/groups/presentation/widgets/group_incident_widgets.dart';
-import 'package:loc_motos/features/groups/presentation/widgets/group_pack_list_sheet.dart';
-import 'package:loc_motos/features/groups/domain/entities/group_stop.dart';
-import 'package:loc_motos/features/groups/domain/services/group_stop_service.dart';
-import 'package:loc_motos/features/groups/presentation/widgets/group_stop_map_marker.dart';
-import 'package:loc_motos/features/groups/presentation/widgets/group_stops_list_sheet.dart';
-import 'package:loc_motos/features/groups/presentation/widgets/group_stop_widgets.dart';
-import 'package:loc_motos/features/intercom/presentation/widgets/intercom_controls_bar.dart';
+import 'package:moto_amg/core/constants/navigation_constants.dart';
+import 'package:moto_amg/core/utils/distance_format.dart';
+import 'package:moto_amg/core/utils/external_navigation.dart';
+import 'package:moto_amg/core/utils/gps_status.dart';
+import 'package:moto_amg/features/auth/domain/entities/app_user.dart';
+import 'package:moto_amg/features/auth/domain/entities/vehicle_map_marker.dart';
+import 'package:moto_amg/features/auth/presentation/widgets/vehicle_navigation_marker.dart';
+import 'package:moto_amg/features/groups/domain/entities/group_incident.dart';
+import 'package:moto_amg/features/groups/domain/entities/group_member.dart';
+import 'package:moto_amg/features/groups/domain/entities/group_voice_announcement.dart';
+import 'package:moto_amg/features/groups/domain/entities/ride_role.dart';
+import 'package:moto_amg/features/groups/domain/services/group_pack_proximity_tracker.dart';
+import 'package:moto_amg/features/groups/domain/services/group_ride_alert_feedback.dart';
+import 'package:moto_amg/features/groups/presentation/providers/group_providers.dart';
+import 'package:moto_amg/features/groups/presentation/widgets/catch_up_cabecera_sheet.dart';
+import 'package:moto_amg/features/groups/presentation/widgets/group_incident_session_panel.dart';
+import 'package:moto_amg/features/groups/presentation/widgets/group_incident_widgets.dart';
+import 'package:moto_amg/features/groups/presentation/widgets/group_pack_list_sheet.dart';
+import 'package:moto_amg/features/groups/domain/entities/group_stop.dart';
+import 'package:moto_amg/features/groups/domain/services/group_stop_service.dart';
+import 'package:moto_amg/features/groups/presentation/widgets/group_stop_map_marker.dart';
+import 'package:moto_amg/features/groups/presentation/widgets/group_stops_list_sheet.dart';
+import 'package:moto_amg/features/groups/presentation/widgets/group_stop_widgets.dart';
+import 'package:moto_amg/features/intercom/presentation/widgets/intercom_controls_bar.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
-import 'package:loc_motos/features/navigation/domain/entities/hybrid_map_styles.dart';
-import 'package:loc_motos/features/navigation/domain/entities/navigation_route.dart';
-import 'package:loc_motos/features/navigation/data/services/navigation_map_style_service.dart';
-import 'package:loc_motos/features/navigation/presentation/providers/navigation_providers.dart';
-import 'package:loc_motos/features/navigation/presentation/screens/navigation_hub_screen.dart';
-import 'package:loc_motos/features/navigation/presentation/screens/navigation_hud_screen.dart';
-import 'package:loc_motos/features/navigation/presentation/theme/navigation_hud_theme.dart';
-import 'package:loc_motos/features/navigation/presentation/widgets/navigation_map_my_location_button.dart';
-import 'package:loc_motos/features/navigation/presentation/widgets/navigation_map_zoom_controls.dart';
-import 'package:loc_motos/features/navigation/presentation/widgets/offline_map_banner.dart';
-import 'package:loc_motos/features/settings/presentation/screens/offline_maps_settings_screen.dart';
-import 'package:loc_motos/features/tracking/domain/entities/device_position.dart';
-import 'package:loc_motos/features/tracking/domain/entities/live_location.dart';
-import 'package:loc_motos/features/tracking/presentation/providers/tracking_providers.dart';
+import 'package:moto_amg/features/navigation/domain/entities/geo_point.dart';
+import 'package:moto_amg/features/navigation/domain/entities/hybrid_map_styles.dart';
+import 'package:moto_amg/features/navigation/domain/entities/navigation_route.dart';
+import 'package:moto_amg/features/navigation/data/services/navigation_map_style_service.dart';
+import 'package:moto_amg/features/navigation/presentation/providers/navigation_providers.dart';
+import 'package:moto_amg/features/navigation/presentation/screens/navigation_hub_screen.dart';
+import 'package:moto_amg/features/navigation/presentation/helpers/enrich_route_limits_before_navigation.dart';
+import 'package:moto_amg/features/navigation/presentation/screens/navigation_hud_screen.dart';
+import 'package:moto_amg/features/navigation/presentation/theme/navigation_hud_theme.dart';
+import 'package:moto_amg/features/navigation/presentation/widgets/navigation_map_my_location_button.dart';
+import 'package:moto_amg/features/navigation/presentation/widgets/navigation_map_zoom_controls.dart';
+import 'package:moto_amg/features/navigation/presentation/widgets/offline_map_banner.dart';
+import 'package:moto_amg/features/settings/presentation/screens/offline_maps_settings_screen.dart';
+import 'package:moto_amg/features/tracking/domain/entities/device_position.dart';
+import 'package:moto_amg/features/tracking/domain/entities/live_location.dart';
+import 'package:moto_amg/features/tracking/presentation/providers/tracking_providers.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 
 /// Mapa en vivo del grupo: mismo motor/estilos que navegación (MapLibre).
@@ -158,24 +159,24 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
   static const _routeDestColor = Color(0xFFC62828);
   static const _routeWaypointColor = Color(0xFFEF6C00);
 
-  static const _iconMe = 'locmotos-group-me';
-  static const _iconGroup = 'locmotos-group-mate';
-  static const _iconCabecera = 'locmotos-group-cabecera';
-  static const _iconCola = 'locmotos-group-cola';
-  static const _iconStale = 'locmotos-group-stale';
-  static const _iconEmergencia = 'locmotos-group-emergencia';
-  static const _iconAveria = 'locmotos-group-averia';
-  static const _iconSeparado = 'locmotos-group-separado';
-  static const _iconStopCafe = 'locmotos-group-stop-cafe';
-  static const _iconStopFuel = 'locmotos-group-stop-fuel';
-  static const _iconStopWait = 'locmotos-group-stop-wait';
-  static const _iconStopMeet = 'locmotos-group-stop-meet';
-  static const _iconRouteOrigin = 'locmotos-group-route-origin';
-  static const _iconRouteDest = 'locmotos-group-route-dest';
-  static const _iconRouteWaypoint = 'locmotos-group-route-waypoint';
+  static const _iconMe = 'motoamg-group-me';
+  static const _iconGroup = 'motoamg-group-mate';
+  static const _iconCabecera = 'motoamg-group-cabecera';
+  static const _iconCola = 'motoamg-group-cola';
+  static const _iconStale = 'motoamg-group-stale';
+  static const _iconEmergencia = 'motoamg-group-emergencia';
+  static const _iconAveria = 'motoamg-group-averia';
+  static const _iconSeparado = 'motoamg-group-separado';
+  static const _iconStopCafe = 'motoamg-group-stop-cafe';
+  static const _iconStopFuel = 'motoamg-group-stop-fuel';
+  static const _iconStopWait = 'motoamg-group-stop-wait';
+  static const _iconStopMeet = 'motoamg-group-stop-meet';
+  static const _iconRouteOrigin = 'motoamg-group-route-origin';
+  static const _iconRouteDest = 'motoamg-group-route-dest';
+  static const _iconRouteWaypoint = 'motoamg-group-route-waypoint';
 
-  static const _routeSourceId = 'locmotos-group-route';
-  static const _routeLineLayerId = 'locmotos-group-route-line';
+  static const _routeSourceId = 'motoamg-group-route';
+  static const _routeLineLayerId = 'motoamg-group-route-line';
 
   MapLibreMapController? _controller;
   late String _activeStyle;
@@ -1238,6 +1239,14 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
     if (!mounted) {
       return;
     }
+    hudRoute = await enrichRouteLimitsBeforeNavigation(
+      context: context,
+      ref: ref,
+      route: hudRoute,
+    );
+    if (!mounted) {
+      return;
+    }
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute<void>(
         builder: (_) => NavigationHudScreen(
@@ -2258,7 +2267,7 @@ class _GroupMapQuickActions extends StatelessWidget {
             if (preferExternalNav && onNavigate != null)
               (
                 icon: Icons.sports_motorsports_outlined,
-                label: 'Navegar en LocMotos',
+                label: 'Navegar en MotoAMG',
                 onTap: onNavigate!,
               ),
           ],

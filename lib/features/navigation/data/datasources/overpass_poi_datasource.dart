@@ -1,17 +1,121 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:http/http.dart' as http;
-import 'package:loc_motos/core/constants/navigation_constants.dart';
-import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
-import 'package:loc_motos/features/navigation/domain/entities/route_alert.dart';
+import 'package:moto_amg/core/constants/navigation_constants.dart';
+import 'package:moto_amg/features/navigation/domain/entities/geo_point.dart';
+import 'package:moto_amg/features/navigation/domain/entities/route_alert.dart';
+import 'package:moto_amg/features/navigation/domain/entities/route_map_poi.dart';
 
-/// POI OpenStreetMap vía Overpass (gasolineras cerca de la ruta).
+/// POI OpenStreetMap vía Overpass (controles de tráfico; gasolineras legacy).
 class OverpassPoiDatasource {
   OverpassPoiDatasource({http.Client? client})
       : _client = client ?? http.Client();
 
   final http.Client _client;
+
+  /// Semáforos, STOP y ceda a lo largo de la ruta (solo mapa).
+  Future<List<RouteMapPoi>> fetchTrafficControlsNearRoute(
+    List<GeoPoint> polyline,
+  ) async {
+    if (polyline.length < 2) {
+      return const [];
+    }
+    final boxes = _sampleBboxes(
+      polyline,
+      everyMeters: NavigationConstants.overpassTrafficSampleEveryMeters,
+      bufferMeters: NavigationConstants.trafficControlRouteBufferMeters,
+    );
+    if (boxes.isEmpty) {
+      return const [];
+    }
+
+    final parts = <String>[
+      for (final b in boxes) ...[
+        'node["highway"="traffic_signals"](${b.south},${b.west},${b.north},${b.east});',
+        'node["highway"="stop"](${b.south},${b.west},${b.north},${b.east});',
+        'node["highway"="give_way"](${b.south},${b.west},${b.north},${b.east});',
+      ],
+    ];
+    final query = '[out:json][timeout:20];'
+        '(${parts.join()});'
+        'out body;';
+
+    try {
+      final response = await _client
+          .post(
+            Uri.parse(NavigationConstants.overpassInterpreterUrl),
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'User-Agent': 'MotoAMG/1.0 (navigation; contact@MotoAMG.local)',
+            },
+            body: {'data': query},
+          )
+          .timeout(NavigationConstants.overpassRequestTimeout);
+      if (response.statusCode != 200) {
+        return const [];
+      }
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map<String, dynamic>) {
+        return const [];
+      }
+      final elements = decoded['elements'] as List<dynamic>? ?? const [];
+      final pois = <RouteMapPoi>[];
+      final seen = <String>{};
+      final buffer = NavigationConstants.trafficControlRouteBufferMeters;
+
+      for (final raw in elements) {
+        if (raw is! Map<String, dynamic>) {
+          continue;
+        }
+        final lat = (raw['lat'] as num?)?.toDouble();
+        final lng = (raw['lon'] as num?)?.toDouble();
+        if (lat == null || lng == null) {
+          continue;
+        }
+        final tags = raw['tags'];
+        final tagMap = tags is Map
+            ? Map<String, dynamic>.from(tags)
+            : const <String, dynamic>{};
+        final highway = tagMap['highway'] as String?;
+        final kind = switch (highway) {
+          'traffic_signals' => RouteMapPoiKind.trafficSignal,
+          'stop' => RouteMapPoiKind.stop,
+          'give_way' => RouteMapPoiKind.giveWay,
+          _ => null,
+        };
+        if (kind == null) {
+          continue;
+        }
+        final point = GeoPoint(lat: lat, lng: lng);
+        final projected = _projectOntoRoute(point, polyline);
+        if (projected == null || projected.distanceToRoute > buffer) {
+          continue;
+        }
+        final key =
+            '${kind.name}_${projected.alongMeters.round()}_${lat.toStringAsFixed(5)}';
+        if (!seen.add(key)) {
+          continue;
+        }
+        pois.add(
+          RouteMapPoi(
+            id: key,
+            kind: kind,
+            point: point,
+            distanceAlongRouteMeters: projected.alongMeters,
+            label: kind.shortLabel,
+          ),
+        );
+      }
+      pois.sort(
+        (a, b) => a.distanceAlongRouteMeters
+            .compareTo(b.distanceAlongRouteMeters),
+      );
+      return List.unmodifiable(pois);
+    } catch (_) {
+      return const [];
+    }
+  }
 
   /// Legacy Overpass. Prefer [SpainFuelDatasource.fetchFuelNearRoute].
   @Deprecated('Usar SpainFuelDatasource (caché MITECO)')
@@ -21,7 +125,11 @@ class OverpassPoiDatasource {
     if (polyline.length < 2) {
       return const [];
     }
-    final boxes = _sampleBboxes(polyline);
+    final boxes = _sampleBboxes(
+      polyline,
+      everyMeters: NavigationConstants.overpassSampleEveryMeters,
+      bufferMeters: NavigationConstants.routePoiBufferMeters,
+    );
     if (boxes.isEmpty) {
       return const [];
     }
@@ -40,7 +148,7 @@ class OverpassPoiDatasource {
             Uri.parse(NavigationConstants.overpassInterpreterUrl),
             headers: {
               'Content-Type': 'application/x-www-form-urlencoded',
-              'User-Agent': 'LocMotos/1.0 (navigation; contact@locmotos.local)',
+              'User-Agent': 'MotoAMG/1.0 (navigation; contact@MotoAMG.local)',
             },
             body: {'data': query},
           )
@@ -111,15 +219,16 @@ class OverpassPoiDatasource {
       fetchFuelNearRoute(polyline);
 
   List<({double south, double west, double north, double east})> _sampleBboxes(
-    List<GeoPoint> polyline,
-  ) {
-    final every = NavigationConstants.overpassSampleEveryMeters;
-    final bufferDeg = NavigationConstants.routePoiBufferMeters / 111320.0;
+    List<GeoPoint> polyline, {
+    required double everyMeters,
+    required double bufferMeters,
+  }) {
+    final bufferDeg = bufferMeters / 111320.0;
     final anchors = <GeoPoint>[polyline.first];
     var traveled = 0.0;
     for (var i = 1; i < polyline.length; i++) {
       traveled += _haversineMeters(polyline[i - 1], polyline[i]);
-      if (traveled >= every) {
+      if (traveled >= everyMeters) {
         anchors.add(polyline[i]);
         traveled = 0;
       }

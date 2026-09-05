@@ -1,7 +1,7 @@
 Cómo funciona (automático)
 Generar mapas
 
-cd C:\Users\Alberto\Documents\Proyectos\flutter\LocMotos
+cd C:\Users\Alberto\Documents\Proyectos\flutter\MotoAMG
 
 Listar ficheros
 python deploy\pmtiles\list_protomaps_builds.py

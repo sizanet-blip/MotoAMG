@@ -1,5 +1,5 @@
-import 'package:loc_motos/features/navigation/data/models/navigation_route_model.dart';
-import 'package:loc_motos/features/navigation/domain/entities/speed_limit_segment.dart';
+﻿import 'package:moto_amg/features/navigation/data/models/navigation_route_model.dart';
+import 'package:moto_amg/features/navigation/domain/entities/speed_limit_segment.dart';
 
 /// Combina límites de varias fuentes. [overlay] (p. ej. TomTom) gana en solapes.
 abstract final class SpeedLimitMerge {

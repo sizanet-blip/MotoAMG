@@ -1,14 +1,22 @@
-import 'dart:math' as math;
+﻿import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:loc_motos/core/constants/navigation_constants.dart';
-import 'package:loc_motos/core/utils/distance_format.dart';
-import 'package:loc_motos/features/navigation/data/services/route_guidance_service.dart';
-import 'package:loc_motos/features/navigation/domain/entities/navigation_maneuver.dart';
-import 'package:loc_motos/features/navigation/presentation/theme/navigation_hud_theme.dart';
+import 'package:moto_amg/core/constants/navigation_constants.dart';
+import 'package:moto_amg/core/utils/distance_format.dart';
+import 'package:moto_amg/features/navigation/data/services/route_guidance_service.dart';
+import 'package:moto_amg/features/navigation/domain/entities/navigation_maneuver.dart';
+import 'package:moto_amg/features/navigation/domain/services/maneuver_significance.dart';
+import 'package:moto_amg/features/navigation/presentation/theme/navigation_hud_theme.dart';
 
 /// Etiqueta corta de acción (la calle va aparte).
 String maneuverHudAction(NavigationManeuver m) {
+  if (ManeuverSignificance.isForkBearManeuver(m)) {
+    final t = m.instruction.toLowerCase();
+    if (t.contains('izquierda')) {
+      return 'Mantén la izquierda';
+    }
+    return 'Mantén la derecha';
+  }
   return switch (m.type) {
     ManeuverType.depart => 'Salida',
     ManeuverType.arrive => 'Llegada',

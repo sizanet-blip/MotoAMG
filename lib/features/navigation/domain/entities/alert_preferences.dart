@@ -1,8 +1,8 @@
-import 'dart:math' as math;
+﻿import 'dart:math' as math;
 
 import 'package:equatable/equatable.dart';
-import 'package:loc_motos/core/constants/navigation_constants.dart';
-import 'package:loc_motos/features/navigation/domain/entities/route_alert.dart';
+import 'package:moto_amg/core/constants/navigation_constants.dart';
+import 'package:moto_amg/features/navigation/domain/entities/route_alert.dart';
 
 /// Preferencias de avisos en navegación (HUD, mapa y voz).
 class AlertPreferences extends Equatable {
@@ -29,6 +29,10 @@ class AlertPreferences extends Equatable {
     this.curvesShowOnMap = false,
     this.curvesShowOnPreview = false,
     this.curvesVoiceEnabled = false,
+    this.curveOpenEnabled = false,
+    this.curvePronouncedEnabled = false,
+    this.curveTightEnabled = true,
+    this.curveVeryClosedEnabled = true,
     this.speedLimitAlertEnabled = true,
     this.speedLimitToleranceKmh = 5,
     this.speedLimitSoundEnabled = true,
@@ -83,6 +87,12 @@ class AlertPreferences extends Equatable {
   /// Iconos de curva en la vista previa de ruta (por defecto off).
   final bool curvesShowOnPreview;
   final bool curvesVoiceEnabled;
+
+  /// Tipos de curva visibles / anunciables (por defecto: cerrada + muy cerrada).
+  final bool curveOpenEnabled;
+  final bool curvePronouncedEnabled;
+  final bool curveTightEnabled;
+  final bool curveVeryClosedEnabled;
 
   /// Aviso visual (y opcional sonoro) al superar el límite de la vía.
   final bool speedLimitAlertEnabled;
@@ -150,6 +160,28 @@ class AlertPreferences extends Equatable {
     return list;
   }
 
+  bool isCurveSeverityEnabled(CurveSeverity? severity) {
+    if (!curvesEnabled) {
+      return false;
+    }
+    return switch (severity ?? CurveSeverity.pronounced) {
+      CurveSeverity.open => curveOpenEnabled,
+      CurveSeverity.pronounced => curvePronouncedEnabled,
+      CurveSeverity.tight => curveTightEnabled,
+      CurveSeverity.hairpin => curveVeryClosedEnabled,
+    };
+  }
+
+  bool acceptsCurveAlert(RouteAlert alert) {
+    if (alert.type != RouteAlertType.sharpCurve) {
+      return true;
+    }
+    return isCurveSeverityEnabled(alert.curveSeverity);
+  }
+
+  /// Distancia para mostrar el panel de curva en el HUD.
+  double get curveHudMeters => NavigationConstants.curveHudMeters;
+
   bool isTypeEnabled(RouteAlertType type) => switch (type) {
         RouteAlertType.speedCamera => radarsEnabled,
         RouteAlertType.fuel => fuelEnabled,
@@ -169,6 +201,13 @@ class AlertPreferences extends Equatable {
     };
   }
 
+  bool showAlertOnMap(RouteAlert alert) {
+    if (!showTypeOnMap(alert.type)) {
+      return false;
+    }
+    return acceptsCurveAlert(alert);
+  }
+
   bool showTypeOnPreview(RouteAlertType type) {
     if (!isTypeEnabled(type)) {
       return false;
@@ -179,6 +218,13 @@ class AlertPreferences extends Equatable {
       RouteAlertType.toll => tollShowOnPreview,
       RouteAlertType.sharpCurve => curvesShowOnPreview,
     };
+  }
+
+  bool showAlertOnPreview(RouteAlert alert) {
+    if (!showTypeOnPreview(alert.type)) {
+      return false;
+    }
+    return acceptsCurveAlert(alert);
   }
 
   bool voiceEnabledFor(RouteAlertType type) {
@@ -212,7 +258,7 @@ class AlertPreferences extends Equatable {
         RouteAlertType.speedCamera => radarHudMeters,
         RouteAlertType.fuel => fuelAnnounceMeters,
         RouteAlertType.toll => tollAnnounceMeters,
-        RouteAlertType.sharpCurve => radarHudMeters,
+        RouteAlertType.sharpCurve => NavigationConstants.curveAnnounceMeters,
       };
 
   String get enrichCacheSuffix => [
@@ -220,6 +266,10 @@ class AlertPreferences extends Equatable {
         fuelEnabled ? '1' : '0',
         tollsEnabled ? '1' : '0',
         curvesEnabled ? '1' : '0',
+        curveOpenEnabled ? '1' : '0',
+        curvePronouncedEnabled ? '1' : '0',
+        curveTightEnabled ? '1' : '0',
+        curveVeryClosedEnabled ? '1' : '0',
         fuelShowPrice ? '1' : '0',
         fuelPriceFilterEnabled ? '1' : '0',
         fuelMaxPriceEur?.toStringAsFixed(3) ?? 'none',
@@ -263,6 +313,10 @@ class AlertPreferences extends Equatable {
     bool? curvesShowOnMap,
     bool? curvesShowOnPreview,
     bool? curvesVoiceEnabled,
+    bool? curveOpenEnabled,
+    bool? curvePronouncedEnabled,
+    bool? curveTightEnabled,
+    bool? curveVeryClosedEnabled,
     bool? speedLimitAlertEnabled,
     int? speedLimitToleranceKmh,
     bool? speedLimitSoundEnabled,
@@ -295,6 +349,12 @@ class AlertPreferences extends Equatable {
       curvesShowOnMap: curvesShowOnMap ?? this.curvesShowOnMap,
       curvesShowOnPreview: curvesShowOnPreview ?? this.curvesShowOnPreview,
       curvesVoiceEnabled: curvesVoiceEnabled ?? this.curvesVoiceEnabled,
+      curveOpenEnabled: curveOpenEnabled ?? this.curveOpenEnabled,
+      curvePronouncedEnabled:
+          curvePronouncedEnabled ?? this.curvePronouncedEnabled,
+      curveTightEnabled: curveTightEnabled ?? this.curveTightEnabled,
+      curveVeryClosedEnabled:
+          curveVeryClosedEnabled ?? this.curveVeryClosedEnabled,
       speedLimitAlertEnabled:
           speedLimitAlertEnabled ?? this.speedLimitAlertEnabled,
       speedLimitToleranceKmh:
@@ -327,6 +387,10 @@ class AlertPreferences extends Equatable {
         'curvesShowOnMap': curvesShowOnMap,
         'curvesShowOnPreview': curvesShowOnPreview,
         'curvesVoiceEnabled': curvesVoiceEnabled,
+        'curveOpenEnabled': curveOpenEnabled,
+        'curvePronouncedEnabled': curvePronouncedEnabled,
+        'curveTightEnabled': curveTightEnabled,
+        'curveVeryClosedEnabled': curveVeryClosedEnabled,
         'speedLimitAlertEnabled': speedLimitAlertEnabled,
         'speedLimitToleranceKmh': speedLimitToleranceKmh,
         'speedLimitSoundEnabled': speedLimitSoundEnabled,
@@ -410,6 +474,10 @@ class AlertPreferences extends Equatable {
       curvesShowOnMap: flag('curvesShowOnMap', false),
       curvesShowOnPreview: flag('curvesShowOnPreview', false),
       curvesVoiceEnabled: flag('curvesVoiceEnabled', false),
+      curveOpenEnabled: flag('curveOpenEnabled', false),
+      curvePronouncedEnabled: flag('curvePronouncedEnabled', false),
+      curveTightEnabled: flag('curveTightEnabled', true),
+      curveVeryClosedEnabled: flag('curveVeryClosedEnabled', true),
       speedLimitAlertEnabled: flag('speedLimitAlertEnabled', true),
       speedLimitToleranceKmh: () {
         final v = json['speedLimitToleranceKmh'];
@@ -446,6 +514,10 @@ class AlertPreferences extends Equatable {
         curvesShowOnMap,
         curvesShowOnPreview,
         curvesVoiceEnabled,
+        curveOpenEnabled,
+        curvePronouncedEnabled,
+        curveTightEnabled,
+        curveVeryClosedEnabled,
         speedLimitAlertEnabled,
         speedLimitToleranceKmh,
         speedLimitSoundEnabled,

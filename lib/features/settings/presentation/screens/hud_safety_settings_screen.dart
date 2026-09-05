@@ -1,9 +1,9 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:loc_motos/features/navigation/presentation/providers/navigation_providers.dart';
+import 'package:moto_amg/features/navigation/presentation/providers/navigation_providers.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 /// Preferencias de pantalla y controles al navegar.
@@ -177,7 +177,7 @@ class _BatteryOptimizationSectionState extends State<_BatteryOptimizationSection
         const SnackBar(
           content: Text(
             'No se pudieron abrir los ajustes. Búscalos manualmente en '
-            'Ajustes → Aplicaciones → LocMotos → Batería.',
+            'Ajustes → Aplicaciones → MotoAMG → Batería.',
           ),
         ),
       );
@@ -224,7 +224,7 @@ class _BatteryOptimizationSectionState extends State<_BatteryOptimizationSection
                       Text(
                         'En Samsung, Xiaomi y otras marcas el móvil puede parar '
                         'el GPS con la pantalla apagada. Desactiva la optimización '
-                        'para LocMotos y la ruta seguirá mejor.',
+                        'para MotoAMG y la ruta seguirá mejor.',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: colors.onSurfaceVariant,
                           height: 1.35,
@@ -241,7 +241,7 @@ class _BatteryOptimizationSectionState extends State<_BatteryOptimizationSection
             else
               Text(
                 _isExempt
-                    ? 'LocMotos puede usar GPS en segundo plano.'
+                    ? 'MotoAMG puede usar GPS en segundo plano.'
                     : 'Aún puede estar restringido — conviene revisarlo.',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: _isExempt ? colors.primary : colors.error,

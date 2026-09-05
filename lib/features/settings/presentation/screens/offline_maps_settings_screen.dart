@@ -1,9 +1,9 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:loc_motos/core/utils/storage_space.dart';
-import 'package:loc_motos/features/navigation/domain/entities/map_region.dart';
-import 'package:loc_motos/features/navigation/domain/exceptions/navigation_user_message.dart';
-import 'package:loc_motos/features/navigation/presentation/providers/navigation_providers.dart';
+import 'package:moto_amg/core/utils/storage_space.dart';
+import 'package:moto_amg/features/navigation/domain/entities/map_region.dart';
+import 'package:moto_amg/features/navigation/domain/exceptions/navigation_user_message.dart';
+import 'package:moto_amg/features/navigation/presentation/providers/navigation_providers.dart';
 
 /// Descarga de regiones PMTiles para mapas offline.
 class OfflineMapsSettingsScreen extends ConsumerWidget {

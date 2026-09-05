@@ -1,12 +1,12 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
-import 'package:loc_motos/features/groups/domain/entities/group_stop.dart';
-import 'package:loc_motos/features/groups/domain/services/group_stop_service.dart';
-import 'package:loc_motos/features/groups/presentation/providers/group_providers.dart';
-import 'package:loc_motos/features/groups/presentation/widgets/group_stop_widgets.dart';
+import 'package:moto_amg/features/auth/domain/entities/app_user.dart';
+import 'package:moto_amg/features/groups/domain/entities/group_stop.dart';
+import 'package:moto_amg/features/groups/domain/services/group_stop_service.dart';
+import 'package:moto_amg/features/groups/presentation/providers/group_providers.dart';
+import 'package:moto_amg/features/groups/presentation/widgets/group_stop_widgets.dart';
 
 /// Lista de paradas del grupo: ver, centrar en mapa y quitar.
 Future<void> showGroupStopsListSheet({

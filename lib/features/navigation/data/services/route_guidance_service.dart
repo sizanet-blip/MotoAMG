@@ -1,9 +1,10 @@
-import 'dart:math' as math;
+﻿import 'dart:math' as math;
 
-import 'package:loc_motos/core/constants/navigation_constants.dart';
-import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
-import 'package:loc_motos/features/navigation/domain/entities/navigation_maneuver.dart';
-import 'package:loc_motos/features/navigation/domain/entities/navigation_route.dart';
+import 'package:moto_amg/core/constants/navigation_constants.dart';
+import 'package:moto_amg/features/navigation/domain/entities/geo_point.dart';
+import 'package:moto_amg/features/navigation/domain/entities/navigation_maneuver.dart';
+import 'package:moto_amg/features/navigation/domain/entities/navigation_route.dart';
+import 'package:moto_amg/features/navigation/domain/services/maneuver_significance.dart';
 
 /// Guidance estilo Waze/Sygic: cartel = próximo punto de decisión + metros hasta él.
 class RouteGuidanceService {
@@ -63,17 +64,68 @@ class RouteGuidanceService {
     }
     final along = distanceAlongRouteMeters(position, route.polyline);
 
+    int? nearestIndex;
+    var nearestBeginAlong = double.infinity;
+
     for (var i = 0; i < maneuvers.length; i++) {
+      if (!_isSignificantUpcoming(route, i)) {
+        continue;
+      }
       final beginAlong = distanceAtShapeIndex(
         route.polyline,
         maneuvers[i].beginShapeIndex,
       );
-      // Todavía te acercas a este aviso, o acabas de cruzarlo (umbral corto).
-      if (along <= beginAlong + passedThresholdMeters) {
+      if (along > beginAlong + passedThresholdMeters) {
+        continue;
+      }
+      if (beginAlong < nearestBeginAlong) {
+        nearestBeginAlong = beginAlong;
+        nearestIndex = i;
+      }
+    }
+    if (nearestIndex != null) {
+      return nearestIndex;
+    }
+    for (var i = maneuvers.length - 1; i >= 0; i--) {
+      if (_isSignificantUpcoming(route, i)) {
         return i;
       }
     }
     return maneuvers.length - 1;
+  }
+
+  /// True si el cartel de maniobras debe mostrarse (giro real y distancia útil).
+  bool shouldShowManeuverCard({
+    required NavigationRoute route,
+    required int upcomingIndex,
+    required double remainingMeters,
+  }) {
+    if (remainingMeters <= 0 ||
+        remainingMeters > NavigationConstants.maneuverMaxLookaheadMeters) {
+      return false;
+    }
+    final maneuvers = route.maneuvers;
+    if (maneuvers.isEmpty || upcomingIndex < 0 || upcomingIndex >= maneuvers.length) {
+      return false;
+    }
+    final maneuver = maneuvers[upcomingIndex];
+    return ManeuverSignificance.isSignificantNavigationManeuver(
+      maneuver,
+      next: upcomingIndex + 1 < maneuvers.length
+          ? maneuvers[upcomingIndex + 1]
+          : null,
+      previous: upcomingIndex > 0 ? maneuvers[upcomingIndex - 1] : null,
+    );
+  }
+
+  bool _isSignificantUpcoming(NavigationRoute route, int index) {
+    final maneuvers = route.maneuvers;
+    final maneuver = maneuvers[index];
+    return ManeuverSignificance.isSignificantNavigationManeuver(
+      maneuver,
+      next: index + 1 < maneuvers.length ? maneuvers[index + 1] : null,
+      previous: index > 0 ? maneuvers[index - 1] : null,
+    );
   }
 
   /// Metros que faltan hasta el punto del aviso [upcomingIndex] (cuenta atrás a 0).

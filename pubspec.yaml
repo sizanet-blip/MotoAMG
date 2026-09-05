@@ -1,5 +1,5 @@
-name: loc_motos
-description: "Rastreo de ubicación en tiempo real para grupos de moteros."
+﻿name: moto_amg
+description: "MotoAMG — Pelotón en vivo y GPS para moteros. Salidas en grupo, ubicación del pack, rutas e intercom."
 publish_to: "none"
 
 version: 1.0.0+1
@@ -53,17 +53,17 @@ dev_dependencies:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: assets/branding/locmotos-app-icon.png
+  image_path: assets/branding/motoamg-app-icon.png
   adaptive_icon_background: "#1A1D21"
-  adaptive_icon_foreground: assets/branding/locmotos-app-icon.png
+  adaptive_icon_foreground: assets/branding/motoamg-app-icon.png
   adaptive_icon_foreground_inset: 16
   remove_alpha_ios: true
 
 flutter:
   uses-material-design: true
   assets:
-    - assets/branding/locmotos-app-icon.png
-    - assets/branding/locmotos-wordmark.png
+    - assets/branding/motoamg-app-icon.png
+    - assets/branding/motoamg-wordmark.png
     - assets/maps/navigation_style.json
     - assets/maps/protomaps_light_layers.json
     - assets/maps/basemaps/fonts/Noto Sans Regular/

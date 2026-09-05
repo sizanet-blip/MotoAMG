@@ -1,9 +1,9 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
-import 'package:loc_motos/features/auth/presentation/providers/auth_providers.dart';
-import 'package:loc_motos/features/clubs/presentation/screens/join_club_screen.dart';
-import 'package:loc_motos/features/clubs/presentation/screens/register_club_screen.dart';
+import 'package:moto_amg/features/auth/domain/entities/app_user.dart';
+import 'package:moto_amg/features/auth/presentation/providers/auth_providers.dart';
+import 'package:moto_amg/features/clubs/presentation/screens/join_club_screen.dart';
+import 'package:moto_amg/features/clubs/presentation/screens/register_club_screen.dart';
 
 /// Puerta de entrada: invitación o registrar peña.
 class ClubEntryScreen extends ConsumerWidget {
@@ -50,7 +50,7 @@ class ClubEntryScreen extends ConsumerWidget {
             canDismiss
                 ? 'Puedes seguir usando la navegación individual. '
                     'Si te unes o registras un club, tendrás grupos de ruta.'
-                : 'LocMotos funciona por clubs. Elige una opción.',
+                : 'MotoAMG funciona por clubs. Elige una opción.',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: colors.onSurfaceVariant,
                   height: 1.35,

@@ -1,4 +1,4 @@
-import 'package:loc_motos/features/navigation/domain/entities/route_alert.dart';
+﻿import 'package:moto_amg/features/navigation/domain/entities/route_alert.dart';
 
 /// Una línea de precio (grado + importe).
 class FuelPriceLine {

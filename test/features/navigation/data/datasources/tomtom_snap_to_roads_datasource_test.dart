@@ -1,8 +1,8 @@
-import 'package:flutter_test/flutter_test.dart';
-import 'package:loc_motos/features/navigation/data/datasources/tomtom_snap_to_roads_datasource.dart';
-import 'package:loc_motos/features/navigation/data/services/speed_limit_merge.dart';
-import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
-import 'package:loc_motos/features/navigation/domain/entities/speed_limit_segment.dart';
+﻿import 'package:flutter_test/flutter_test.dart';
+import 'package:moto_amg/features/navigation/data/datasources/tomtom_snap_to_roads_datasource.dart';
+import 'package:moto_amg/features/navigation/data/services/speed_limit_merge.dart';
+import 'package:moto_amg/features/navigation/domain/entities/geo_point.dart';
+import 'package:moto_amg/features/navigation/domain/entities/speed_limit_segment.dart';
 
 void main() {
   group('TomTomSnapToRoadsDataSource.chunkPolylineByMaxDistance', () {

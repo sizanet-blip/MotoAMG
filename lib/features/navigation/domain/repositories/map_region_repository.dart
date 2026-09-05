@@ -1,4 +1,4 @@
-import 'package:loc_motos/features/navigation/domain/entities/map_region.dart';
+﻿import 'package:moto_amg/features/navigation/domain/entities/map_region.dart';
 
 abstract class MapRegionRepository {
   Future<List<MapRegion>> listAvailableRegions();

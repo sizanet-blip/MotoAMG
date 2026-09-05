@@ -1,6 +1,6 @@
-import 'package:json_annotation/json_annotation.dart';
-import 'package:loc_motos/core/utils/timestamp_converter.dart';
-import 'package:loc_motos/features/tracking/domain/entities/live_location.dart';
+﻿import 'package:json_annotation/json_annotation.dart';
+import 'package:moto_amg/core/utils/timestamp_converter.dart';
+import 'package:moto_amg/features/tracking/domain/entities/live_location.dart';
 
 part 'live_location_model.g.dart';
 

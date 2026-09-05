@@ -1,7 +1,7 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:loc_motos/features/intercom/domain/entities/intercom_preferences.dart';
+import 'package:moto_amg/features/intercom/domain/entities/intercom_preferences.dart';
 
 class IntercomPreferencesRepository {
   static const _boxName = 'intercom_prefs';

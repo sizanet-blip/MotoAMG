@@ -1,10 +1,10 @@
-import 'package:firebase_auth/firebase_auth.dart';
+﻿import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:loc_motos/features/groups/data/datasources/group_incident_remote_datasource.dart';
-import 'package:loc_motos/features/groups/domain/entities/group_incident.dart';
-import 'package:loc_motos/features/groups/domain/exceptions/group_exceptions.dart';
-import 'package:loc_motos/features/groups/presentation/providers/group_providers.dart';
-import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
+import 'package:moto_amg/features/groups/data/datasources/group_incident_remote_datasource.dart';
+import 'package:moto_amg/features/groups/domain/entities/group_incident.dart';
+import 'package:moto_amg/features/groups/domain/exceptions/group_exceptions.dart';
+import 'package:moto_amg/features/groups/presentation/providers/group_providers.dart';
+import 'package:moto_amg/features/navigation/domain/entities/geo_point.dart';
 
 final groupIncidentServiceProvider = Provider<GroupIncidentService>((ref) {
   return GroupIncidentService(ref.watch(groupIncidentDatasourceProvider));

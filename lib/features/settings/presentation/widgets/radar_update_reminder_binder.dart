@@ -1,11 +1,11 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:loc_motos/core/utils/spain_data_freshness.dart';
-import 'package:loc_motos/features/navigation/presentation/providers/navigation_providers.dart';
-import 'package:loc_motos/features/settings/presentation/providers/settings_providers.dart';
-import 'package:loc_motos/features/settings/presentation/screens/radar_cache_settings_screen.dart';
+import 'package:moto_amg/core/utils/spain_data_freshness.dart';
+import 'package:moto_amg/features/navigation/presentation/providers/navigation_providers.dart';
+import 'package:moto_amg/features/settings/presentation/providers/settings_providers.dart';
+import 'package:moto_amg/features/settings/presentation/screens/radar_cache_settings_screen.dart';
 
 /// Al entrar en la app, si los radares están viejos según la config, muestra un aviso.
 class RadarUpdateReminderBinder extends ConsumerStatefulWidget {

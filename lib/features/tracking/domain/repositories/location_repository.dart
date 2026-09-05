@@ -1,4 +1,4 @@
-import 'package:loc_motos/features/tracking/domain/entities/live_location.dart';
+﻿import 'package:moto_amg/features/tracking/domain/entities/live_location.dart';
 
 abstract class LocationRepository {
   Stream<List<LiveLocation>> watchGroupLocations(String groupId);

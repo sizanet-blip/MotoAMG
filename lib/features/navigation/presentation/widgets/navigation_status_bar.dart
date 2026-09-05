@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
-import 'package:loc_motos/features/navigation/presentation/theme/navigation_hud_theme.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:moto_amg/features/navigation/presentation/theme/navigation_hud_theme.dart';
 
 class NavigationStatusBar extends StatelessWidget {
   const NavigationStatusBar({

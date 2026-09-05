@@ -1,6 +1,6 @@
-import 'package:flutter/widgets.dart';
+﻿import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:loc_motos/features/navigation/presentation/providers/navigation_providers.dart';
+import 'package:moto_amg/features/navigation/presentation/providers/navigation_providers.dart';
 
 /// Al volver a primer plano, relee la conectividad (sin sondeos periódicos).
 class MapNetworkResumeBinder extends ConsumerStatefulWidget {

@@ -1,15 +1,15 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'dart:io';
 
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:http/http.dart' as http;
-import 'package:loc_motos/core/constants/navigation_constants.dart';
-import 'package:loc_motos/core/utils/storage_space.dart';
-import 'package:loc_motos/features/navigation/domain/entities/geo_bounds.dart';
-import 'package:loc_motos/features/navigation/domain/entities/map_region.dart';
-import 'package:loc_motos/features/navigation/domain/exceptions/navigation_exceptions.dart';
-import 'package:loc_motos/features/navigation/domain/exceptions/navigation_user_message.dart';
-import 'package:loc_motos/features/navigation/domain/repositories/map_region_repository.dart';
+import 'package:moto_amg/core/constants/navigation_constants.dart';
+import 'package:moto_amg/core/utils/storage_space.dart';
+import 'package:moto_amg/features/navigation/domain/entities/geo_bounds.dart';
+import 'package:moto_amg/features/navigation/domain/entities/map_region.dart';
+import 'package:moto_amg/features/navigation/domain/exceptions/navigation_exceptions.dart';
+import 'package:moto_amg/features/navigation/domain/exceptions/navigation_user_message.dart';
+import 'package:moto_amg/features/navigation/domain/repositories/map_region_repository.dart';
 import 'package:path_provider/path_provider.dart';
 
 /// Descarga y almacena regiones `.pmtiles` en el almacenamiento de la app.

@@ -1,4 +1,4 @@
-package com.locmotos.loc_motos
+﻿package es.albertomaestre.motoamg
 
 import android.app.LocaleManager
 import android.os.Build
@@ -21,7 +21,7 @@ class MainActivity : FlutterActivity() {
         super.configureFlutterEngine(flutterEngine)
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
-            "com.locmotos.loc_motos/storage",
+            "es.albertomaestre.motoamg/storage",
         ).setMethodCallHandler { call, result ->
             when (call.method) {
                 "getFreeBytesForPath" -> {

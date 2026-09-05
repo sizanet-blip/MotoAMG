@@ -1,7 +1,8 @@
-import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
-import 'package:loc_motos/features/navigation/domain/entities/navigation_route.dart';
-import 'package:loc_motos/features/navigation/domain/entities/route_plan.dart';
-import 'package:loc_motos/features/navigation/domain/entities/route_preferences.dart';
+﻿import 'package:moto_amg/features/navigation/domain/entities/geo_point.dart';
+import 'package:moto_amg/features/navigation/domain/entities/navigation_route.dart';
+import 'package:moto_amg/features/navigation/domain/entities/route_plan.dart';
+import 'package:moto_amg/features/navigation/domain/entities/route_preferences.dart';
+import 'package:moto_amg/features/navigation/domain/entities/tomtom_route_enrichment.dart';
 
 abstract class NavigationRepository {
   /// Calcula ruta(s) online (Valhalla) y guarda la preferida en caché.
@@ -26,6 +27,14 @@ abstract class NavigationRepository {
 
   Future<void> clearActiveRoute();
 
-  /// Recalcula tramos de límite de velocidad (Valhalla) sobre una ruta existente.
+  /// Recalcula límites OSM/DGT (Valhalla) sobre una ruta existente.
   Future<NavigationRoute> refreshSpeedLimits(NavigationRoute route);
+
+  /// Límites TomTom sobre la ruta ya elegida (llamar al confirmar navegación).
+  Future<NavigationRoute> enrichSpeedLimitsWithTomTom(NavigationRoute route);
+
+  /// Igual que [enrichSpeedLimitsWithTomTom] pero devuelve ambas fuentes para comparar.
+  Future<TomTomRouteEnrichment?> enrichRouteWithTomTomDetails(
+    NavigationRoute route,
+  );
 }

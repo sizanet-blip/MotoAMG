@@ -1,6 +1,6 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:loc_motos/core/utils/timestamp_converter.dart';
-import 'package:loc_motos/features/groups/domain/entities/group_membership.dart';
+﻿import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:moto_amg/core/utils/timestamp_converter.dart';
+import 'package:moto_amg/features/groups/domain/entities/group_membership.dart';
 
 class GroupMembershipModel extends GroupMembership {
   const GroupMembershipModel({

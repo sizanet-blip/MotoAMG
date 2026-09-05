@@ -1,6 +1,6 @@
-import 'package:hive_flutter/hive_flutter.dart';
-import 'package:loc_motos/core/constants/app_constants.dart';
-import 'package:loc_motos/core/theme/app_color_theme.dart';
+﻿import 'package:hive_flutter/hive_flutter.dart';
+import 'package:moto_amg/core/constants/app_constants.dart';
+import 'package:moto_amg/core/theme/app_color_theme.dart';
 
 class AppColorThemeRepository {
   Box<String>? _box;

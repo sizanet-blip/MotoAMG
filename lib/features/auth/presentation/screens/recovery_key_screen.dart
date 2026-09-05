@@ -1,7 +1,7 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:loc_motos/features/auth/presentation/providers/auth_providers.dart';
+import 'package:moto_amg/features/auth/presentation/providers/auth_providers.dart';
 
 class RecoveryKeyScreen extends ConsumerStatefulWidget {
   const RecoveryKeyScreen({super.key, required this.recoveryKey});

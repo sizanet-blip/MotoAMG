@@ -1,0 +1,21 @@
+{
+  "locations": [
+    {"lat": 41.3366984, "lon": -1.2021818},
+    {"lat": 41.3157856, "lon": -1.0715739}
+  ],
+  "costing": "motorcycle",
+  "costing_options": {
+    "motorcycle": {
+      "use_highways": 0.0,
+      "top_speed": 38,
+      "use_tolls": 0.5,
+      "use_ferry": 0.5,
+      "use_trails": 0.0,
+      "use_tracks": 0.0
+    }
+  },
+  "directions_options": {"language": "es-ES", "units": "kilometers"},
+  "shape_format": "polyline6",
+  "turn_lanes": true,
+  "alternates": 3
+}

@@ -1,7 +1,8 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:loc_motos/features/navigation/domain/entities/alert_preferences.dart';
-import 'package:loc_motos/features/navigation/presentation/providers/navigation_providers.dart';
+import 'package:moto_amg/core/constants/navigation_constants.dart';
+import 'package:moto_amg/features/navigation/domain/entities/alert_preferences.dart';
+import 'package:moto_amg/features/navigation/presentation/providers/navigation_providers.dart';
 
 /// Hub de avisos en ruta: activar/desactivar y entrar al detalle de cada tipo.
 class AlertPreferencesScreen extends ConsumerWidget {
@@ -150,7 +151,7 @@ class _AlertTypeDetailScreen extends ConsumerWidget {
         _AlertCategory.radars => 'Radares',
         _AlertCategory.fuel => 'Gasolineras',
         _AlertCategory.tolls => 'Peajes',
-        _AlertCategory.curves => 'Curvas pronunciadas',
+        _AlertCategory.curves => 'Curvas',
         _AlertCategory.speedLimit => 'Límite de velocidad',
       };
 
@@ -356,6 +357,46 @@ class _AlertTypeDetailScreen extends ConsumerWidget {
           ),
         ],
       _AlertCategory.curves => [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+            child: Text(
+              'Elige qué curvas quieres ver y oír. Por defecto: cerrada y muy cerrada.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+            ),
+          ),
+          _CompactSwitchTile(
+            title: 'Abierta',
+            subtitle: 'Giros suaves (~35–54°)',
+            value: prefs.curveOpenEnabled,
+            onChanged: (v) =>
+                notifier.update((p) => p.copyWith(curveOpenEnabled: v)),
+          ),
+          _CompactSwitchTile(
+            title: 'Pronunciada',
+            subtitle: 'Giros medios (~55–89°)',
+            value: prefs.curvePronouncedEnabled,
+            onChanged: (v) => notifier.update(
+              (p) => p.copyWith(curvePronouncedEnabled: v),
+            ),
+          ),
+          _CompactSwitchTile(
+            title: 'Cerrada',
+            subtitle: 'Giros fuertes (~90–134°)',
+            value: prefs.curveTightEnabled,
+            onChanged: (v) =>
+                notifier.update((p) => p.copyWith(curveTightEnabled: v)),
+          ),
+          _CompactSwitchTile(
+            title: 'Muy cerrada',
+            subtitle: 'Casi 180° · horquilla',
+            value: prefs.curveVeryClosedEnabled,
+            onChanged: (v) => notifier.update(
+              (p) => p.copyWith(curveVeryClosedEnabled: v),
+            ),
+          ),
+          const Divider(height: 24),
           _CompactSwitchTile(
             title: 'Mostrar en el mapa',
             subtitle: 'Durante la navegación (por defecto off)',
@@ -409,6 +450,8 @@ class _AlertTypeDetailScreen extends ConsumerWidget {
       _AlertCategory.curves => [
           _CompactSwitchTile(
             title: 'Aviso por voz',
+            subtitle:
+                'A los ${NavigationConstants.curveAnnounceMeters.round()} m: «Se aproxima curva…»',
             value: prefs.curvesVoiceEnabled,
             onChanged: (v) =>
                 notifier.update((p) => p.copyWith(curvesVoiceEnabled: v)),
@@ -683,14 +726,18 @@ String _curveSummary(AlertPreferences prefs) {
   if (!prefs.curvesEnabled) {
     return 'Desactivado';
   }
+  final types = <String>[
+    if (prefs.curveOpenEnabled) 'Abierta',
+    if (prefs.curvePronouncedEnabled) 'Pronunciada',
+    if (prefs.curveTightEnabled) 'Cerrada',
+    if (prefs.curveVeryClosedEnabled) 'Muy cerrada',
+  ];
   return _joinSummary([
+    if (types.isNotEmpty) types.join(', '),
     if (prefs.curvesShowOnMap) 'Mapa',
     if (prefs.curvesShowOnPreview) 'Vista previa',
-    if (prefs.curvesVoiceEnabled) 'Voz',
-    if (!prefs.curvesShowOnMap &&
-        !prefs.curvesShowOnPreview &&
-        !prefs.curvesVoiceEnabled)
-      'Solo detección',
+    if (prefs.curvesVoiceEnabled)
+      'Voz ${NavigationConstants.curveAnnounceMeters.round()} m',
   ]);
 }
 

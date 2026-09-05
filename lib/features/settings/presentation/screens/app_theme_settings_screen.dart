@@ -1,7 +1,7 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:loc_motos/core/theme/app_color_theme.dart';
-import 'package:loc_motos/core/theme/app_color_theme_provider.dart';
+import 'package:moto_amg/core/theme/app_color_theme.dart';
+import 'package:moto_amg/core/theme/app_color_theme_provider.dart';
 
 /// Elección persistente de la paleta de la app.
 class AppThemeSettingsScreen extends ConsumerWidget {

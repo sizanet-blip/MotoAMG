@@ -1,4 +1,4 @@
-/// Configuración del módulo de navegación GPS híbrida.
+﻿/// Configuración del módulo de navegación GPS híbrida.
 abstract final class NavigationConstants {
   /// URL base del servidor Valhalla (sin barra final).
   /// Vacío = modo demo sin servidor.
@@ -38,7 +38,7 @@ abstract final class NavigationConstants {
   /// Timeout Overpass (consultas POI en ruta).
   static const Duration overpassRequestTimeout = Duration(seconds: 25);
 
-  /// Timeout descarga inventario de radares desde el servidor LocMotos.
+  /// Timeout descarga inventario de radares desde el servidor MotoAMG.
   static const Duration spainRadarBundleTimeout = Duration(seconds: 90);
 
   /// Timeout fallback DGT/SCT directo (si no hay bundle en caché).
@@ -96,6 +96,15 @@ abstract final class NavigationConstants {
   /// Buffer lateral para gasolineras y POI Overpass (metros).
   static const double routePoiBufferMeters = 400;
 
+  /// Corredor lateral para semáforos / STOP / ceda (metros). Estrecho para
+  /// no pintar señales de calles paralelas.
+  static const double trafficControlRouteBufferMeters = 45;
+
+  /// Muestreo de anclas Overpass para controles de tráfico (metros).
+  /// Más denso que [overpassSampleEveryMeters] porque la caja AABB de
+  /// tramos largos deja fuera curvas urbanas.
+  static const double overpassTrafficSampleEveryMeters = 2500;
+
   /// Corredor lateral para radares en la ruta (metros). Más estrecho que
   /// [routePoiBufferMeters] para no avisar de cámaras en calles paralelas.
   static const double radarRouteBufferMeters = 75;
@@ -107,14 +116,20 @@ abstract final class NavigationConstants {
   /// Muestreo de la ruta para bboxes Overpass (metros entre anclas).
   static const double overpassSampleEveryMeters = 25000;
 
-  /// Ventana de detección de curvas fuertes (metros).
-  static const double sharpCurveWindowMeters = 120;
+  /// Ventana de detección de curvas (metros). Más corta = más sensible a codos.
+  static const double sharpCurveWindowMeters = 100;
 
-  /// Cambio de rumbo acumulado (grados) para marcar curva fuerte.
-  static const double sharpCurveMinBearingDeltaDeg = 55;
+  /// Giro mínimo (grados) para avisar: curva abierta / suave.
+  static const double sharpCurveMinBearingDeltaDeg = 35;
 
-  /// Separación mínima entre avisos de curva (metros).
-  static const double sharpCurveMinSeparationMeters = 400;
+  /// Separación mínima entre avisos de curva (metros). Estilo GPS moto.
+  static const double sharpCurveMinSeparationMeters = 180;
+
+  /// Distancia de aviso por voz de curva (metros).
+  static const double curveAnnounceMeters = 50;
+
+  /// Distancia para mostrar el panel de curva en el HUD (metros).
+  static const double curveHudMeters = 200;
 
   /// Límite de distancia del costing motorcycle en Valhalla (metros).
   /// Si el itinerario lo supera, el servidor puede rechazar la ruta.
@@ -173,6 +188,9 @@ abstract final class NavigationConstants {
   /// Tras pasar el punto del giro, metros de gracia antes de saltar al siguiente aviso.
   static const double maneuverPassedThresholdMeters = 20;
 
+  /// No anunciar en el cartel giros significativos a más de esta distancia.
+  static const double maneuverMaxLookaheadMeters = 1200;
+
   /// Tras recorrer esto en un giro, el cartel pasa a "Continúa por…".
   /// (Reservado / compat; el modelo Waze usa [maneuverPassedThresholdMeters].)
   static const double maneuverTurnCompleteMeters = 35;
@@ -182,6 +200,9 @@ abstract final class NavigationConstants {
 
   /// Simulación de recorrido (pruebas en casa): ~60 km/h.
   static const double simulationSpeedMps = 16.7;
+
+  static const double simulationSpeedMinKmh = 20;
+  static const double simulationSpeedMaxKmh = 300;
 
   /// Velocidad GPS real a partir de la cual se oculta el botón Simular (~7 km/h).
   static const double hideSimulatorSpeedMps = 2.0;
@@ -282,7 +303,7 @@ abstract final class NavigationConstants {
   /// Geocodificación de direcciones (OpenStreetMap Nominatim).
   static const String nominatimBaseUrl = 'https://nominatim.openstreetmap.org';
   static const String geocodingUserAgent =
-      'LocMotos/1.0 (+https://github.com; contact: app@locmotos.local)';
+      'MotoAMG/1.0 (+https://github.com; contact: app@MotoAMG.local)';
 
   /// Nominatim público: máximo ~1 petición/segundo.
   static const Duration geocodingMinRequestInterval = Duration(
@@ -319,6 +340,9 @@ abstract final class NavigationConstants {
 
   static const String hudSafetyBox = 'navigation_hud_safety';
   static const String hudSafetyKey = 'prefs_v1';
+
+  static const String tomtomPreferencesBox = 'navigation_tomtom_preferences';
+  static const String tomtomPreferencesKey = 'prefs_v1';
 
   /// Estilo online nocturno (OpenFreeMap Fiord: oscuro suave, legible en ruta).
   /// Evitamos "Dark" puro: queda casi negro y poco útil para navegar.

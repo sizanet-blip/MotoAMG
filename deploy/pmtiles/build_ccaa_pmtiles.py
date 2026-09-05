@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Genera PMTiles por CCAA para LocMotos (Protomaps build + pmtiles extract).
+"""Genera PMTiles por CCAA para MotoAMG (Protomaps build + pmtiles extract).
 
 Requisito: CLI go-pmtiles (pmtiles / pmtiles.exe)
   https://github.com/protomaps/go-pmtiles/releases
@@ -107,7 +107,7 @@ def protomaps_source_from_metadata() -> str | None:
     """Lista oficial de builds (maps.protomaps.com/builds)."""
     req = urllib.request.Request(
         PROTOMAPS_BUILDS_JSON,
-        headers={"User-Agent": "LocMotos-PMTilesBuild/1.0"},
+        headers={"User-Agent": "MotoAMG-PMTilesBuild/1.0"},
     )
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:
@@ -141,7 +141,7 @@ def protomaps_source_url(max_days_back: int = 21) -> str:
         day = today - timedelta(days=offset)
         url = PROTOMAPS_BUILD_URL.format(yyyymmdd=day.strftime("%Y%m%d"))
         req = urllib.request.Request(url, method="HEAD")
-        req.add_header("User-Agent", "LocMotos-PMTilesBuild/1.0")
+        req.add_header("User-Agent", "MotoAMG-PMTilesBuild/1.0")
         try:
             with urllib.request.urlopen(req, timeout=25) as resp:
                 if 200 <= resp.status < 300:
@@ -195,7 +195,7 @@ def scp_upload(files: list[Path], dest: str) -> None:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Extrae PMTiles por CCAA desde Protomaps para LocMotos."
+        description="Extrae PMTiles por CCAA desde Protomaps para MotoAMG."
     )
     parser.add_argument(
         "--out-dir",

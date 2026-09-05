@@ -1,9 +1,9 @@
-import 'package:loc_motos/features/auth/data/datasources/auth_remote_datasource.dart';
-import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
-import 'package:loc_motos/features/auth/domain/entities/user_vehicle.dart';
-import 'package:loc_motos/features/auth/domain/entities/username_registration.dart';
-import 'package:loc_motos/features/auth/domain/exceptions/auth_exceptions.dart';
-import 'package:loc_motos/features/auth/domain/repositories/auth_repository.dart';
+﻿import 'package:moto_amg/features/auth/data/datasources/auth_remote_datasource.dart';
+import 'package:moto_amg/features/auth/domain/entities/app_user.dart';
+import 'package:moto_amg/features/auth/domain/entities/user_vehicle.dart';
+import 'package:moto_amg/features/auth/domain/entities/username_registration.dart';
+import 'package:moto_amg/features/auth/domain/exceptions/auth_exceptions.dart';
+import 'package:moto_amg/features/auth/domain/repositories/auth_repository.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
   AuthRepositoryImpl(this._remote);
@@ -12,20 +12,25 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Stream<AppUser?> watchCurrentUser() {
-    return _remote.userChanges().asyncMap((firebaseUser) async {
+    return _remote.userChanges().asyncExpand((firebaseUser) async* {
       if (firebaseUser == null) {
-        return null;
+        yield null;
+        return;
       }
-      final latest = _remote.currentFirebaseUser ?? firebaseUser;
-      try {
-        final stored = await _remote.fetchUser(latest.uid);
-        if (stored != null && stored.displayName.trim().isNotEmpty) {
-          return stored;
+      final uid = firebaseUser.uid;
+      // Escuchar el doc de Firestore: si el panel aprueba una peña, la app
+      // debe salir de «pendiente» sin reiniciar sesión.
+      await for (final stored in _remote.watchUser(uid)) {
+        final latest = _remote.currentFirebaseUser;
+        if (latest == null || latest.uid != uid) {
+          return;
         }
-      } catch (_) {
-        // Perfil ilegible o Firestore no listo; seguimos con Auth.
+        if (stored != null && stored.displayName.trim().isNotEmpty) {
+          yield stored;
+        } else {
+          yield _remote.userFromFirebase(latest);
+        }
       }
-      return _remote.userFromFirebase(latest);
     });
   }
 
@@ -228,6 +233,9 @@ class AuthRepositoryImpl implements AuthRepository {
       username: current.username,
       photoUrl: current.photoUrl,
       currentGroupId: current.currentGroupId,
+      currentClubId: current.currentClubId,
+      pendingClubRequestId: current.pendingClubRequestId,
+      allowSoloNavigation: current.allowSoloNavigation,
       vehicles: nextVehicles,
       activeVehicleId: active?.id ?? nextActiveId,
       // Legacy mirror for group maps / old clients.
@@ -236,8 +244,19 @@ class AuthRepositoryImpl implements AuthRepository {
       bikeYear: active?.year ?? bikeYear,
       bikeColor: active?.color ?? bikeColor,
       bikePlate: active?.plate ?? bikePlate,
+      privacyAcceptedAt: current.privacyAcceptedAt,
+      privacyAcceptedVersion: current.privacyAcceptedVersion,
     );
     return _remote.saveProfile(updated);
+  }
+
+  @override
+  Future<AppUser> acceptPrivacyPolicy() async {
+    final firebaseUser = _remote.currentFirebaseUser;
+    if (firebaseUser == null) {
+      throw const AuthException('No hay sesión activa.');
+    }
+    return _remote.acceptPrivacyPolicy(firebaseUser.uid);
   }
 
   @override

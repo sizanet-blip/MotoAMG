@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# LocMotos — comprobación rápida del VPS (Valhalla, Photon, bundles, PMTiles).
+# MotoAMG — comprobación rápida del VPS (Valhalla, Photon, bundles, PMTiles).
 # Uso en el servidor:
 #   chmod +x vps-healthcheck.sh
 #   ./vps-healthcheck.sh

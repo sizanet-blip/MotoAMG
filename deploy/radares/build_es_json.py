@@ -5,11 +5,11 @@ Requisitos en el servidor:
   sudo apt install osmium-tool curl
 
 Uso:
-  sudo python3 /opt/locmotos/radares/build_es_json.py
+  sudo python3 /opt/motoamg/radares/build_es_json.py
   python3 build_es_json.py --out /var/www/radares/es.json --skip-osm
 
 Cron (ejemplo 04:15):
-  15 4 * * * /usr/bin/python3 /opt/locmotos/radares/build_es_json.py >> /var/log/radares-build.log 2>&1
+  15 4 * * * /usr/bin/python3 /opt/motoamg/radares/build_es_json.py >> /var/log/radares-build.log 2>&1
 """
 
 from __future__ import annotations
@@ -27,7 +27,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-USER_AGENT = "LocMotos-RadarBuild/1.0 (+https://valhalla.albertomaestre.es)"
+USER_AGENT = "MotoAMG-RadarBuild/1.0 (+https://valhalla.albertomaestre.es)"
 DGT_URL = (
     "https://infocar.dgt.es/datex2/dgt/PredefinedLocationsPublication/"
     "radares/content.xml"
@@ -43,7 +43,7 @@ SCT_REMOLC = (
 GEOFABRIK_SPAIN_PBF = (
     "https://download.geofabrik.de/europe/spain-latest.osm.pbf"
 )
-DEFAULT_CACHE_DIR = "/var/cache/locmotos/radares"
+DEFAULT_CACHE_DIR = "/var/cache/motoamg/radares"
 DEFAULT_PBF_MAX_AGE_HOURS = 24
 
 

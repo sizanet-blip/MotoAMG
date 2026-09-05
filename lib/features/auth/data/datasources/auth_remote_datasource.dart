@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -6,13 +6,13 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:loc_motos/core/constants/app_constants.dart';
-import 'package:loc_motos/features/auth/data/models/user_model.dart';
-import 'package:loc_motos/features/auth/data/services/secret_wrap.dart';
-import 'package:loc_motos/features/auth/data/services/username_auth.dart';
-import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
-import 'package:loc_motos/features/auth/domain/exceptions/auth_exceptions.dart';
-import 'package:loc_motos/firebase_options.dart';
+import 'package:moto_amg/core/constants/app_constants.dart';
+import 'package:moto_amg/features/auth/data/models/user_model.dart';
+import 'package:moto_amg/features/auth/data/services/secret_wrap.dart';
+import 'package:moto_amg/features/auth/data/services/username_auth.dart';
+import 'package:moto_amg/features/auth/domain/entities/app_user.dart';
+import 'package:moto_amg/features/auth/domain/exceptions/auth_exceptions.dart';
+import 'package:moto_amg/firebase_options.dart';
 
 class AuthRemoteDataSource {
   AuthRemoteDataSource({
@@ -35,8 +35,8 @@ class AuthRemoteDataSource {
              clientId: defaultTargetPlatform == TargetPlatform.iOS
                  ? DefaultFirebaseOptions.ios.iosClientId
                  : null,
-             serverClientId:
-                 '128161523972-povb28ju9fbrcq0jsg7ljlcj7sbef1an.apps.googleusercontent.com',
+             // Web client (client_type 3) del proyecto Firebase motoamg.
+             serverClientId: DefaultFirebaseOptions.googleWebClientId,
            );
 
   final FirebaseAuth _auth;
@@ -471,6 +471,29 @@ class AuthRemoteDataSource {
     } on FirebaseException catch (error) {
       throw AuthException(
         'No se pudo guardar tu perfil. ${error.message ?? error.code}',
+      );
+    }
+  }
+
+  /// Guarda la aceptación de privacidad en la cuenta (Firestore).
+  Future<UserModel> acceptPrivacyPolicy(String uid) async {
+    final doc = _users.doc(uid);
+    final now = DateTime.now();
+    try {
+      await doc.set({
+        'privacyAcceptedAt': Timestamp.fromDate(now),
+        'privacyAcceptedVersion': AppConstants.privacyPolicyVersion,
+      }, SetOptions(merge: true));
+      final updated = await doc.get();
+      if (!updated.exists) {
+        throw const AuthException(
+          'No se encontró tu perfil para guardar la aceptación.',
+        );
+      }
+      return UserModel.fromFirestore(updated);
+    } on FirebaseException catch (error) {
+      throw AuthException(
+        'No se pudo guardar la aceptación. ${error.message ?? error.code}',
       );
     }
   }

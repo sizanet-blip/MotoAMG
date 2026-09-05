@@ -1,8 +1,8 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:loc_motos/core/constants/app_constants.dart';
-import 'package:loc_motos/features/settings/presentation/screens/app_help_document_screen.dart';
+import 'package:moto_amg/core/constants/app_constants.dart';
+import 'package:moto_amg/features/settings/presentation/screens/app_help_document_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Menú de ayuda: guía rápida, manual completo y preguntas frecuentes.
@@ -13,7 +13,7 @@ class AppHelpScreen extends StatelessWidget {
     final uri = Uri(
       scheme: 'mailto',
       path: AppConstants.supportEmail,
-      queryParameters: const {'subject': 'LocMotos — ayuda'},
+      queryParameters: const {'subject': 'MotoAMG — ayuda'},
     );
     final opened = await launchUrl(uri);
     if (!opened && context.mounted) {

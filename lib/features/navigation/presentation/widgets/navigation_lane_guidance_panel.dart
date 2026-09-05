@@ -1,8 +1,8 @@
-import 'dart:math' as math;
+﻿import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:loc_motos/features/navigation/domain/entities/lane_guidance.dart';
-import 'package:loc_motos/features/navigation/presentation/theme/navigation_hud_theme.dart';
+import 'package:moto_amg/features/navigation/domain/entities/lane_guidance.dart';
+import 'package:moto_amg/features/navigation/presentation/theme/navigation_hud_theme.dart';
 
 /// Panel 2D de control de carriles (activos rellenos, resto contorno).
 class NavigationLaneGuidancePanel extends StatelessWidget {

@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:io' show Platform;
 
 import 'package:firebase_auth/firebase_auth.dart';
@@ -7,8 +7,8 @@ import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:loc_motos/app.dart';
-import 'package:loc_motos/firebase_options.dart';
+import 'package:moto_amg/app.dart';
+import 'package:moto_amg/firebase_options.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 
 Future<void> main() async {
@@ -20,7 +20,7 @@ Future<void> main() async {
   }
   await Hive.initFlutter();
   await _initializeFirebase();
-  runApp(const LocMotosApp());
+  runApp(const MotoAmgApp());
 }
 
 Future<void> _initializeFirebase() async {

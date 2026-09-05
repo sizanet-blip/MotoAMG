@@ -1,5 +1,5 @@
-import 'package:flutter_test/flutter_test.dart';
-import 'package:loc_motos/features/navigation/domain/entities/route_preferences.dart';
+﻿import 'package:flutter_test/flutter_test.dart';
+import 'package:moto_amg/features/navigation/domain/entities/route_preferences.dart';
 
 void main() {
   group('RoutePreferences.toValhallaCostingOptions', () {

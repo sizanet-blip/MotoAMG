@@ -1,11 +1,11 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:http/http.dart' as http;
-import 'package:loc_motos/core/constants/navigation_constants.dart';
-import 'package:loc_motos/features/navigation/domain/entities/geo_point.dart';
-import 'package:loc_motos/features/navigation/domain/entities/route_alert.dart';
+import 'package:moto_amg/core/constants/navigation_constants.dart';
+import 'package:moto_amg/features/navigation/domain/entities/geo_point.dart';
+import 'package:moto_amg/features/navigation/domain/entities/route_alert.dart';
 
 /// Estado de la caché local de radares (oficial + OSM).
 class SpainRadarCacheStatus {
@@ -61,7 +61,7 @@ class SpainRadarDownloadResult {
   final bool cancelled;
 }
 
-/// Inventario de radares: bundle del servidor LocMotos + fallback DGT/SCT.
+/// Inventario de radares: bundle del servidor MotoAMG + fallback DGT/SCT.
 ///
 /// - Descarga manual (Configuración): `…/radares/es.json` (DGT+SCT+OSM).
 /// - En ruta: oficiales desde caché (fallback DGT/SCT si falta); OSM solo caché.
@@ -185,7 +185,7 @@ class SpainRadarDatasource {
           .get(
             Uri.parse(NavigationConstants.spainRadarBundleUrl),
             headers: {
-              'User-Agent': 'LocMotos/1.0 (navigation; radar bundle)',
+              'User-Agent': 'MotoAMG/1.0 (navigation; radar bundle)',
               'Accept': 'application/json',
             },
           )
@@ -479,7 +479,7 @@ class SpainRadarDatasource {
           .get(
             Uri.parse(NavigationConstants.dgtRadaresDatexUrl),
             headers: {
-              'User-Agent': 'LocMotos/1.0 (navigation; radars; nap.dgt.es)',
+              'User-Agent': 'MotoAMG/1.0 (navigation; radars; nap.dgt.es)',
               'Accept': 'application/xml,text/xml,*/*',
             },
           )
@@ -559,7 +559,7 @@ class SpainRadarDatasource {
           .get(
             Uri.parse(url),
             headers: {
-              'User-Agent': 'LocMotos/1.0 (navigation; radars; transit.gencat.cat)',
+              'User-Agent': 'MotoAMG/1.0 (navigation; radars; transit.gencat.cat)',
               'Accept': 'text/plain,*/*',
             },
           )

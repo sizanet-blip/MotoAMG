@@ -1,16 +1,16 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:loc_motos/core/utils/distance_format.dart';
-import 'package:loc_motos/features/auth/domain/entities/app_user.dart';
-import 'package:loc_motos/features/groups/domain/entities/group_member.dart';
-import 'package:loc_motos/features/groups/domain/entities/ride_group.dart';
-import 'package:loc_motos/features/groups/domain/entities/ride_role.dart';
-import 'package:loc_motos/features/groups/presentation/providers/group_providers.dart';
-import 'package:loc_motos/features/tracking/domain/entities/device_position.dart';
-import 'package:loc_motos/features/tracking/domain/entities/live_location.dart';
-import 'package:loc_motos/features/tracking/presentation/providers/tracking_providers.dart';
+import 'package:moto_amg/core/utils/distance_format.dart';
+import 'package:moto_amg/features/auth/domain/entities/app_user.dart';
+import 'package:moto_amg/features/groups/domain/entities/group_member.dart';
+import 'package:moto_amg/features/groups/domain/entities/ride_group.dart';
+import 'package:moto_amg/features/groups/domain/entities/ride_role.dart';
+import 'package:moto_amg/features/groups/presentation/providers/group_providers.dart';
+import 'package:moto_amg/features/tracking/domain/entities/device_position.dart';
+import 'package:moto_amg/features/tracking/domain/entities/live_location.dart';
+import 'package:moto_amg/features/tracking/presentation/providers/tracking_providers.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -127,7 +127,7 @@ class GroupOptionsScreen extends ConsumerWidget {
               const SizedBox(height: 24),
               Text(
                 'La ubicación se sigue enviando con la pantalla apagada. '
-                'Verás una notificación de LocMotos mientras estés en el grupo.',
+                'Verás una notificación de MotoAMG mientras estés en el grupo.',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
               const SizedBox(height: 24),
@@ -245,7 +245,7 @@ class _InviteCodeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final shareText =
-        'Únete a mi grupo en LocMotos.\nCódigo: $code';
+        'Únete a mi grupo en MotoAMG.\nCódigo: $code';
     return Card(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),

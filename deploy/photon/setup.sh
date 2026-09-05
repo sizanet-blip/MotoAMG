@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Photon (Komoot) para LocMotos — Ubuntu ARM64 / Oracle Cloud
+# Photon (Komoot) para MotoAMG — Ubuntu ARM64 / Oracle Cloud
 # Ejecutar en el servidor: bash setup.sh
 
 PHOTON_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -32,4 +32,4 @@ echo "Prueba:"
 echo "  curl 'http://127.0.0.1:2322/api?q=paseo+de+los+olmos+siguenza&lang=es&limit=3'"
 echo ""
 echo "Siguiente paso: proxy HTTPS (Caddy) → photon.albertomaestre.es"
-echo "Luego en LocMotos: photonBaseUrl = 'https://photon.albertomaestre.es'"
+echo "Luego en MotoAMG: photonBaseUrl = 'https://photon.albertomaestre.es'"
