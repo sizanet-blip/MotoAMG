@@ -1,4 +1,4 @@
-﻿name: moto_amg
+name: moto_amg
 description: "MotoAMG — Pelotón en vivo y GPS para moteros. Salidas en grupo, ubicación del pack, rutas e intercom."
 publish_to: "none"
 
@@ -41,6 +41,7 @@ dependencies:
   package_info_plus: ^10.2.1
   qr_flutter: ^4.1.0
   livekit_client: ^2.5.3
+  google_fonts: ^8.2.1
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -64,6 +65,7 @@ flutter:
   assets:
     - assets/branding/motoamg-app-icon.png
     - assets/branding/motoamg-wordmark.png
+    - assets/branding/motoamg-home-landscape.png
     - assets/maps/navigation_style.json
     - assets/maps/protomaps_light_layers.json
     - assets/maps/basemaps/fonts/Noto Sans Regular/

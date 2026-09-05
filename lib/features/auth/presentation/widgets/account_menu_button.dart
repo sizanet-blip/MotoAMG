@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:moto_amg/core/constants/app_constants.dart';
 import 'package:moto_amg/core/widgets/app_popup_menu.dart';
@@ -9,7 +9,13 @@ import 'package:moto_amg/features/auth/presentation/widgets/reveal_recovery_key_
 import 'package:moto_amg/features/settings/presentation/screens/settings_screen.dart';
 
 class AccountMenuButton extends ConsumerWidget {
-  const AccountMenuButton({super.key});
+  const AccountMenuButton({
+    super.key,
+    this.icon,
+  });
+
+  /// Si es null, muestra el avatar de la cuenta (comportamiento habitual).
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -31,26 +37,28 @@ class AccountMenuButton extends ConsumerWidget {
       color: AppPopupMenus.colorOf(context),
       shape: AppPopupMenus.shapeOf(context),
       padding: EdgeInsets.zero,
-      icon: Builder(
-        builder: (context) {
-          final photoUrl = user?.photoUrl;
-          final hasPhoto = photoUrl != null && photoUrl.isNotEmpty;
-          return CircleAvatar(
-            radius: 16,
-            backgroundColor: colors.primaryContainer,
-            foregroundColor: colors.onPrimaryContainer,
-            backgroundImage: hasPhoto ? NetworkImage(photoUrl) : null,
-            child: hasPhoto
-                ? null
-                : Icon(
-                    isGuest
-                        ? Icons.person_outline_rounded
-                        : Icons.person_rounded,
-                    size: 18,
-                  ),
-          );
-        },
-      ),
+      icon: icon != null
+          ? Icon(icon, color: colors.onSurface)
+          : Builder(
+              builder: (context) {
+                final photoUrl = user?.photoUrl;
+                final hasPhoto = photoUrl != null && photoUrl.isNotEmpty;
+                return CircleAvatar(
+                  radius: 16,
+                  backgroundColor: colors.primaryContainer,
+                  foregroundColor: colors.onPrimaryContainer,
+                  backgroundImage: hasPhoto ? NetworkImage(photoUrl) : null,
+                  child: hasPhoto
+                      ? null
+                      : Icon(
+                          isGuest
+                              ? Icons.person_outline_rounded
+                              : Icons.person_rounded,
+                          size: 18,
+                        ),
+                );
+              },
+            ),
       onSelected: (value) {
         if (value == 'logout') {
           ref.read(authActionControllerProvider.notifier).signOut();

@@ -1,8 +1,10 @@
-﻿/// Constantes de negocio y rutas de Firebase para MotoAMG.
+/// Constantes de negocio y rutas de Firebase para MotoAMG.
 abstract final class AppConstants {
   static const String appName = 'MotoAMG';
   static const String appIconAsset = 'assets/branding/motoamg-app-icon.png';
   static const String appWordmarkAsset = 'assets/branding/motoamg-wordmark.png';
+  static const String homeLandscapeAsset =
+      'assets/branding/motoamg-home-landscape.png';
   static const String appTagline = 'Pelotón en vivo y GPS para moteros';
   static const String appShortDescription =
       'Salidas en grupo, ubicación del pack, rutas e intercom';

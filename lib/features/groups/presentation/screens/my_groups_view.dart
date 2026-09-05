@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:moto_amg/core/theme/hub_style.dart';
 import 'package:moto_amg/features/auth/domain/entities/app_user.dart';
 import 'package:moto_amg/features/auth/presentation/providers/auth_providers.dart';
 import 'package:moto_amg/features/auth/presentation/providers/home_landing_provider.dart';
@@ -39,24 +40,28 @@ class MyGroupsView extends ConsumerWidget {
       },
       child: Scaffold(
         resizeToAvoidBottomInset: false,
+        backgroundColor: Theme.of(context).brightness == Brightness.dark
+            ? null
+            : HubStyle.surface,
         appBar: AppBar(
-          titleSpacing: 12,
+          backgroundColor: Theme.of(context).brightness == Brightness.dark
+              ? null
+              : HubStyle.surface,
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          titleSpacing: 0,
           leading: IconButton(
             tooltip: 'Inicio',
             onPressed: () {
               ref.read(homeLandingSectionProvider.notifier).state =
                   HomeLandingSection.hub;
             },
-            icon: const Icon(Icons.arrow_back),
+            icon: const Icon(Icons.arrow_back_rounded, color: HubStyle.title),
           ),
           title: Row(
             children: [
-              Text(
-                'Mis grupos',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-              ),
+              Text('Mis grupos', style: HubStyle.pageTitle()),
               if (activeClubName != null) ...[
                 const SizedBox(width: 10),
                 Expanded(
@@ -65,17 +70,16 @@ class MyGroupsView extends ConsumerWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.end,
-                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                          color:
-                              Theme.of(context).colorScheme.onSurfaceVariant,
-                          fontWeight: FontWeight.w600,
-                        ),
+                    style: HubStyle.caption(),
                   ),
                 ),
               ],
             ],
           ),
-          actions: const [AccountMenuButton()],
+          actions: const [
+            AccountMenuButton(),
+            SizedBox(width: 8),
+          ],
         ),
         body: groupsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -336,28 +340,24 @@ class _PortraitBody extends StatelessWidget {
         Expanded(
           child: hideGroupActions
               ? ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
                   children: [
                     if (showClubCta) _ClubInviteBanner(onTap: onClubEntry),
                     const SizedBox(height: 24),
                     Text(
                       'Hola, ${user.displayName}',
-                      style: Theme.of(context).textTheme.headlineSmall,
+                      style: HubStyle.headline(),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       'Únete a un club para crear o unirte a grupos de ruta. '
                       'Mientras, puedes usar la navegación individual.',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurfaceVariant,
-                          ),
+                      style: HubStyle.body(),
                     ),
                   ],
                 )
               : ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
                   children: [
                     if (showClubSwitcher) ...[
                       _ClubSwitcher(
@@ -365,20 +365,20 @@ class _PortraitBody extends StatelessWidget {
                         activeClubId: user.currentClubId,
                         onSelect: onSelectClub,
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 14),
                     ],
                     if (showClubCta) ...[
                       _ClubInviteBanner(onTap: onClubEntry),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 12),
                     ],
                     if (active.isEmpty)
                       _EmptyGroups(user: user)
                     else ...[
                       Padding(
-                        padding: const EdgeInsets.only(bottom: 8, top: 4),
+                        padding: const EdgeInsets.only(bottom: 12, top: 4),
                         child: Text(
                           'Elige el grupo de esta ruta. Puedes crear o unirte a más.',
-                          style: Theme.of(context).textTheme.bodyMedium,
+                          style: HubStyle.body(),
                         ),
                       ),
                       for (final group in active) ...[
@@ -388,7 +388,7 @@ class _PortraitBody extends StatelessWidget {
                           onOpen: () => onOpen(group.groupId),
                           onDismiss: () => onDismissGroup(group),
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 12),
                       ],
                     ],
                   ],
@@ -397,7 +397,7 @@ class _PortraitBody extends StatelessWidget {
         SafeArea(
           top: false,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
             child: _ActionButtons(
               busy: busy,
               stretch: true,
@@ -473,18 +473,12 @@ class _LandscapeBody extends StatelessWidget {
                               ],
                               Text(
                                 'Hola, ${user.displayName}',
-                                style:
-                                    Theme.of(context).textTheme.headlineSmall,
+                                style: HubStyle.headline(),
                               ),
                               const SizedBox(height: 8),
                               Text(
                                 'Únete a un club para usar grupos de ruta.',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodyMedium
-                                    ?.copyWith(
-                                      color: colors.onSurfaceVariant,
-                                    ),
+                                style: HubStyle.body(),
                               ),
                             ],
                           ),
@@ -524,19 +518,12 @@ class _LandscapeBody extends StatelessWidget {
                                 children: [
                                   Text(
                                     'Tus grupos',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleLarge,
+                                    style: HubStyle.sectionTitle(),
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
                                     'Elige el grupo de esta ruta.',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodyMedium
-                                        ?.copyWith(
-                                          color: colors.onSurfaceVariant,
-                                        ),
+                                    style: HubStyle.body(),
                                   ),
                                 ],
                               ),
@@ -582,7 +569,7 @@ class _LandscapeBody extends StatelessWidget {
                         children: [
                           Text(
                             'Acciones',
-                            style: Theme.of(context).textTheme.titleMedium,
+                            style: HubStyle.sectionTitle(),
                           ),
                           const SizedBox(height: 4),
                           Text(
@@ -591,12 +578,7 @@ class _LandscapeBody extends StatelessWidget {
                                 : (user.allowSoloNavigation
                                     ? 'Crear, unirte o ir a navegar.'
                                     : 'Crear grupo o unirte con un código.'),
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall
-                                ?.copyWith(
-                                  color: colors.onSurfaceVariant,
-                                ),
+                            style: HubStyle.caption(),
                           ),
                           const SizedBox(height: 16),
                           _ActionButtons(
@@ -651,10 +633,7 @@ class _ClubSwitcher extends StatelessWidget {
       children: [
         Text(
           title,
-          style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: colors.onSurfaceVariant,
-                letterSpacing: 0.2,
-              ),
+          style: HubStyle.caption(),
         ),
         const SizedBox(height: 6),
         DropdownMenu<String>(
@@ -679,7 +658,7 @@ class _ClubSwitcher extends StatelessWidget {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: colors.primary, width: 1.5),
+              borderSide: const BorderSide(color: HubStyle.accent, width: 1.5),
             ),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 14,
@@ -694,9 +673,7 @@ class _ClubSwitcher extends StatelessWidget {
             Icons.keyboard_arrow_up_rounded,
             color: colors.onSurfaceVariant,
           ),
-          textStyle: Theme.of(context).textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
+          textStyle: HubStyle.sectionTitle(),
           dropdownMenuEntries: [
             for (final club in clubs)
               DropdownMenuEntry<String>(
@@ -736,30 +713,50 @@ class _ClubInviteBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return Material(
-      color: colors.secondaryContainer.withValues(alpha: 0.55),
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          child: Row(
-            children: [
-              Icon(Icons.groups_outlined, color: colors.onSecondaryContainer),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  'Únete a un club o registra el tuyo',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: colors.onSecondaryContainer,
-                      ),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: isDark ? null : HubStyle.cardShadow,
+      ),
+      child: Material(
+        color: isDark
+            ? Theme.of(context).colorScheme.surfaceContainerHighest
+            : HubStyle.surface,
+        borderRadius: BorderRadius.circular(16),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: const BoxDecoration(
+                    color: HubStyle.accent,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.groups_rounded,
+                    color: Colors.white,
+                    size: 22,
+                  ),
                 ),
-              ),
-              Icon(Icons.chevron_right, color: colors.onSecondaryContainer),
-            ],
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Únete a un club o registra el tuyo',
+                    style: HubStyle.sectionTitle(),
+                  ),
+                ),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: HubStyle.accent,
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -796,12 +793,14 @@ class _ActionButtons extends StatelessWidget {
         if (showGroupActions) ...[
           FilledButton.icon(
             onPressed: busy ? null : onCreate,
-            icon: const Icon(Icons.add),
+            style: HubStyle.filledButtonStyle(),
+            icon: const Icon(Icons.add_rounded),
             label: const Text('Crear grupo'),
           ),
           const SizedBox(height: 10),
           OutlinedButton.icon(
             onPressed: busy ? null : onJoin,
+            style: HubStyle.outlinedButtonStyle(),
             icon: const Icon(Icons.vpn_key_outlined),
             label: const Text('Unirme con un código'),
           ),
@@ -810,7 +809,8 @@ class _ActionButtons extends StatelessWidget {
           if (showGroupActions) const SizedBox(height: 10),
           OutlinedButton.icon(
             onPressed: busy ? null : onNavigate,
-            icon: const Icon(Icons.navigation_outlined),
+            style: HubStyle.outlinedButtonStyle(),
+            icon: const Icon(Icons.near_me_rounded),
             label: const Text('Navegación'),
           ),
         ],
@@ -833,7 +833,7 @@ class _EmptyGroups extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.all(compact ? 8 : 24),
+      padding: EdgeInsets.all(compact ? 8 : 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisAlignment:
@@ -841,14 +841,14 @@ class _EmptyGroups extends StatelessWidget {
         children: [
           Text(
             'Hola, ${user.displayName}',
-            style: Theme.of(context).textTheme.headlineSmall,
+            style: HubStyle.headline(),
           ),
-          SizedBox(height: compact ? 8 : 8),
+          const SizedBox(height: 8),
           Text(
             compact
                 ? 'Crea un grupo o únete con un código desde el panel de la derecha.'
                 : 'Crea un grupo o únete con un código. Luego podrás tener varios y elegir cuál abrir.',
-            style: Theme.of(context).textTheme.bodyMedium,
+            style: HubStyle.body(),
           ),
         ],
       ),
@@ -872,6 +872,7 @@ class _GroupTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Dismissible(
       key: ValueKey(membership.groupId),
       direction: DismissDirection.endToStart,
@@ -881,17 +882,14 @@ class _GroupTile extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 20),
         decoration: BoxDecoration(
           color: colors.errorContainer,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
             Text(
               membership.isOwner ? 'Eliminar' : 'Salir',
-              style: TextStyle(
-                color: colors.onErrorContainer,
-                fontWeight: FontWeight.w600,
-              ),
+              style: HubStyle.sectionTitle(color: colors.onErrorContainer),
             ),
             const SizedBox(width: 8),
             Icon(
@@ -901,24 +899,74 @@ class _GroupTile extends StatelessWidget {
           ],
         ),
       ),
-      child: Card(
-        child: ListTile(
-          enabled: enabled,
-          leading: CircleAvatar(
-            child: Icon(membership.isOwner ? Icons.star : Icons.two_wheeler),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: isDark ? null : HubStyle.cardShadow,
+        ),
+        child: Material(
+          color: isDark ? colors.surfaceContainerHighest : HubStyle.surface,
+          borderRadius: BorderRadius.circular(16),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: enabled ? onOpen : null,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(14, 14, 8, 14),
+              child: Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: enabled
+                          ? HubStyle.accent
+                          : HubStyle.accent.withValues(alpha: 0.45),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      membership.isOwner
+                          ? Icons.star_rounded
+                          : Icons.two_wheeler_rounded,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          membership.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: HubStyle.sectionTitle(
+                            color: enabled
+                                ? (isDark ? colors.onSurface : HubStyle.title)
+                                : HubStyle.subtitle,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          membership.isOwner
+                              ? 'Creador · ${membership.code}'
+                              : membership.code,
+                          style: HubStyle.caption(),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    color: enabled
+                        ? HubStyle.accent
+                        : HubStyle.accent.withValues(alpha: 0.4),
+                    size: 26,
+                  ),
+                ],
+              ),
+            ),
           ),
-          title: Text(
-            membership.name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          subtitle: Text(
-            membership.isOwner
-                ? 'Creador · ${membership.code}'
-                : membership.code,
-          ),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: enabled ? onOpen : null,
         ),
       ),
     );

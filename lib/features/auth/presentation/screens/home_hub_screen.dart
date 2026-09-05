@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:moto_amg/core/constants/app_constants.dart';
+import 'package:moto_amg/core/theme/hub_style.dart';
 import 'package:moto_amg/core/widgets/app_brand_title.dart';
 import 'package:moto_amg/features/auth/domain/entities/app_user.dart';
 import 'package:moto_amg/features/auth/presentation/providers/home_landing_provider.dart';
@@ -7,7 +10,7 @@ import 'package:moto_amg/features/auth/presentation/widgets/account_menu_button.
 import 'package:moto_amg/features/navigation/presentation/screens/navigation_hub_screen.dart';
 import 'package:moto_amg/features/settings/presentation/screens/settings_screen.dart';
 
-/// Inicio estilo mockup: saludo + tres accesos principales.
+/// Inicio: cards principales + menú de cuenta (sin drawer duplicado).
 class HomeHubScreen extends ConsumerWidget {
   const HomeHubScreen({super.key, required this.user});
 
@@ -15,91 +18,143 @@ class HomeHubScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final colors = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bg = isDark ? Theme.of(context).colorScheme.surface : HubStyle.surface;
+    final onBg = isDark
+        ? Theme.of(context).colorScheme.onSurface
+        : HubStyle.title;
+    final muted = isDark
+        ? Theme.of(context).colorScheme.onSurfaceVariant
+        : HubStyle.subtitle;
+    final screenH = MediaQuery.sizeOf(context).height;
+    final landscapeH = (screenH * 0.32).clamp(190.0, 280.0);
 
     return Scaffold(
-      backgroundColor: colors.surface,
+      backgroundColor: bg,
       appBar: AppBar(
+        backgroundColor: bg,
+        foregroundColor: onBg,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        centerTitle: false,
         titleSpacing: 12,
+        automaticallyImplyLeading: false,
         title: const AppBrandTitle(),
-        actions: const [AccountMenuButton()],
+        actions: const [
+          AccountMenuButton(),
+          SizedBox(width: 8),
+        ],
       ),
       body: Stack(
+        fit: StackFit.expand,
         children: [
           Positioned(
             left: 0,
             right: 0,
             bottom: 0,
-            height: 160,
+            height: landscapeH,
             child: IgnorePointer(
-              child: CustomPaint(
-                painter: _HomeRoadscapePainter(
-                  mountain: colors.onSurface.withValues(alpha: 0.06),
-                  road: colors.onSurface.withValues(alpha: 0.10),
-                  pin: colors.primary,
+              child: Image.asset(
+                AppConstants.homeLandscapeAsset,
+                fit: BoxFit.cover,
+                alignment: Alignment.bottomCenter,
+                filterQuality: FilterQuality.high,
+              ),
+            ),
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: landscapeH - 56,
+            height: 72,
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      bg,
+                      bg.withValues(alpha: 0.85),
+                      bg.withValues(alpha: 0.35),
+                      bg.withValues(alpha: 0),
+                    ],
+                    stops: const [0, 0.35, 0.7, 1],
+                  ),
                 ),
               ),
             ),
           ),
           SafeArea(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
-              children: [
-                Text(
-                  'Hola',
-                  style: textTheme.headlineLarge?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.6,
-                    color: colors.onSurface,
+            bottom: false,
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(22, 8, 22, landscapeH * 0.55),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 12),
+                  Text(
+                    'Hola',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 36,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.8,
+                      height: 1.05,
+                      color: onBg,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  '¿A dónde vamos hoy?',
-                  style: textTheme.titleMedium?.copyWith(
-                    color: colors.onSurfaceVariant,
-                    fontWeight: FontWeight.w500,
+                  const SizedBox(height: 6),
+                  Text(
+                    '¿A dónde vamos hoy?',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w500,
+                      height: 1.3,
+                      color: muted,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 28),
-                _HomeHubCard(
-                  icon: Icons.groups_rounded,
-                  title: 'Mis grupos',
-                  subtitle: 'Gestiona tus grupos y miembros de ruta',
-                  onTap: () {
-                    ref.read(homeLandingSectionProvider.notifier).state =
-                        HomeLandingSection.groups;
-                  },
-                ),
-                const SizedBox(height: 14),
-                _HomeHubCard(
-                  icon: Icons.navigation_rounded,
-                  title: 'Navegación',
-                  subtitle: 'Planifica y navega tus rutas',
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => NavigationHubScreen(user: user),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 14),
-                _HomeHubCard(
-                  icon: Icons.settings_rounded,
-                  title: 'Configuración',
-                  subtitle: 'Ajustes de la app y preferencias',
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => const SettingsScreen(),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 140),
-              ],
+                  const SizedBox(height: 28),
+                  _HomeHubCard(
+                    icon: Icons.groups_rounded,
+                    title: 'Mis grupos',
+                    subtitle: 'Gestiona tus grupos y miembros de ruta',
+                    isDark: isDark,
+                    onTap: () {
+                      ref.read(homeLandingSectionProvider.notifier).state =
+                          HomeLandingSection.groups;
+                    },
+                  ),
+                  const SizedBox(height: 14),
+                  _HomeHubCard(
+                    icon: Icons.near_me_rounded,
+                    title: 'Navegación',
+                    subtitle: 'Planifica y navega tus rutas',
+                    isDark: isDark,
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => NavigationHubScreen(user: user),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 14),
+                  _HomeHubCard(
+                    icon: Icons.settings_rounded,
+                    title: 'Configuración',
+                    subtitle: 'Ajustes de la app y preferencias',
+                    isDark: isDark,
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const SettingsScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -113,33 +168,40 @@ class _HomeHubCard extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.subtitle,
+    required this.isDark,
     required this.onTap,
   });
 
   final IconData icon;
   final String title;
   final String subtitle;
+  final bool isDark;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-
-    final cardColor = colors.brightness == Brightness.dark
-        ? colors.surfaceContainerHighest
+    final cardColor = isDark
+        ? Theme.of(context).colorScheme.surfaceContainerHighest
         : Colors.white;
+    final titleColor = isDark
+        ? Theme.of(context).colorScheme.onSurface
+        : const Color(0xFF111827);
+    final subtitleColor = isDark
+        ? Theme.of(context).colorScheme.onSurfaceVariant
+        : const Color(0xFF4B5563);
 
     return DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: colors.shadow.withValues(alpha: 0.08),
-            blurRadius: 18,
-            offset: const Offset(0, 6),
-          ),
-        ],
+        boxShadow: isDark
+            ? null
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 18,
+                  offset: const Offset(0, 6),
+                ),
+              ],
       ),
       child: Material(
         color: cardColor,
@@ -148,44 +210,49 @@ class _HomeHubCard extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 18, 12, 18),
+            padding: const EdgeInsets.fromLTRB(14, 16, 8, 16),
             child: Row(
               children: [
                 Container(
-                  width: 52,
-                  height: 52,
-                  decoration: BoxDecoration(
-                    color: colors.primary,
+                  width: 48,
+                  height: 48,
+                  decoration: const BoxDecoration(
+                    color: HubStyle.accent,
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(icon, color: colors.onPrimary, size: 26),
+                  child: Icon(icon, color: Colors.white, size: 24),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         title,
-                        style: textTheme.titleMedium?.copyWith(
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 16,
                           fontWeight: FontWeight.w700,
-                          color: colors.onSurface,
+                          color: titleColor,
+                          letterSpacing: -0.15,
                         ),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         subtitle,
-                        style: textTheme.bodyMedium?.copyWith(
-                          color: colors.onSurfaceVariant,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12,
+                          height: 1.25,
+                          fontWeight: FontWeight.w500,
+                          color: subtitleColor,
                         ),
                       ),
                     ],
                   ),
                 ),
-                Icon(
+                const Icon(
                   Icons.chevron_right_rounded,
-                  color: colors.primary,
-                  size: 28,
+                  color: HubStyle.accent,
+                  size: 26,
                 ),
               ],
             ),
@@ -193,84 +260,5 @@ class _HomeHubCard extends StatelessWidget {
         ),
       ),
     );
-  }
-}
-
-class _HomeRoadscapePainter extends CustomPainter {
-  const _HomeRoadscapePainter({
-    required this.mountain,
-    required this.road,
-    required this.pin,
-  });
-
-  final Color mountain;
-  final Color road;
-  final Color pin;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    final h = size.height;
-
-    final far = Path()
-      ..moveTo(0, h * 0.72)
-      ..lineTo(w * 0.18, h * 0.42)
-      ..lineTo(w * 0.34, h * 0.58)
-      ..lineTo(w * 0.52, h * 0.28)
-      ..lineTo(w * 0.68, h * 0.52)
-      ..lineTo(w * 0.84, h * 0.36)
-      ..lineTo(w, h * 0.55)
-      ..lineTo(w, h)
-      ..lineTo(0, h)
-      ..close();
-    canvas.drawPath(far, Paint()..color = mountain);
-
-    final near = Path()
-      ..moveTo(0, h * 0.88)
-      ..lineTo(w * 0.22, h * 0.62)
-      ..lineTo(w * 0.40, h * 0.78)
-      ..lineTo(w * 0.58, h * 0.55)
-      ..lineTo(w * 0.78, h * 0.72)
-      ..lineTo(w, h * 0.60)
-      ..lineTo(w, h)
-      ..lineTo(0, h)
-      ..close();
-    canvas.drawPath(
-      near,
-      Paint()..color = mountain.withValues(alpha: 0.55),
-    );
-
-    final roadPath = Path()
-      ..moveTo(w * 0.08, h)
-      ..quadraticBezierTo(w * 0.28, h * 0.78, w * 0.42, h * 0.70)
-      ..quadraticBezierTo(w * 0.58, h * 0.60, w * 0.62, h * 0.48);
-    final roadPaint = Paint()
-      ..color = road
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 10
-      ..strokeCap = StrokeCap.round;
-    canvas.drawPath(roadPath, roadPaint);
-
-    final pinCenter = Offset(w * 0.62, h * 0.40);
-    final pinPaint = Paint()..color = pin;
-    canvas.drawCircle(pinCenter, 7, pinPaint);
-    final tip = Path()
-      ..moveTo(pinCenter.dx - 6, pinCenter.dy + 4)
-      ..lineTo(pinCenter.dx, pinCenter.dy + 16)
-      ..lineTo(pinCenter.dx + 6, pinCenter.dy + 4)
-      ..close();
-    canvas.drawPath(tip, pinPaint);
-    canvas.drawCircle(
-      pinCenter,
-      3,
-      Paint()..color = Colors.white.withValues(alpha: 0.9),
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _HomeRoadscapePainter oldDelegate) {
-    return oldDelegate.mountain != mountain ||
-        oldDelegate.road != road ||
-        oldDelegate.pin != pin;
   }
 }

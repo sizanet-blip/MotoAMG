@@ -1,4 +1,5 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:moto_amg/core/constants/app_constants.dart';
 
 /// Marca compacta para AppBars: icono + nombre.
@@ -7,9 +8,11 @@ class AppBrandTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final titleStyle = Theme.of(context).textTheme.titleLarge?.copyWith(
+    final titleStyle = GoogleFonts.plusJakartaSans(
+      fontSize: Theme.of(context).textTheme.titleLarge?.fontSize ?? 20,
       fontWeight: FontWeight.w700,
       letterSpacing: -0.3,
+      color: Theme.of(context).colorScheme.onSurface,
     );
 
     return Row(

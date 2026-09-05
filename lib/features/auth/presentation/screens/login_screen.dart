@@ -1,6 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:moto_amg/core/constants/app_constants.dart';
+import 'package:moto_amg/core/theme/hub_style.dart';
 import 'package:moto_amg/features/auth/presentation/providers/auth_providers.dart';
 import 'package:moto_amg/features/auth/presentation/screens/display_name_screen.dart';
 import 'package:moto_amg/features/auth/presentation/screens/recover_account_screen.dart';
@@ -31,9 +32,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (!_formKey.currentState!.validate()) {
       return;
     }
-    await ref
-        .read(authActionControllerProvider.notifier)
-        .signInWithIdentifier(
+    await ref.read(authActionControllerProvider.notifier).signInWithIdentifier(
           identifier: _emailController.text,
           password: _passwordController.text,
         );
@@ -55,51 +54,48 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     });
 
     return Scaffold(
+      backgroundColor: HubStyle.surface,
       body: SafeArea(
         child: AutofillGroup(
           child: Form(
             key: _formKey,
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
                   Center(
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(24),
                       child: Image.asset(
                         AppConstants.appIconAsset,
-                        width: 96,
-                        height: 96,
+                        width: 88,
+                        height: 88,
                         fit: BoxFit.cover,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
                   Text(
                     AppConstants.appName,
                     textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: HubStyle.headline(),
                   ),
                   const SizedBox(height: 6),
                   Text(
                     AppConstants.appTagline,
                     textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
+                    style: HubStyle.body(),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   Text(
                     'Entra con correo o con tu usuario. '
                     'Si solo es una ruta, usa una cuenta de invitado.',
                     textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodyLarge,
+                    style: HubStyle.caption(),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 28),
                   TextFormField(
                     controller: _emailController,
                     enabled: !isLoading,
@@ -110,10 +106,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ],
                     textInputAction: TextInputAction.next,
                     autocorrect: false,
-                    decoration: const InputDecoration(
+                    decoration: HubStyle.inputDecoration(
                       labelText: 'Correo o usuario',
                       hintText: 'tu@email.com o alberto_87',
-                      border: OutlineInputBorder(),
                     ),
                     validator: AuthValidators.loginIdentifier,
                   ),
@@ -125,14 +120,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     autofillHints: const [AutofillHints.password],
                     textInputAction: TextInputAction.done,
                     onFieldSubmitted: (_) => _signIn(),
-                    decoration: InputDecoration(
+                    decoration: HubStyle.inputDecoration(
                       labelText: 'Contraseña',
-                      border: const OutlineInputBorder(),
                       suffixIcon: IconButton(
                         tooltip: _obscure ? 'Mostrar' : 'Ocultar',
                         onPressed: () => setState(() => _obscure = !_obscure),
                         icon: Icon(
-                          _obscure ? Icons.visibility : Icons.visibility_off,
+                          _obscure
+                              ? Icons.visibility_outlined
+                              : Icons.visibility_off_outlined,
+                          color: HubStyle.subtitle,
                         ),
                       ),
                     ),
@@ -141,6 +138,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   Align(
                     alignment: Alignment.centerRight,
                     child: TextButton(
+                      style: HubStyle.textButtonStyle(),
                       onPressed: isLoading
                           ? null
                           : () {
@@ -153,19 +151,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       child: const Text('He olvidado la contraseña'),
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 4),
                   FilledButton(
+                    style: HubStyle.filledButtonStyle(),
                     onPressed: isLoading ? null : _signIn,
                     child: isLoading
                         ? const SizedBox(
                             height: 20,
                             width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
                           )
                         : const Text('Entrar'),
                   ),
                   const SizedBox(height: 8),
                   TextButton(
+                    style: HubStyle.textButtonStyle(),
                     onPressed: isLoading
                         ? null
                         : () {
@@ -183,26 +186,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       const Expanded(child: Divider()),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 12),
-                        child: Text(
-                          'o',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
+                        child: Text('o', style: HubStyle.caption()),
                       ),
                       const Expanded(child: Divider()),
                     ],
                   ),
                   const SizedBox(height: 16),
                   OutlinedButton.icon(
+                    style: HubStyle.outlinedButtonStyle(),
                     onPressed: isLoading
                         ? null
                         : () => ref
-                              .read(authActionControllerProvider.notifier)
-                              .signInWithGoogle(),
-                    icon: const Icon(Icons.g_mobiledata),
+                            .read(authActionControllerProvider.notifier)
+                            .signInWithGoogle(),
+                    icon: const Icon(Icons.g_mobiledata, size: 28),
                     label: const Text('Entrar con Google'),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   OutlinedButton.icon(
+                    style: HubStyle.outlinedButtonStyle(),
                     onPressed: isLoading
                         ? null
                         : () {
@@ -215,12 +217,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     icon: const Icon(Icons.badge_outlined),
                     label: const Text('Entrar como invitado'),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                   Text(
                     'Cuenta de invitado: solo un nombre. Al salir se borra todo '
                     'y no se puede recuperar.',
                     textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodySmall,
+                    style: HubStyle.caption(),
                   ),
                 ],
               ),

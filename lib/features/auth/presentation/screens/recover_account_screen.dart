@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:moto_amg/core/theme/hub_style.dart';
 import 'package:moto_amg/features/auth/presentation/providers/auth_providers.dart';
 import 'package:moto_amg/features/auth/presentation/utils/auth_validators.dart';
 
@@ -17,12 +18,27 @@ class _RecoverAccountScreenState extends ConsumerState<RecoverAccountScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Recuperar contraseña')),
+      backgroundColor: HubStyle.surface,
+      appBar: HubStyle.appBar(titleText: 'Recuperar contraseña'),
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
           children: [
             SegmentedButton<bool>(
+              style: ButtonStyle(
+                foregroundColor: WidgetStateProperty.resolveWith((states) {
+                  if (states.contains(WidgetState.selected)) {
+                    return Colors.white;
+                  }
+                  return HubStyle.accent;
+                }),
+                backgroundColor: WidgetStateProperty.resolveWith((states) {
+                  if (states.contains(WidgetState.selected)) {
+                    return HubStyle.accent;
+                  }
+                  return HubStyle.surface;
+                }),
+              ),
               segments: const [
                 ButtonSegment(
                   value: true,
@@ -108,8 +124,9 @@ class _EmailResetFormState extends ConsumerState<_EmailResetForm> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
+          Text(
             'Para cuentas creadas con correo o Google. Te enviaremos un enlace.',
+            style: HubStyle.body(),
           ),
           const SizedBox(height: 16),
           TextFormField(
@@ -118,21 +135,22 @@ class _EmailResetFormState extends ConsumerState<_EmailResetForm> {
             keyboardType: TextInputType.emailAddress,
             autofillHints: const [AutofillHints.email],
             autocorrect: false,
-            decoration: const InputDecoration(
-              labelText: 'Correo',
-              border: OutlineInputBorder(),
-            ),
+            decoration: HubStyle.inputDecoration(labelText: 'Correo'),
             validator: AuthValidators.email,
             onFieldSubmitted: (_) => _send(),
           ),
           const SizedBox(height: 24),
           FilledButton(
+            style: HubStyle.filledButtonStyle(),
             onPressed: isLoading ? null : _send,
             child: isLoading
                 ? const SizedBox(
                     height: 20,
                     width: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
                   )
                 : const Text('Enviar enlace'),
           ),
@@ -170,11 +188,13 @@ class _KeyResetFormState extends ConsumerState<_KeyResetForm> {
     if (!_formKey.currentState!.validate()) {
       return;
     }
-    await ref.read(authActionControllerProvider.notifier).recoverUsernamePassword(
-      username: _usernameController.text,
-      recoveryKey: _keyController.text,
-      newPassword: _passwordController.text,
-    );
+    await ref
+        .read(authActionControllerProvider.notifier)
+        .recoverUsernamePassword(
+          username: _usernameController.text,
+          recoveryKey: _keyController.text,
+          newPassword: _passwordController.text,
+        );
     if (!mounted) {
       return;
     }
@@ -205,9 +225,10 @@ class _KeyResetFormState extends ConsumerState<_KeyResetForm> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
+          Text(
             'Para cuentas con usuario (sin correo). Usa la clave que te dimos '
             'al registrarte y elige una contraseña nueva.',
+            style: HubStyle.body(),
           ),
           const SizedBox(height: 16),
           TextFormField(
@@ -216,10 +237,7 @@ class _KeyResetFormState extends ConsumerState<_KeyResetForm> {
             textInputAction: TextInputAction.next,
             autofillHints: const [AutofillHints.username],
             autocorrect: false,
-            decoration: const InputDecoration(
-              labelText: 'Usuario',
-              border: OutlineInputBorder(),
-            ),
+            decoration: HubStyle.inputDecoration(labelText: 'Usuario'),
             validator: AuthValidators.username,
           ),
           const SizedBox(height: 12),
@@ -229,10 +247,9 @@ class _KeyResetFormState extends ConsumerState<_KeyResetForm> {
             textInputAction: TextInputAction.next,
             textCapitalization: TextCapitalization.characters,
             autocorrect: false,
-            decoration: const InputDecoration(
+            decoration: HubStyle.inputDecoration(
               labelText: 'Clave de recuperación',
               hintText: 'MA-XXXX-XXXX-XXXX-XXXX',
-              border: OutlineInputBorder(),
             ),
             validator: AuthValidators.recoveryKey,
           ),
@@ -242,13 +259,17 @@ class _KeyResetFormState extends ConsumerState<_KeyResetForm> {
             enabled: !isLoading,
             obscureText: _obscure,
             textInputAction: TextInputAction.next,
-            decoration: InputDecoration(
+            decoration: HubStyle.inputDecoration(
               labelText: 'Nueva contraseña',
-              border: const OutlineInputBorder(),
               suffixIcon: IconButton(
                 tooltip: _obscure ? 'Mostrar' : 'Ocultar',
                 onPressed: () => setState(() => _obscure = !_obscure),
-                icon: Icon(_obscure ? Icons.visibility : Icons.visibility_off),
+                icon: Icon(
+                  _obscure
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
+                  color: HubStyle.subtitle,
+                ),
               ),
             ),
             validator: AuthValidators.password,
@@ -260,9 +281,8 @@ class _KeyResetFormState extends ConsumerState<_KeyResetForm> {
             obscureText: _obscure,
             textInputAction: TextInputAction.done,
             onFieldSubmitted: (_) => _submit(),
-            decoration: const InputDecoration(
+            decoration: HubStyle.inputDecoration(
               labelText: 'Repetir contraseña',
-              border: OutlineInputBorder(),
             ),
             validator: (value) => AuthValidators.confirmPassword(
               value,
@@ -271,12 +291,16 @@ class _KeyResetFormState extends ConsumerState<_KeyResetForm> {
           ),
           const SizedBox(height: 24),
           FilledButton(
+            style: HubStyle.filledButtonStyle(),
             onPressed: isLoading ? null : _submit,
             child: isLoading
                 ? const SizedBox(
                     height: 20,
                     width: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
                   )
                 : const Text('Cambiar contraseña y entrar'),
           ),

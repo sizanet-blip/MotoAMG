@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:moto_amg/core/theme/hub_style.dart';
 import 'package:moto_amg/features/auth/presentation/providers/auth_providers.dart';
 import 'package:moto_amg/features/auth/presentation/utils/auth_validators.dart';
 
@@ -32,10 +33,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       return;
     }
     await ref.read(authActionControllerProvider.notifier).registerWithEmail(
-      email: _emailController.text,
-      password: _passwordController.text,
-      displayName: _nameController.text.trim(),
-    );
+          email: _emailController.text,
+          password: _passwordController.text,
+          displayName: _nameController.text.trim(),
+        );
     if (!mounted) {
       return;
     }
@@ -62,17 +63,18 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     });
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Cuenta con correo')),
+      backgroundColor: HubStyle.surface,
+      appBar: HubStyle.appBar(titleText: 'Cuenta con correo'),
       body: SafeArea(
         child: AutofillGroup(
           child: Form(
             key: _formKey,
             child: ListView(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
               children: [
                 Text(
                   'Cuenta con correo: podrás volver a tus grupos desde este u otro móvil y recuperar la contraseña por email.',
-                  style: Theme.of(context).textTheme.bodyLarge,
+                  style: HubStyle.body(),
                 ),
                 const SizedBox(height: 24),
                 TextFormField(
@@ -81,10 +83,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   textCapitalization: TextCapitalization.words,
                   textInputAction: TextInputAction.next,
                   autofillHints: const [AutofillHints.name],
-                  decoration: const InputDecoration(
+                  decoration: HubStyle.inputDecoration(
                     labelText: 'Nombre en el mapa',
                     hintText: 'Ej. Alberto',
-                    border: OutlineInputBorder(),
                   ),
                   validator: AuthValidators.displayName,
                 ),
@@ -96,10 +97,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   autofillHints: const [AutofillHints.email],
                   textInputAction: TextInputAction.next,
                   autocorrect: false,
-                  decoration: const InputDecoration(
+                  decoration: HubStyle.inputDecoration(
                     labelText: 'Correo',
                     hintText: 'tu@email.com',
-                    border: OutlineInputBorder(),
                   ),
                   validator: AuthValidators.email,
                 ),
@@ -110,14 +110,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   obscureText: _obscure,
                   autofillHints: const [AutofillHints.newPassword],
                   textInputAction: TextInputAction.next,
-                  decoration: InputDecoration(
+                  decoration: HubStyle.inputDecoration(
                     labelText: 'Contraseña',
-                    border: const OutlineInputBorder(),
                     suffixIcon: IconButton(
                       tooltip: _obscure ? 'Mostrar' : 'Ocultar',
                       onPressed: () => setState(() => _obscure = !_obscure),
                       icon: Icon(
-                        _obscure ? Icons.visibility : Icons.visibility_off,
+                        _obscure
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                        color: HubStyle.subtitle,
                       ),
                     ),
                   ),
@@ -131,9 +133,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   autofillHints: const [AutofillHints.newPassword],
                   textInputAction: TextInputAction.done,
                   onFieldSubmitted: (_) => _submit(),
-                  decoration: const InputDecoration(
+                  decoration: HubStyle.inputDecoration(
                     labelText: 'Repetir contraseña',
-                    border: OutlineInputBorder(),
                   ),
                   validator: (value) => AuthValidators.confirmPassword(
                     value,
@@ -142,12 +143,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 ),
                 const SizedBox(height: 24),
                 FilledButton(
+                  style: HubStyle.filledButtonStyle(),
                   onPressed: isLoading ? null : _submit,
                   child: isLoading
                       ? const SizedBox(
                           height: 20,
                           width: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
                         )
                       : const Text('Crear cuenta'),
                 ),

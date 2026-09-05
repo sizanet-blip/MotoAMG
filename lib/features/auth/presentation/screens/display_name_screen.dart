@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:moto_amg/core/theme/hub_style.dart';
 import 'package:moto_amg/features/auth/presentation/providers/auth_providers.dart';
 import 'package:moto_amg/features/auth/presentation/utils/auth_validators.dart';
 
@@ -64,13 +65,14 @@ class _DisplayNameScreenState extends ConsumerState<DisplayNameScreen> {
       );
     });
 
+    final titleText = widget.isGuest || !widget.alreadySignedIn
+        ? 'Cuenta de invitado'
+        : 'Tu nombre en el mapa';
+
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          widget.isGuest || !widget.alreadySignedIn
-              ? 'Cuenta de invitado'
-              : 'Tu nombre en el mapa',
-        ),
+      backgroundColor: HubStyle.surface,
+      appBar: HubStyle.appBar(
+        titleText: titleText,
         actions: [
           if (widget.alreadySignedIn)
             IconButton(
@@ -78,9 +80,9 @@ class _DisplayNameScreenState extends ConsumerState<DisplayNameScreen> {
               onPressed: isLoading
                   ? null
                   : () => ref
-                        .read(authActionControllerProvider.notifier)
-                        .signOut(),
-              icon: const Icon(Icons.logout),
+                      .read(authActionControllerProvider.notifier)
+                      .signOut(),
+              icon: const Icon(Icons.logout_rounded),
             ),
         ],
       ),
@@ -88,9 +90,10 @@ class _DisplayNameScreenState extends ConsumerState<DisplayNameScreen> {
         child: LayoutBuilder(
           builder: (context, constraints) {
             return SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
               child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: constraints.maxHeight - 48),
+                constraints:
+                    BoxConstraints(minHeight: constraints.maxHeight - 48),
                 child: Form(
                   key: _formKey,
                   child: Column(
@@ -102,6 +105,7 @@ class _DisplayNameScreenState extends ConsumerState<DisplayNameScreen> {
                                 'Podrás unirte con un código. Al salir se borra todo '
                                 'y no se guarda ni se puede recuperar.'
                             : 'Así te verán en el mapa.',
+                        style: HubStyle.body(),
                       ),
                       const SizedBox(height: 24),
                       TextFormField(
@@ -109,22 +113,25 @@ class _DisplayNameScreenState extends ConsumerState<DisplayNameScreen> {
                         textCapitalization: TextCapitalization.words,
                         textInputAction: TextInputAction.done,
                         enabled: !isLoading,
-                        decoration: const InputDecoration(
+                        decoration: HubStyle.inputDecoration(
                           labelText: 'Nombre',
                           hintText: 'Ej. Alberto',
-                          border: OutlineInputBorder(),
                         ),
                         validator: AuthValidators.displayName,
                         onFieldSubmitted: (_) => _submit(),
                       ),
                       const SizedBox(height: 32),
                       FilledButton(
+                        style: HubStyle.filledButtonStyle(),
                         onPressed: isLoading ? null : _submit,
                         child: isLoading
                             ? const SizedBox(
                                 height: 20,
                                 width: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
                               )
                             : Text(
                                 widget.isGuest || !widget.alreadySignedIn

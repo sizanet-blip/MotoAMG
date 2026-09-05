@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:moto_amg/core/theme/hub_style.dart';
 import 'package:moto_amg/features/auth/presentation/providers/auth_providers.dart';
 import 'package:moto_amg/features/auth/presentation/utils/auth_validators.dart';
 
@@ -32,9 +33,9 @@ class _UsernameRegisterScreenState
       return;
     }
     await ref.read(authActionControllerProvider.notifier).registerWithUsername(
-      username: _usernameController.text,
-      password: _passwordController.text,
-    );
+          username: _usernameController.text,
+          password: _passwordController.text,
+        );
     if (!mounted) {
       return;
     }
@@ -59,19 +60,20 @@ class _UsernameRegisterScreenState
     });
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Cuenta con usuario')),
+      backgroundColor: HubStyle.surface,
+      appBar: HubStyle.appBar(titleText: 'Cuenta con usuario'),
       body: SafeArea(
         child: AutofillGroup(
           child: Form(
             key: _formKey,
             child: ListView(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
               children: [
                 Text(
                   'Elige un usuario único y una contraseña. No hace falta correo. '
                   'Al crearla te daremos una clave de recuperación: guárdala, '
                   'es la única forma de recuperar la cuenta.',
-                  style: Theme.of(context).textTheme.bodyLarge,
+                  style: HubStyle.body(),
                 ),
                 const SizedBox(height: 24),
                 TextFormField(
@@ -81,11 +83,10 @@ class _UsernameRegisterScreenState
                   autofillHints: const [AutofillHints.username],
                   autocorrect: false,
                   enableSuggestions: false,
-                  decoration: const InputDecoration(
+                  decoration: HubStyle.inputDecoration(
                     labelText: 'Usuario (único)',
                     hintText: 'ej. alberto_87',
                     helperText: 'Letras, números y _. Empieza con letra.',
-                    border: OutlineInputBorder(),
                   ),
                   validator: AuthValidators.username,
                 ),
@@ -96,14 +97,16 @@ class _UsernameRegisterScreenState
                   obscureText: _obscure,
                   autofillHints: const [AutofillHints.newPassword],
                   textInputAction: TextInputAction.next,
-                  decoration: InputDecoration(
+                  decoration: HubStyle.inputDecoration(
                     labelText: 'Contraseña',
-                    border: const OutlineInputBorder(),
                     suffixIcon: IconButton(
                       tooltip: _obscure ? 'Mostrar' : 'Ocultar',
                       onPressed: () => setState(() => _obscure = !_obscure),
                       icon: Icon(
-                        _obscure ? Icons.visibility : Icons.visibility_off,
+                        _obscure
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                        color: HubStyle.subtitle,
                       ),
                     ),
                   ),
@@ -117,9 +120,8 @@ class _UsernameRegisterScreenState
                   autofillHints: const [AutofillHints.newPassword],
                   textInputAction: TextInputAction.done,
                   onFieldSubmitted: (_) => _submit(),
-                  decoration: const InputDecoration(
+                  decoration: HubStyle.inputDecoration(
                     labelText: 'Repetir contraseña',
-                    border: OutlineInputBorder(),
                   ),
                   validator: (value) => AuthValidators.confirmPassword(
                     value,
@@ -128,12 +130,16 @@ class _UsernameRegisterScreenState
                 ),
                 const SizedBox(height: 24),
                 FilledButton(
+                  style: HubStyle.filledButtonStyle(),
                   onPressed: isLoading ? null : _submit,
                   child: isLoading
                       ? const SizedBox(
                           height: 20,
                           width: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
                         )
                       : const Text('Crear cuenta'),
                 ),
