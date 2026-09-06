@@ -46,19 +46,31 @@ Future<void> _initializeCrashlytics() async {
     return;
   }
 
-  await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(
-    !kDebugMode,
-  );
+  // En algunos builds release (R8 / Xiaomi) el registrar nativo no carga.
+  // No debe impedir el arranque de la app.
+  try {
+    await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(
+      !kDebugMode,
+    );
+  } catch (error, stack) {
+    debugPrint('Crashlytics no disponible: $error');
+    debugPrint('$stack');
+    return;
+  }
 
   FlutterError.onError = (details) {
     FlutterError.presentError(details);
-    FirebaseCrashlytics.instance.recordFlutterFatalError(details);
+    try {
+      FirebaseCrashlytics.instance.recordFlutterFatalError(details);
+    } catch (_) {}
   };
 
   PlatformDispatcher.instance.onError = (error, stack) {
-    unawaited(
-      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true),
-    );
+    try {
+      unawaited(
+        FirebaseCrashlytics.instance.recordError(error, stack, fatal: true),
+      );
+    } catch (_) {}
     return true;
   };
 }

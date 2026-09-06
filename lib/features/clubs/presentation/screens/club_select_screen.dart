@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:moto_amg/core/theme/hub_style.dart';
 import 'package:moto_amg/features/auth/domain/entities/app_user.dart';
@@ -17,7 +17,7 @@ class ClubSelectScreen extends ConsumerWidget {
   final AppUser user;
   final List<MotoClubMembership> memberships;
 
-  /// true si se abre desde el home para cambiar de peña.
+  /// true si se abre desde el home para cambiar de club.
   final bool allowBack;
 
   @override
@@ -27,7 +27,7 @@ class ClubSelectScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: isDark ? null : HubStyle.surface,
       appBar: HubStyle.appBar(
-        titleText: allowBack ? 'Cambiar peña' : 'Elige tu peña',
+        titleText: allowBack ? 'Cambiar club o grupo' : 'Elige tu club o grupo',
         automaticallyImplyLeading: allowBack,
       ),
       body: ListView(
@@ -35,8 +35,8 @@ class ClubSelectScreen extends ConsumerWidget {
         children: [
           Text(
             allowBack
-                ? 'Elige con qué peña quieres seguir ahora.'
-                : 'Perteneces a varias peñas. Elige con cuál entrar.',
+                ? 'Elige con qué club o grupo quieres seguir ahora.'
+                : 'Perteneces a varios. Elige con cuál entrar.',
             style: HubStyle.body(),
           ),
           const SizedBox(height: 16),

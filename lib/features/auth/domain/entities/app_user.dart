@@ -1,4 +1,4 @@
-﻿import 'package:equatable/equatable.dart';
+import 'package:equatable/equatable.dart';
 import 'package:moto_amg/core/constants/app_constants.dart';
 import 'package:moto_amg/features/auth/domain/entities/user_vehicle.dart';
 
@@ -40,10 +40,10 @@ class AppUser extends Equatable {
   final String? photoUrl;
   final String? currentGroupId;
 
-  /// Peña / club activo (acceso a la app).
+  /// Club activo (acceso a la app).
   final String? currentClubId;
 
-  /// Solicitud de alta de peña pendiente de aprobación en el panel.
+  /// Solicitud de alta de club o grupo pendiente de aprobación en el panel.
   final String? pendingClubRequestId;
 
   /// Si true, puede usar la app sin club (lo marca el admin en Yii2).
@@ -136,7 +136,7 @@ class AppUser extends Equatable {
   bool get hasPendingClubRequest =>
       pendingClubRequestId != null && pendingClubRequestId!.isNotEmpty;
 
-  /// Invitados saltan el gate de peña (solo unirse a salida con código).
+  /// Invitados saltan el gate de club (solo unirse a salida con código).
   bool get needsClubGate {
     if (isAnonymous) {
       return false;

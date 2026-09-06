@@ -3,7 +3,10 @@
 import 'package:flutter/material.dart';
 import 'package:moto_amg/core/constants/app_constants.dart';
 import 'package:moto_amg/core/theme/hub_style.dart';
+import 'package:moto_amg/features/settings/data/datasources/app_update_checker.dart';
+import 'package:moto_amg/features/settings/domain/entities/app_update_metadata.dart';
 import 'package:moto_amg/features/settings/presentation/screens/legal_document_screen.dart';
+import 'package:moto_amg/features/settings/presentation/widgets/app_update_dialogs.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -17,6 +20,7 @@ class AboutAppScreen extends StatefulWidget {
 
 class _AboutAppScreenState extends State<AboutAppScreen> {
   PackageInfo? _info;
+  var _checkingUpdate = false;
 
   @override
   void initState() {
@@ -30,6 +34,35 @@ class _AboutAppScreenState extends State<AboutAppScreen> {
       return;
     }
     setState(() => _info = info);
+  }
+
+  Future<void> _checkForUpdates() async {
+    if (_checkingUpdate) {
+      return;
+    }
+    setState(() => _checkingUpdate = true);
+    try {
+      final result = await AppUpdateChecker().check();
+      if (!mounted) {
+        return;
+      }
+      if (result.availability == AppUpdateAvailability.unknown) {
+        await showAppUpdateErrorSnack(
+          context,
+          result.errorMessage ?? 'No se pudo comprobar.',
+        );
+        return;
+      }
+      if (result.availability == AppUpdateAvailability.upToDate) {
+        await showAppUpdateUpToDateSnack(context);
+        return;
+      }
+      await showAppUpdateDialog(context, result: result);
+    } finally {
+      if (mounted) {
+        setState(() => _checkingUpdate = false);
+      }
+    }
   }
 
   Future<void> _openUrl(String url) async {
@@ -105,6 +138,7 @@ class _AboutAppScreenState extends State<AboutAppScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final updatesConfigured = AppConstants.updateMetadataUrl.trim().isNotEmpty;
 
     return Scaffold(
       backgroundColor: isDark ? null : HubStyle.surface,
@@ -160,6 +194,18 @@ class _AboutAppScreenState extends State<AboutAppScreen> {
             style: HubStyle.caption(),
           ),
           const SizedBox(height: 28),
+          if (updatesConfigured) ...[
+            _AboutLinkTile(
+              icon: Icons.system_update_alt_rounded,
+              title: 'Buscar actualizaciones',
+              subtitle: _checkingUpdate
+                  ? 'Comprobando…'
+                  : 'Consulta si hay una versión nueva',
+              isDark: isDark,
+              onTap: _checkingUpdate ? () {} : _checkForUpdates,
+            ),
+            const SizedBox(height: 10),
+          ],
           _AboutLinkTile(
             icon: Icons.mail_outline_rounded,
             title: 'Contacto y soporte',

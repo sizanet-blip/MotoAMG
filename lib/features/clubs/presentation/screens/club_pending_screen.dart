@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:moto_amg/core/theme/hub_style.dart';
 import 'package:moto_amg/features/auth/domain/entities/app_user.dart';
@@ -280,7 +280,7 @@ class _ClubPendingScreenState extends ConsumerState<ClubPendingScreen> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'Tu peña «${request.clubName}» está en revisión.',
+                  'Tu club o grupo «${request.clubName}» está en revisión.',
                   textAlign: TextAlign.center,
                   style: HubStyle.body(),
                 ),

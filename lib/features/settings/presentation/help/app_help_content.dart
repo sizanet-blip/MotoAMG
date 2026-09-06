@@ -32,7 +32,8 @@ const quickGuideSections = <HelpSection>[
         '2. En Xiaomi, Samsung y similares, excluye MotoAMG de la '
         'optimización de batería (Configuración → Pantalla al navegar).\n'
         '3. Inicia sesión (Google, correo o usuario) o entra como invitado.\n'
-        '4. Revisa radares y mapas offline si vas a zonas con poca cobertura.',
+        '4. Revisa radares y mapas offline si vas a zonas con poca cobertura.\n'
+        '5. Comprueba actualizaciones en Acerca de MotoAMG si te avisa la app.',
   ),
   HelpSection(
     title: 'Grupos en 30 segundos',
@@ -225,7 +226,9 @@ const fullManualSections = <HelpSection>[
         '• Avisos de navegación: qué alertas quieres y a qué distancia.\n'
         '• Pantalla al navegar: mantener pantalla encendida, brillo, modo casco.\n'
         '• Grupo en ruta: compañeros en el HUD y avisos si alguien se queda.\n'
-        '• Intercom: preferencias personales de Hablar/Oír.\n\n'
+        '• Intercom: preferencias personales de Hablar/Oír.\n'
+        '• Actualizaciones: Configuración → Acerca de MotoAMG → '
+        'Buscar actualizaciones.\n\n'
         'Revisa estos ajustes una vez y olvídate; la app recordará tus preferencias.',
   ),
   HelpSection(
@@ -238,7 +241,17 @@ const fullManualSections = <HelpSection>[
         'Más detalle legal en Acerca de MotoAMG (privacidad y condiciones).',
   ),
   HelpSection(
-    title: '14. Soporte',
+    title: '14. Actualizar la app',
+    body:
+        '1. Configuración → Acerca de MotoAMG.\n'
+        '2. Pulsa «Buscar actualizaciones».\n'
+        '3. Si hay versión nueva: Descargar e instala el APK en el móvil.\n\n'
+        'Al abrir la app también puede aparecer un aviso si hay actualización. '
+        'Si es obligatoria, no podrás posponerla. En Acerca de ves tu versión '
+        'y el número de build (por ejemplo 1.0.0 (1)).',
+  ),
+  HelpSection(
+    title: '15. Soporte',
     body:
         'Si algo no cuadra, consulta primero Preguntas y respuestas.\n'
         'Si necesitas ayuda personalizada, escribe a soporte desde Ayuda o '
@@ -374,6 +387,14 @@ const faqItems = <HelpFaqItem>[
         'Es normal: el mapa y el navegador reorganizan botones y avisos para el '
         'manillar. Los controles de emergencia suelen ir a un lado y las acciones '
         '(pelotón, navegar…) abajo o a la derecha.',
+  ),
+  HelpFaqItem(
+    question: '¿Cómo actualizo MotoAMG?',
+    answer:
+        'Ve a Configuración → Acerca de MotoAMG → Buscar actualizaciones. '
+        'Si hay versión nueva, pulsa Descargar e instala el APK. También puede '
+        'aparecer un aviso al abrir la app. Si la actualización es obligatoria, '
+        'no podrás posponerla.',
   ),
   HelpFaqItem(
     question: '¿Cómo contacto con soporte?',

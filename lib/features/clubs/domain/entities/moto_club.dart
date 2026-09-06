@@ -4,7 +4,7 @@ enum MotoClubStatus { active, suspended }
 
 enum MotoClubMemberRole { member, admin }
 
-/// Peña / club (acceso a la app; distinto del grupo de ruta).
+/// Club (acceso a la app; distinto del grupo de ruta / salida).
 class MotoClub extends Equatable {
   const MotoClub({
     required this.id,

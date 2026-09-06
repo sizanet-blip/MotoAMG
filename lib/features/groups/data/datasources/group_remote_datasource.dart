@@ -1,4 +1,4 @@
-﻿import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart' hide Query;
 import 'package:moto_amg/core/constants/app_constants.dart';
@@ -153,7 +153,7 @@ class GroupRemoteDataSource {
       }
       final group = GroupModel.fromFirestore(activeDocs.first);
 
-      // Grupos de otra peña: no se puede entrar con el código.
+      // Grupos de otro club: no se puede entrar con el código.
       final userClub = user.currentClubId;
       if (group.clubId != null &&
           group.clubId!.isNotEmpty &&

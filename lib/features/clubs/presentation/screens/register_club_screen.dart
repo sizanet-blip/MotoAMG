@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:moto_amg/core/constants/app_constants.dart';
 import 'package:moto_amg/core/theme/hub_style.dart';
@@ -77,7 +77,7 @@ class _RegisterClubScreenState extends ConsumerState<RegisterClubScreen> {
           title: Text('Solicitud enviada', style: HubStyle.sectionTitle()),
           content: Text(
             'Tu solicitud está pendiente de aprobación. '
-            'Te avisaremos cuando la peña esté activa.',
+            'Te avisaremos cuando el club o grupo esté activo.',
             style: HubStyle.body(),
           ),
           actions: [
@@ -109,7 +109,7 @@ class _RegisterClubScreenState extends ConsumerState<RegisterClubScreen> {
 
     return Scaffold(
       backgroundColor: isDark ? null : HubStyle.surface,
-      appBar: HubStyle.appBar(titleText: 'Solicitar alta de peña'),
+      appBar: HubStyle.appBar(titleText: 'Solicitar alta de Club o Grupo'),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
         children: [
@@ -124,7 +124,7 @@ class _RegisterClubScreenState extends ConsumerState<RegisterClubScreen> {
             textCapitalization: TextCapitalization.sentences,
             style: HubStyle.body(color: HubStyle.title),
             decoration: HubStyle.inputDecoration(
-              labelText: 'Nombre de la peña',
+              labelText: 'Nombre del club o grupo',
             ),
           ),
           const SizedBox(height: 12),

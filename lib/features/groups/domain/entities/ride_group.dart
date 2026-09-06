@@ -26,7 +26,7 @@ class RideGroup extends Equatable {
   /// Canal de voz del pelotón (lo activa solo el creador).
   final bool intercomEnabled;
 
-  /// Peña a la que pertenece este grupo de ruta (null = legado).
+  /// Club al que pertenece este grupo de ruta (null = legado).
   final String? clubId;
 
   bool isOwner(String uid) => ownerId == uid;

@@ -1,4 +1,4 @@
-﻿import 'package:moto_amg/features/auth/data/datasources/auth_remote_datasource.dart';
+import 'package:moto_amg/features/auth/data/datasources/auth_remote_datasource.dart';
 import 'package:moto_amg/features/auth/domain/entities/app_user.dart';
 import 'package:moto_amg/features/auth/domain/entities/user_vehicle.dart';
 import 'package:moto_amg/features/auth/domain/entities/username_registration.dart';
@@ -18,7 +18,7 @@ class AuthRepositoryImpl implements AuthRepository {
         return;
       }
       final uid = firebaseUser.uid;
-      // Escuchar el doc de Firestore: si el panel aprueba una peña, la app
+      // Escuchar el doc de Firestore: si el panel aprueba un club, la app
       // debe salir de «pendiente» sin reiniciar sesión.
       await for (final stored in _remote.watchUser(uid)) {
         final latest = _remote.currentFirebaseUser;

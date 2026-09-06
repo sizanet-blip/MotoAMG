@@ -1,4 +1,4 @@
-﻿import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:moto_amg/core/constants/app_constants.dart';
 import 'package:moto_amg/core/utils/timestamp_converter.dart';
 import 'package:moto_amg/features/clubs/domain/entities/moto_club.dart';
@@ -70,7 +70,7 @@ class ClubRemoteDataSource {
     });
   }
 
-  /// Envía solicitud de alta de peña (la aprueba el panel AMG).
+  /// Envía solicitud de alta de club o grupo (la aprueba el panel AMG).
   Future<String> submitClubRequest({
     required String uid,
     required String displayName,

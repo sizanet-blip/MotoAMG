@@ -19,7 +19,7 @@ class GroupMembership extends Equatable {
   final DateTime joinedAt;
   final bool isActive;
 
-  /// Peña del grupo (para filtrar al cambiar de club).
+  /// Club del grupo (para filtrar al cambiar de club activo).
   final String? clubId;
 
   @override

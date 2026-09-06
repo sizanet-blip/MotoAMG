@@ -2,8 +2,9 @@
   Manual web MotoAMG — pegar en el campo "contenido" del CMS.
 
   Sube ANTES estos PNG a https://panel.albertomaestre.es/uploads/cms/
-  (origen recomendado: carpeta assets/help/ del proyecto Flutter)
+  (origen: carpeta assets/help/ del proyecto Flutter)
 
+  Capturas base:
   00_motoamg_icono.png
   01_motoamg_inicio.png
   02_motoamg_login.png
@@ -23,14 +24,29 @@
   16_motoamg_radares.png
   17_motoamg_intercom.png
   18_motoamg_ayuda.png
+  19_motoamg_menu_cuenta.png
+  20_motoamg_configuracion_abajo.png
+  21_motoamg_gasolineras_offline.png
+  22_motoamg_configuracion_ayuda.png
+  25_motoamg_mapa_dia_noche.png
+  26_motoamg_avisos_hub.png
+  27_motoamg_senales_trafico.png
+  28_motoamg_avisos_radares.png
+  29_motoamg_pantalla_navegar.png
+  30_motoamg_grupo_en_ruta.png
+  31_motoamg_contacto_emergencia.png
+  35_motoamg_crear_grupo.png
+  36_motoamg_unir_codigo.png
+  38_motoamg_evitaciones.png
+  40_motoamg_opciones_grupo.png
 -->
 <article class="manual-motoamg">
   <style>
     .manual-motoamg {
-      max-width: 740px;
+      max-width: 760px;
       margin: 0 auto;
       color: #12141a;
-      line-height: 1.55;
+      line-height: 1.58;
       font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     }
     .manual-motoamg .hero {
@@ -42,7 +58,14 @@
       width: 88px;
       height: 88px;
       border-radius: 20px;
-      box-shadow: 0 6px 20px rgba(2, 136, 184, 0.22);
+      box-shadow: 0 6px 20px rgba(9, 115, 169, 0.25);
+    }
+    /* Gana a .program-content .content-html img { max-width: 100% } del CMS */
+    .program-content .content-html .manual-motoamg .hero img.logo {
+      width: 88px;
+      max-width: 88px;
+      height: 88px;
+      margin: 0 auto;
     }
     .manual-motoamg h1 {
       font-size: 1.85rem;
@@ -52,15 +75,20 @@
     }
     .manual-motoamg h2 {
       font-size: 1.35rem;
-      margin: 2.35rem 0 0.75rem;
-      padding-top: 0.85rem;
+      margin: 2.4rem 0 0.75rem;
+      padding-top: 0.9rem;
       border-top: 1px solid #dbe7ec;
       color: #0f5a6e;
     }
     .manual-motoamg h3 {
-      font-size: 1.1rem;
-      margin: 1.35rem 0 0.45rem;
-      color: #0288b8;
+      font-size: 1.12rem;
+      margin: 1.4rem 0 0.45rem;
+      color: #0973a9;
+    }
+    .manual-motoamg h4 {
+      font-size: 1rem;
+      margin: 1.1rem 0 0.35rem;
+      color: #0d3d4d;
     }
     .manual-motoamg p { margin: 0.45rem 0 0.7rem; }
     .manual-motoamg ul, .manual-motoamg ol {
@@ -72,20 +100,39 @@
       color: #5c6770;
       font-size: 1.06rem;
       margin: 0.35rem auto 1rem;
-      max-width: 36rem;
+      max-width: 38rem;
     }
     .manual-motoamg figure {
       margin: 1rem 0 1.45rem;
       text-align: center;
     }
-    .manual-motoamg figure img {
-      max-width: 300px;
-      width: 100%;
+    .manual-motoamg figure img,
+    .program-content .content-html .manual-motoamg figure img {
+      max-width: 200px;
+      width: 200px;
       height: auto;
+      margin: 0.5rem auto;
       border-radius: 12px;
       border: 1px solid #dbe7ec;
       box-shadow: 0 4px 16px rgba(16, 16, 24, 0.07);
       background: #f4f6f8;
+      display: block;
+    }
+    .manual-motoamg figure.wide img,
+    .program-content .content-html .manual-motoamg figure.wide img {
+      max-width: 240px;
+      width: 240px;
+    }
+    .manual-motoamg .shot-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      justify-content: center;
+      margin: 0.8rem 0 1.3rem;
+    }
+    .manual-motoamg .shot-row figure {
+      margin: 0;
+      flex: 0 1 200px;
     }
     .manual-motoamg figcaption {
       margin-top: 0.45rem;
@@ -121,9 +168,15 @@
     }
     .manual-motoamg .toc a:hover { text-decoration: underline; }
     .manual-motoamg .toc ul { margin: 0.4rem 0 0; }
+    .manual-motoamg .toc > ul > li { margin: 0.45rem 0; }
+    .manual-motoamg .toc ul ul {
+      margin: 0.25rem 0 0.4rem;
+      padding-left: 1.1rem;
+      font-size: 0.95rem;
+    }
     .manual-motoamg .note {
       background: #eef7fb;
-      border-left: 3px solid #0288b8;
+      border-left: 3px solid #0973a9;
       padding: 0.75rem 1rem;
       margin: 1rem 0;
       border-radius: 0 8px 8px 0;
@@ -144,16 +197,40 @@
       margin: 0.8rem 0 1.1rem;
     }
     .manual-motoamg .steps ol { margin-top: 0.35rem; }
-    .manual-motoamg kbd,
     .manual-motoamg .ui {
       font-weight: 600;
       color: #0f5a6e;
     }
+    .manual-motoamg .opt {
+      background: #f8fafb;
+      border: 1px solid #e3eef2;
+      border-radius: 10px;
+      padding: 0.65rem 0.9rem;
+      margin: 0.4rem 0;
+    }
+    .manual-motoamg .opt strong { color: #0d3d4d; }
     .manual-motoamg .meta {
       text-align: center;
       color: #78909c;
       font-size: 0.88rem;
       margin-bottom: 0.5rem;
+    }
+    .manual-motoamg table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.92rem;
+      margin: 0.7rem 0 1.1rem;
+    }
+    .manual-motoamg th,
+    .manual-motoamg td {
+      border: 1px solid #dbe7ec;
+      padding: 0.45rem 0.6rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    .manual-motoamg th {
+      background: #eef7fb;
+      color: #0f5a6e;
     }
   </style>
 
@@ -165,59 +242,91 @@
     />
     <h1>Manual de usuario — MotoAMG</h1>
     <p class="lead">
-      Pelotón en vivo y GPS para moteros. Guía completa para salidas en grupo,
-      navegación, avisos e intercom.
+      Guía completa y detallada: cada pantalla, botón y opción de la app para
+      pelotón en vivo y navegación GPS en moto.
     </p>
-    <p class="meta">Versión del manual: septiembre 2026 · Uso diario de la aplicación</p>
+    <p class="meta">
+      Versión del manual: septiembre 2026 · Capturas de la app real ·
+      Uso diario
+    </p>
   </header>
 
   <nav class="toc" aria-label="Índice">
     <strong>Índice</strong>
     <ul>
       <li><a href="#intro">1. Qué es MotoAMG</a></li>
-      <li><a href="#primeros">2. Primeros pasos</a></li>
+      <li>
+        <a href="#primeros">2. Primeros pasos</a>
+        <ul>
+          <li><a href="#permisos">2.1 Permisos</a></li>
+          <li><a href="#privacidad">2.2 Privacidad y condiciones</a></li>
+        </ul>
+      </li>
       <li><a href="#cuentas">3. Cuentas e inicio de sesión</a></li>
-      <li><a href="#clubs">4. Clubs / peñas</a></li>
-      <li><a href="#grupos">5. Grupos (pelotón)</a></li>
-      <li><a href="#mapa">6. Mapa del grupo</a></li>
-      <li><a href="#roles">7. Cabecera y cola</a></li>
-      <li><a href="#incidencias">8. Incidencias y seguridad</a></li>
-      <li><a href="#intercom">9. Intercom</a></li>
-      <li><a href="#navegacion">10. Navegador GPS</a></li>
-      <li><a href="#ruta-grupo">11. Ruta compartida del grupo</a></li>
-      <li><a href="#offline">12. Mapas, radares y gasolineras offline</a></li>
-      <li><a href="#perfil">13. Perfil y vehículos</a></li>
-      <li><a href="#config">14. Configuración recomendada</a></li>
-      <li><a href="#privacidad">15. Privacidad y buen uso</a></li>
-      <li><a href="#faq">16. Preguntas y respuestas</a></li>
-      <li><a href="#soporte">17. Soporte</a></li>
+      <li><a href="#inicio">4. Pantalla de inicio (hub)</a></li>
+      <li><a href="#cuenta-menu">5. Menú de cuenta y perfil</a></li>
+      <li><a href="#clubs">6. Club o Grupo</a></li>
+      <li><a href="#grupos">7. Mis grupos</a></li>
+      <li><a href="#mapa">8. Mapa del grupo</a></li>
+      <li><a href="#roles">9. Cabecera, cola y pelotón</a></li>
+      <li><a href="#incidencias">10. Incidencias y seguridad</a></li>
+      <li><a href="#intercom">11. Intercom</a></li>
+      <li>
+        <a href="#navegacion">12. Navegador GPS</a>
+        <ul>
+          <li><a href="#planificar">12.1 Planificar ruta</a></li>
+          <li><a href="#preferencias-ruta">12.2 Estilo y evitaciones</a></li>
+          <li><a href="#preview">12.3 Vista previa</a></li>
+          <li><a href="#hud">12.4 En marcha (HUD)</a></li>
+          <li><a href="#ruta-grupo">12.5 Ruta compartida del grupo</a></li>
+        </ul>
+      </li>
+      <li>
+        <a href="#avisos">13. Avisos de navegación</a>
+        <ul>
+          <li><a href="#avisos-tipos">13.1 Tipos de aviso</a></li>
+          <li><a href="#senales">13.2 Señales de tráfico</a></li>
+        </ul>
+      </li>
+      <li>
+        <a href="#config">14. Configuración (todas las opciones)</a>
+      </li>
+      <li><a href="#offline">15. Datos offline</a></li>
+      <li>
+        <a href="#ayuda">16. Ayuda, legal y soporte</a>
+        <ul>
+          <li><a href="#actualizar-app">16.1 Actualizar la app</a></li>
+        </ul>
+      </li>
+      <li><a href="#faq">17. Preguntas frecuentes</a></li>
     </ul>
   </nav>
 
   <div class="warn">
     <strong>Importante:</strong> MotoAMG es una ayuda a la conducción y a la
     coordinación del pelotón. <strong>No sustituye</strong> tu atención al
-    tráfico ni el cumplimiento de las normas de circulación. No uses la app
-    si te distrae.
+    tráfico ni el cumplimiento de las normas. No uses la app si te distrae.
   </div>
 
   <!-- 1 -->
   <h2 id="intro">1. Qué es MotoAMG</h2>
   <p>
-    MotoAMG está pensada para salidas en moto: coordinar un pelotón en el mapa
-    en tiempo real y navegar con un GPS integrado, <strong>con o sin grupo</strong>.
+    MotoAMG está pensada para salidas en moto: coordinar un <strong>pelotón en
+    el mapa en tiempo real</strong> y navegar con un <strong>GPS propio</strong>,
+    con o sin grupo.
   </p>
   <ul>
-    <li>Ubicación del pack en vivo</li>
-    <li>Grupos con código de acceso</li>
+    <li>Ubicación del pack en vivo (mapa del grupo)</li>
+    <li>Grupos con código de acceso, cabecera y cola</li>
     <li>Paradas e incidencias (avería, separado, emergencia…)</li>
     <li>Intercom de voz (si el creador del grupo lo activa)</li>
-    <li>Navegación GPS propia, con avisos de radar y gasolineras</li>
-    <li>Mapas / radares / gasolineras offline</li>
+    <li>Navegación GPS con avisos de radar, gasolineras, peajes, curvas y señales</li>
+    <li>Mapas, radares y gasolineras offline</li>
+    <li>Avisos de actualización de la app (desde Acerca de MotoAMG)</li>
   </ul>
   <figure>
     <img src="https://panel.albertomaestre.es/uploads/cms/01_motoamg_inicio.png" alt="Pantalla de inicio MotoAMG" />
-    <figcaption>Inicio de MotoAMG tras entrar con tu cuenta</figcaption>
+    <figcaption>Inicio de MotoAMG: hub con Mis grupos, Navegación y Configuración</figcaption>
   </figure>
 
   <!-- 2 -->
@@ -228,38 +337,56 @@
       <li>Concede <strong>ubicación</strong> y, en Android, <strong>notificaciones</strong>.</li>
       <li>Lee y acepta la <strong>política de privacidad</strong> y los términos.</li>
       <li>Inicia sesión (Google, correo, usuario) o entra como invitado.</li>
-      <li>Si tu peña lo requiere, únete o solicita el alta de club.</li>
-      <li>Crea o únete a un <strong>grupo</strong> para la salida, o abre solo Navegación.</li>
+      <li>Si tu club o grupo lo requiere, únete o solicita el alta.</li>
+      <li>Crea o únete a un <strong>grupo</strong>, o abre solo <span class="ui">Navegación</span>.</li>
     </ol>
   </div>
 
-  <h3>2.1 Permisos</h3>
+  <h3 id="permisos">2.1 Permisos — «Prepara MotoAMG»</h3>
   <p>
-    En la primera apertura verás la pantalla <span class="ui">Prepara MotoAMG</span>.
-    Sin ubicación no hay mapa del pelotón ni GPS fiable. En Android conviene
-    permitir notificaciones para que el servicio de navegación no se corte con
-    la pantalla apagada.
+    En la primera apertura verás esta pantalla. Sin ubicación no hay mapa del
+    pelotón ni GPS fiable. En Android conviene permitir notificaciones para que
+    el servicio de navegación no se corte con la pantalla apagada.
   </p>
   <figure>
     <img src="https://panel.albertomaestre.es/uploads/cms/03_motoamg_permisos.png" alt="Pantalla de permisos" />
     <figcaption>Permisos: ubicación, notificaciones y batería (recomendado)</figcaption>
   </figure>
+  <div class="opt">
+    <strong>Ubicación</strong> — <span class="ui">Permitir ubicación</span> /
+    <span class="ui">Permiso concedido</span>
+  </div>
+  <div class="opt">
+    <strong>Notificaciones</strong> (Android) —
+    <span class="ui">Permitir notificaciones</span>
+  </div>
+  <div class="opt">
+    <strong>Batería (recomendado)</strong> (Android) —
+    <span class="ui">Abrir ajustes de batería</span> / excluir MotoAMG de la
+    optimización
+  </div>
+  <p>Cuando esté listo, pulsa <span class="ui">Continuar</span>.</p>
   <div class="note">
-    En Xiaomi, Samsung y marcas similares, <strong>excluye MotoAMG de la
-    optimización de batería</strong> (también desde Configuración → Pantalla al
-    navegar). Si no, el GPS puede cortarse en segundo plano.
+    En Xiaomi, Samsung y similares, <strong>excluye MotoAMG de la optimización
+    de batería</strong> (también desde Configuración → Pantalla al navegar).
+    Si no, el GPS puede cortarse en segundo plano.
   </div>
 
-  <h3>2.2 Privacidad</h3>
+  <h3 id="privacidad">2.2 Privacidad y condiciones</h3>
   <p>
-    Antes de usar la app debes aceptar la política de privacidad y los términos.
-    Cada cuenta lo hace por separado: si otra persona entra en el mismo móvil
-    con su cuenta, también deberá aceptar.
+    Antes de usar la app debes aceptar la política y los términos. Cada cuenta
+    lo hace por separado.
   </p>
   <figure>
     <img src="https://panel.albertomaestre.es/uploads/cms/04_motoamg_privacidad.png" alt="Privacidad y condiciones" />
     <figcaption>Aceptación de privacidad y condiciones</figcaption>
   </figure>
+  <ul>
+    <li><span class="ui">Leer política de privacidad</span></li>
+    <li><span class="ui">Leer términos de uso</span></li>
+    <li>Marca la casilla de aceptación</li>
+    <li><span class="ui">Aceptar y continuar</span></li>
+  </ul>
 
   <!-- 3 -->
   <h2 id="cuentas">3. Cuentas e inicio de sesión</h2>
@@ -267,12 +394,60 @@
     <img src="https://panel.albertomaestre.es/uploads/cms/02_motoamg_login.png" alt="Pantalla de login" />
     <figcaption>Entrar con correo, usuario, Google o como invitado</figcaption>
   </figure>
+
+  <h3>3.1 Entrar</h3>
+  <table>
+    <thead>
+      <tr><th>Opción</th><th>Qué hace</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="ui">Correo o usuario</span> + <span class="ui">Contraseña</span> → <span class="ui">Entrar</span></td>
+        <td>Cuenta MotoAMG habitual</td>
+      </tr>
+      <tr>
+        <td><span class="ui">Entrar con Google</span></td>
+        <td>Cuenta Google (recuperable con Google)</td>
+      </tr>
+      <tr>
+        <td><span class="ui">Entrar como invitado</span></td>
+        <td>Solo un nombre; al salir se borra todo</td>
+      </tr>
+      <tr>
+        <td><span class="ui">¿No tienes cuenta? Crear cuenta</span></td>
+        <td>Con correo o con usuario y contraseña</td>
+      </tr>
+      <tr>
+        <td><span class="ui">He olvidado la contraseña</span></td>
+        <td>Recuperar con correo o con clave MA-…</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>3.2 Crear cuenta</h3>
+  <p>Puedes registrarte de dos formas:</p>
   <ul>
-    <li><strong>Google o correo:</strong> cuenta habitual, recuperable según el proveedor.</li>
-    <li><strong>Usuario y contraseña:</strong> guarda la <strong>clave de recuperación</strong>
-      (formato <code>MA-XXXX-…</code>) que se muestra al registrarte. Sin ella no hay otra vía.</li>
-    <li><strong>Invitado:</strong> solo un nombre; puedes unirte a un grupo con código.
-      Al salir se borra todo y <strong>no se puede recuperar</strong>.</li>
+    <li>
+      <strong>Con correo:</strong> nombre en el mapa, correo, contraseña y
+      confirmación → <span class="ui">Crear cuenta</span>
+    </li>
+    <li>
+      <strong>Con usuario y contraseña:</strong> usuario único y contraseña.
+      Tras el registro aparece <span class="ui">Guarda tu clave</span>
+      (formato <code>MA-XXXX-…</code>). Cópiala y marca
+      <span class="ui">He guardado la clave en un sitio seguro</span> antes de
+      continuar. <strong>Sin esa clave no hay otra vía de recuperación</strong>
+      en cuentas solo-usuario.
+    </li>
+  </ul>
+
+  <h3>3.3 Recuperar contraseña</h3>
+  <ul>
+    <li><span class="ui">Con correo</span> → envío de enlace</li>
+    <li>
+      <span class="ui">Con clave</span> → usuario + clave de recuperación +
+      nueva contraseña → <span class="ui">Cambiar contraseña y entrar</span>
+    </li>
   </ul>
   <div class="note">
     Si solo haces una ruta puntual, el modo invitado basta. Si quieres guardar
@@ -280,297 +455,728 @@
   </div>
 
   <!-- 4 -->
-  <h2 id="clubs">4. Clubs / peñas</h2>
+  <h2 id="inicio">4. Pantalla de inicio (hub)</h2>
   <p>
-    Algunas instalaciones de MotoAMG organizan el acceso por <strong>peña o club</strong>
-    (distinto del grupo de ruta). Desde la pantalla de entrada puedes:
+    Tras iniciar sesión llegas al hub. Saludo <span class="ui">Hola</span> y
+    <span class="ui">¿A dónde vamos hoy?</span>, con tres entradas principales:
   </p>
-  <ul>
-    <li><strong>Unirte con código de invitación</strong> de tu peña.</li>
-    <li><strong>Solicitar el alta</strong> de una peña nueva (queda pendiente de aprobación
-      en el panel de administración).</li>
-    <li>Si tienes permiso de navegación individual, puedes usar el GPS sin peña.</li>
-  </ul>
   <figure>
-    <img src="https://panel.albertomaestre.es/uploads/cms/05_motoamg_club_entrada.png" alt="Entrada a clubs" />
-    <figcaption>Entrada a peña: unirse o solicitar alta</figcaption>
+    <img src="https://panel.albertomaestre.es/uploads/cms/01_motoamg_inicio.png" alt="Hub de inicio" />
+    <figcaption>Hub: tres accesos principales</figcaption>
   </figure>
+  <table>
+    <thead>
+      <tr><th>Tarjeta</th><th>Descripción en pantalla</th><th>Abre</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="ui">Mis grupos</span></td>
+        <td>Gestiona tus grupos y miembros de ruta</td>
+        <td>Lista de grupos / crear / unirse</td>
+      </tr>
+      <tr>
+        <td><span class="ui">Navegación</span></td>
+        <td>Planifica y navega tus rutas</td>
+        <td>Planificador GPS</td>
+      </tr>
+      <tr>
+        <td><span class="ui">Configuración</span></td>
+        <td>Ajustes de la app y preferencias</td>
+        <td>Menú de ajustes</td>
+      </tr>
+    </tbody>
+  </table>
   <p>
-    Mientras tu solicitud esté en revisión verás <span class="ui">Pendiente de aprobación</span>.
-    Cuando la aprueben, la app activará el club automáticamente.
+    Arriba a la derecha el botón <span class="ui">Cuenta</span> (avatar) abre el
+    menú de perfil y cierre de sesión.
   </p>
 
   <!-- 5 -->
-  <h2 id="grupos">5. Grupos (pelotón)</h2>
-  <p>Un <strong>grupo</strong> es tu pelotón de salida en MotoAMG.</p>
+  <h2 id="cuenta-menu">5. Menú de cuenta y perfil</h2>
   <figure>
-    <img src="https://panel.albertomaestre.es/uploads/cms/06_motoamg_mis_grupos.png" alt="Mis grupos" />
-    <figcaption>Mis grupos: crear, unirse y abrir el mapa</figcaption>
+    <img src="https://panel.albertomaestre.es/uploads/cms/19_motoamg_menu_cuenta.png" alt="Menú de cuenta" />
+    <figcaption>Menú Cuenta: nombre, correo, Mi perfil, Configuración, Cerrar sesión</figcaption>
   </figure>
+  <ul>
+    <li><span class="ui">Mi perfil</span></li>
+    <li><span class="ui">Configuración</span></li>
+    <li><span class="ui">Clave de recuperación</span> (si aplica a tu tipo de cuenta)</li>
+    <li><span class="ui">Cerrar sesión</span> / <span class="ui">Salir de invitado</span></li>
+  </ul>
 
-  <h3>5.1 Crear un grupo</h3>
-  <div class="steps">
-    <ol>
-      <li>En <span class="ui">Mis grupos</span> → <span class="ui">Crear grupo</span>.</li>
-      <li>Elige un nombre claro (p. ej. «Ruta domingo»).</li>
-      <li>La app genera un <strong>código de 6 caracteres</strong>.</li>
-      <li>Compártelo solo con quien deba unirse.</li>
-    </ol>
+  <h3>5.1 Mi perfil</h3>
+  <figure>
+    <img src="https://panel.albertomaestre.es/uploads/cms/14_motoamg_perfil.png" alt="Mi perfil" />
+    <figcaption>Mi perfil: nombre, teléfono y vehículos</figcaption>
+  </figure>
+  <div class="opt"><strong>Nombre</strong> — visible en el mapa del grupo</div>
+  <div class="opt"><strong>Teléfono (opcional)</strong></div>
+  <div class="opt">
+    <strong>Vehículos</strong> — <span class="ui">+ Añadir</span>. El vehículo
+    <em>activo</em> define el tipo de ruta (moto/coche/camión) y el combustible
+    que se destaca en gasolineras.
   </div>
-
-  <h3>5.2 Unirse</h3>
+  <p>Al editar un vehículo puedes configurar:</p>
+  <ul>
+    <li><strong>Tipo:</strong> Moto, Coche, Camión</li>
+    <li>
+      <strong>Combustible:</strong> Gasolina 95/98, Gasóleo A/Premium, Sin especificar
+    </li>
+    <li>
+      <strong>Icono en mapa:</strong> Moto, Moto sport, Scooter, Coche, Turismo,
+      Furgoneta, Camión, Por defecto
+    </li>
+    <li>Color del marcador, marca, modelo, año, color (texto), matrícula</li>
+    <li><span class="ui">Guardar vehículo</span> · Editar / Eliminar</li>
+  </ul>
   <p>
-    <span class="ui">Unirme con un código</span> e introduce el código exacto.
-    Puedes estar en varios grupos y elegir cuál abrir en cada salida.
-  </p>
-
-  <h3>5.3 Creador / administrador</h3>
-  <p>
-    Quien crea el grupo gestiona opciones: nombre, intercom, expulsar miembros,
-    eliminar el grupo, etc. Eliminar el grupo invalida el código y la ruta
-    compartida para todos.
-  </p>
-
-  <h3>5.4 Salir del grupo</h3>
-  <p>
-    Desde las opciones del grupo. Podrás volver a entrar con el código si sigue activo.
+    Guarda los datos personales con <span class="ui">Guardar perfil</span>.
+    Si tu cuenta lo permite: <span class="ui">Cambiar contraseña</span> y
+    <span class="ui">Ver clave de recuperación</span>.
   </p>
 
   <!-- 6 -->
-  <h2 id="mapa">6. Mapa del grupo</h2>
-  <p>Al abrir un grupo entras al mapa en vivo del pelotón.</p>
-  <figure>
-    <img src="https://panel.albertomaestre.es/uploads/cms/07_motoamg_mapa_grupo.png" alt="Mapa del grupo" />
-    <figcaption>Mapa en vivo: compañeros, ruta, paradas e incidencias</figcaption>
-  </figure>
-  <p><strong>Qué verás</strong></p>
-  <ul>
-    <li>Tu posición y la de los compañeros</li>
-    <li>Cabecera y cola, si están asignados</li>
-    <li>Paradas (café, gasolina, espera…)</li>
-    <li>Incidencias activas</li>
-    <li>La ruta compartida, si alguien la ha publicado</li>
-  </ul>
-  <p><strong>Acciones habituales</strong></p>
-  <ul>
-    <li><span class="ui">Pelotón</span> — lista de moteros y roles</li>
-    <li><span class="ui">Paradas</span> — ver o gestionar puntos</li>
-    <li><span class="ui">Centrar</span> — encuadra a todo el pelotón</li>
-    <li><span class="ui">Navegar</span> — GPS hacia la ruta o destino del grupo</li>
-  </ul>
-  <div class="note">
-    En horizontal los botones de acción suelen ir abajo a la derecha y los avisos
-    (emergencia, etc.) a la izquierda. Mantén pulsado el mapa (si tienes permiso)
-    para marcar una parada.
-  </div>
-
-  <!-- 7 -->
-  <h2 id="roles">7. Cabecera y cola</h2>
+  <h2 id="clubs">6. Club o Grupo</h2>
   <p>
-    <strong>Cabecera</strong> y <strong>cola</strong> son roles de la ruta, no de administración.
+    Algunas instalaciones organizan el acceso por <strong>club o grupo</strong>
+    (nivel de acceso a la app; distinto de la salida/ruta del día).
+  </p>
+  <figure>
+    <img src="https://panel.albertomaestre.es/uploads/cms/05_motoamg_club_entrada.png" alt="Bienvenida Mis grupos / club" />
+    <figcaption>
+      Tras entrar en un club o grupo (p. ej. «Grupo Prueba»), Mis grupos te invita a
+      crear la salida del día o unirte con un código
+    </figcaption>
+  </figure>
+  <p>
+    Si aún no perteneces a ningún club o grupo, la app muestra la pantalla de entrada con:
   </p>
   <ul>
-    <li><strong>Cabecera:</strong> referencia del pelotón; útil si alguien llega tarde.</li>
-    <li><strong>Cola:</strong> cierra la marcha.</li>
+    <li>
+      <span class="ui">Unirme con código de invitación</span> → código →
+      <span class="ui">Unirme</span>
+    </li>
+    <li>
+      <span class="ui">Solicitar alta de Club o Grupo</span> → nombre, ciudad/zona
+      (opcional), teléfono (opcional) → <span class="ui">Enviar solicitud</span>
+    </li>
   </ul>
+  <p>
+    Mientras se revisa verás <span class="ui">Pendiente de aprobación</span>.
+    Si perteneces a varios, puedes <span class="ui">Elegir</span> o
+    <span class="ui">Cambiar club o grupo</span> (roles: Administrador / Miembro).
+  </p>
+
+  <!-- 7 -->
+  <h2 id="grupos">7. Mis grupos</h2>
+  <p>Un <strong>grupo</strong> es tu pelotón de salida.</p>
   <figure>
-    <img src="https://panel.albertomaestre.es/uploads/cms/08_motoamg_peloton.png" alt="Listado del pelotón" />
-    <figcaption>Pelotón: asignar cabecera / cola</figcaption>
+    <img src="https://panel.albertomaestre.es/uploads/cms/06_motoamg_mis_grupos.png" alt="Mis grupos" />
+    <figcaption>Mis grupos: lista, crear, unirse y acceso a Navegación</figcaption>
+  </figure>
+
+  <h3>7.1 Crear un grupo</h3>
+  <div class="shot-row">
+    <figure>
+      <img src="https://panel.albertomaestre.es/uploads/cms/35_motoamg_crear_grupo.png" alt="Diálogo crear grupo" />
+      <figcaption>Diálogo «Nombre del grupo»</figcaption>
+    </figure>
+  </div>
+  <div class="steps">
+    <ol>
+      <li><span class="ui">Crear grupo</span></li>
+      <li>Escribe un nombre claro (p. ej. «Ruta domingo»)</li>
+      <li>Pulsa <span class="ui">Crear</span></li>
+      <li>La app genera un <strong>código de 6 caracteres</strong> para compartir</li>
+    </ol>
+  </div>
+
+  <h3>7.2 Unirse con código</h3>
+  <figure>
+    <img src="https://panel.albertomaestre.es/uploads/cms/36_motoamg_unir_codigo.png" alt="Unirse con código" />
+    <figcaption>Diálogo «Código del grupo»</figcaption>
   </figure>
   <p>
-    Se gestionan desde el listado del pelotón en el mapa. El creador del grupo
-    y la cabecera pueden ser personas distintas.
+    <span class="ui">Unirme con un código</span> → introduce el código exacto →
+    <span class="ui">Unirme</span>. Puedes estar en varios grupos y elegir cuál
+    abrir en cada salida.
+  </p>
+
+  <h3>7.3 Abrir el mapa</h3>
+  <p>
+    Toca la tarjeta del grupo (nombre, rol y código) para entrar al mapa en vivo.
   </p>
 
   <!-- 8 -->
-  <h2 id="incidencias">8. Incidencias y seguridad</h2>
+  <h2 id="mapa">8. Mapa del grupo</h2>
+  <figure class="wide">
+    <img src="https://panel.albertomaestre.es/uploads/cms/07_motoamg_mapa_grupo.png" alt="Mapa del grupo" />
+    <figcaption>Mapa en vivo: posición, leyenda y botones de acción</figcaption>
+  </figure>
+
+  <h3>8.1 Qué ves en el mapa</h3>
+  <ul>
+    <li>Tu posición y la de los compañeros</li>
+    <li>Leyenda: <span class="ui">Tú</span>, <span class="ui">Grupo</span>,
+      <span class="ui">Cabecera</span>, <span class="ui">Cola</span></li>
+    <li>Paradas e incidencias activas</li>
+    <li>La ruta compartida, si alguien la ha publicado</li>
+  </ul>
+
+  <h3>8.2 Botones de acción (retrato)</h3>
+  <table>
+    <thead>
+      <tr><th>Botón</th><th>Función</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><span class="ui">Ruta</span> / <span class="ui">Cambiar</span></td><td>Preparar o cambiar la ruta del grupo</td></tr>
+      <tr><td><span class="ui">Quitar</span></td><td>Quitar la ruta publicada del grupo</td></tr>
+      <tr><td><span class="ui">Navegar</span> / <span class="ui">Waze</span></td><td>Abrir GPS (MotoAMG, Waze o Maps según ajustes)</td></tr>
+      <tr><td><span class="ui">Pelotón</span></td><td>Lista de moteros y roles</td></tr>
+      <tr><td><span class="ui">Paradas</span></td><td>Ver / gestionar paradas del grupo</td></tr>
+      <tr><td><span class="ui">Centrar</span></td><td>Encuadrar a todo el pelotón</td></tr>
+      <tr><td><span class="ui">Acercar</span> / <span class="ui">Alejar</span></td><td>Zoom del mapa</td></tr>
+      <tr><td><span class="ui">Mi ubicación</span></td><td>Centrar en ti</td></tr>
+    </tbody>
+  </table>
+  <div class="note">
+    Mantén pulsado el mapa (si tienes permiso) para marcar una parada.
+    Tipos habituales: Café / descanso, Gasolinera, Esperar aquí, Punto de reunión.
+  </div>
+  <p>
+    Menú de navegación externa (si aplica):
+    <span class="ui">Abrir en Waze</span>,
+    <span class="ui">Abrir en Maps</span>,
+    <span class="ui">Navegar en MotoAMG</span>.
+  </p>
+
+  <h3>8.3 Opciones del grupo</h3>
+  <figure>
+    <img src="https://panel.albertomaestre.es/uploads/cms/40_motoamg_opciones_grupo.png" alt="Contexto de opciones del grupo" />
+    <figcaption>Desde el mapa o la ficha del grupo se gestionan código, intercom y miembros</figcaption>
+  </figure>
+  <p>En <span class="ui">Opciones del grupo</span> (creador / admin):</p>
+  <ul>
+    <li><span class="ui">Código de invitación</span> + QR → <span class="ui">Copiar</span>, <span class="ui">Compartir</span></li>
+    <li>Switch <span class="ui">Activar intercom del grupo</span> (solo creador)</li>
+    <li>
+      Sección <span class="ui">Moteros</span> → menú <span class="ui">Gestionar</span>:
+      Hacer/Quitar administrador, Asignar cabecera/cola, Quitar rol de marcha, Quitar del grupo
+    </li>
+    <li>Chips: Tú, Creador, Admin, Cabecera, Cola</li>
+    <li><span class="ui">Eliminar grupo</span> (creador) o <span class="ui">Salir del grupo</span></li>
+  </ul>
+
+  <!-- 9 -->
+  <h2 id="roles">9. Cabecera, cola y pelotón</h2>
+  <figure>
+    <img src="https://panel.albertomaestre.es/uploads/cms/08_motoamg_peloton.png" alt="Pelotón" />
+    <figcaption>Mapa / hoja del pelotón: compañeros y roles de marcha</figcaption>
+  </figure>
+  <ul>
+    <li><strong>Cabecera:</strong> referencia del pelotón (útil si alguien llega tarde).</li>
+    <li><strong>Cola:</strong> cierra la marcha.</li>
+  </ul>
+  <p>
+    No son roles de administración: el <strong>creador</strong> gestiona el grupo;
+    cabecera/cola son roles de la ruta y pueden ser personas distintas.
+  </p>
+  <p>
+    En la hoja del pelotón también puedes <span class="ui">Silenciar N min</span>
+    avisos de compañeros o <span class="ui">Reactivar</span>.
+  </p>
+
+  <!-- 10 -->
+  <h2 id="incidencias">10. Incidencias y seguridad</h2>
   <figure>
     <img src="https://panel.albertomaestre.es/uploads/cms/09_motoamg_incidencias.png" alt="Avisos de incidencia" />
     <figcaption>Botones de aviso en el mapa / navegación</figcaption>
   </figure>
-  <ul>
-    <li><strong>Emergencia</strong> — el grupo ve el aviso; puedes indicar gravedad.
-      En <span class="ui">Urgente · 112</span> se abre el marcador del 112 y puedes
-      avisar contactos personales a mano.</li>
-    <li><strong>Avería</strong> — problema mecánico o parada forzada.</li>
-    <li><strong>Separado</strong> — te has perdido o vas lejos del grupo.</li>
-    <li><strong>Esperar / reunir</strong> — (admin o cabecera) pedir al pelotón que espere.</li>
-  </ul>
+  <table>
+    <thead>
+      <tr><th>Aviso</th><th>Uso</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="ui">Emergencia</span></td>
+        <td>
+          Severidad: Urgente · 112, Grave, Moderada, Leve. En Urgente · 112
+          puedes abrir el marcador del 112, copiar ubicación y avisar contactos.
+        </td>
+      </tr>
+      <tr><td><span class="ui">Avería</span></td><td>Problema mecánico o parada forzada</td></tr>
+      <tr><td><span class="ui">Separado</span></td><td>Te has perdido o vas lejos del grupo</td></tr>
+      <tr><td><span class="ui">Esperar / reunir</span></td><td>Admin o cabecera: pedir al pelotón que espere</td></tr>
+    </tbody>
+  </table>
   <div class="warn">
-    Si <strong>tú</strong> envías el aviso, no verás el banner naranja: usa el botón
-    circular con el <strong>check</strong> (color del aviso) para indicar
-    «Ya estoy OK» y quitarlo. Los demás sí ven el aviso en el mapa o en el navegador.
+    Si <strong>tú</strong> envías el aviso, no verás el banner naranja: usa el
+    botón circular con el <strong>check</strong> (<span class="ui">Ya estoy OK</span>)
+    para retirarlo. Los demás sí lo ven en el mapa o en el navegador.
   </div>
   <p>
-    <strong>Contactos de emergencia:</strong> en Configuración → Contacto de emergencia
-    puedes guardar 1–2 personas de fuera del grupo. Tras Urgente · 112 puedes
-    avisarles por SMS o WhatsApp; <strong>MotoAMG no envía nada automáticamente</strong>.
+    Acciones en emergencia: <span class="ui">112</span>,
+    <span class="ui">Copiar ubicación</span>, <span class="ui">Abrir mapas</span>,
+    <span class="ui">Avisar</span> (SMS / WhatsApp a contactos personales).
+    <strong>MotoAMG no envía nada automáticamente</strong>.
   </p>
 
-  <!-- 9 -->
-  <h2 id="intercom">9. Intercom</h2>
-  <p>Audio en vivo entre miembros del grupo (necesita datos o Wi‑Fi).</p>
+  <!-- 11 -->
+  <h2 id="intercom">11. Intercom</h2>
   <figure>
     <img src="https://panel.albertomaestre.es/uploads/cms/17_motoamg_intercom.png" alt="Ajustes de intercom" />
-    <figcaption>Preferencias de intercom (Hablar / Oír)</figcaption>
+    <figcaption>Preferencias personales: Hablar / Escuchar por defecto</figcaption>
   </figure>
-  <ul>
-    <li>Solo el <strong>creador</strong> activa o desactiva el canal en Opciones del grupo.</li>
-    <li>En el mapa o el HUD verás <span class="ui">Hablar</span> y <span class="ui">Oír</span>.</li>
-    <li>En Configuración → Intercom defines si por defecto quieres hablar u oír al conectar.</li>
-  </ul>
+  <ol>
+    <li>
+      En <span class="ui">Configuración → Intercom</span>:
+      <span class="ui">Hablar por defecto</span> y
+      <span class="ui">Escuchar por defecto</span>
+    </li>
+    <li>
+      El <strong>creador</strong> activa el canal en Opciones del grupo:
+      <span class="ui">Activar intercom del grupo</span>
+    </li>
+    <li>
+      En el mapa o el HUD: botones <span class="ui">Hablar</span> y
+      <span class="ui">Oír</span>
+    </li>
+  </ol>
   <div class="note">
-    Usa el intercom con casco compatible y sin distraer la conducción. La app
-    puede bajar el volumen de la voz de navegación cuando alguien habla.
+    Necesita datos o Wi‑Fi. Usa casco compatible y sin distraer la conducción.
+    La app puede bajar el volumen de la voz de navegación cuando alguien habla.
   </div>
 
-  <!-- 10 -->
-  <h2 id="navegacion">10. Navegador GPS</h2>
+  <!-- 12 -->
+  <h2 id="navegacion">12. Navegador GPS</h2>
   <p>
     MotoAMG incluye su propio GPS. No dependes de otra app, aunque puedes abrir
     Waze o Maps si lo prefieres.
   </p>
-  <figure>
-    <img src="https://panel.albertomaestre.es/uploads/cms/10_motoamg_navegacion.png" alt="Navegación" />
-    <figcaption>Planificar navegación: origen, destino y preferencias</figcaption>
-  </figure>
 
-  <h3>10.1 Planificar (sin grupo o modo solo)</h3>
+  <h3 id="planificar">12.1 Planificar ruta</h3>
+  <figure class="wide">
+    <img src="https://panel.albertomaestre.es/uploads/cms/10_motoamg_navegacion.png" alt="Planificar navegación" />
+    <figcaption>Planificador: mapa, búsqueda «¿A dónde vas?» y controles</figcaption>
+  </figure>
   <div class="steps">
     <ol>
-      <li>Abre <span class="ui">Navegación</span> desde el inicio.</li>
-      <li>El origen suele ser tu GPS; el destino se busca por dirección o tocando el mapa.</li>
-      <li>Añade paradas intermedias si hace falta.</li>
-      <li>Ajusta estilo (rápida, secundarias…) y evitaciones (autopistas, peajes…).</li>
-      <li><span class="ui">Ver ruta</span> → elige alternativa si hay → <span class="ui">Empezar</span>.</li>
+      <li>Abre <span class="ui">Navegación</span> desde el inicio o desde Mis grupos.</li>
+      <li>El origen suele ser tu GPS (<span class="ui">Mi ubicación</span>).</li>
+      <li>
+        Destino: busca por dirección (<span class="ui">¿A dónde vas?</span>) o
+        mantén pulsado el mapa para añadir una parada.
+      </li>
+      <li>Puedes añadir paradas intermedias, favoritos y recientes.</li>
+      <li>
+        Menú <span class="ui">Más opciones</span>:
+        <span class="ui">Importar GPX</span>,
+        <span class="ui">Continuar ruta guardada</span>
+      </li>
+      <li>Ajusta estilo y evitaciones → <span class="ui">Ver ruta</span>.</li>
     </ol>
   </div>
+
+  <h3 id="preferencias-ruta">12.2 Estilo de ruta y evitaciones</h3>
+  <h4>Estilo</h4>
+  <table>
+    <thead>
+      <tr><th>Opción</th><th>Idea</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><span class="ui">Rápida</span></td><td>Máximo tiempo / vías rápidas</td></tr>
+      <tr><td><span class="ui">Equilibrada</span></td><td>Compromiso tiempo y secundarias</td></tr>
+      <tr><td><span class="ui">Secundarias</span></td><td>Más secundaria, más lenta</td></tr>
+      <tr><td><span class="ui">Solo secundarias</span></td><td>Máximo sesgo a carreteras secundarias</td></tr>
+    </tbody>
+  </table>
+  <h4>Evitaciones (interruptores)</h4>
+  <ul>
+    <li><span class="ui">Autovías / autopistas</span></li>
+    <li><span class="ui">Peajes</span></li>
+    <li><span class="ui">Sin asfaltar</span></li>
+    <li><span class="ui">Ferries</span></li>
+  </ul>
+  <figure>
+    <img src="https://panel.albertomaestre.es/uploads/cms/38_motoamg_evitaciones.png" alt="Mapa al planificar" />
+    <figcaption>Durante la planificación puedes acercar, alejar y centrar en tu ubicación</figcaption>
+  </figure>
+  <p>
+    En el panel <span class="ui">Itinerario</span> también verás
+    <span class="ui">Parada</span>, <span class="ui">Circuito</span> y el
+    selector de vehículo (o <span class="ui">Sin vehículo · moto</span>).
+  </p>
+
+  <h3 id="preview">12.3 Vista previa de ruta</h3>
   <figure>
     <img src="https://panel.albertomaestre.es/uploads/cms/11_motoamg_ruta_preview.png" alt="Vista previa de ruta" />
-    <figcaption>Vista previa de ruta antes de empezar</figcaption>
+    <figcaption>Vista previa antes de empezar: alternativas y capas de avisos</figcaption>
   </figure>
+  <ul>
+    <li>
+      Toggles del mapa: mostrar/ocultar gasolineras, radares, peajes y curvas
+      (según tus preferencias)
+    </li>
+    <li>
+      Acciones de grupo: <span class="ui">Grupo</span> / Actualizar / Quitar / GPX
+    </li>
+    <li><span class="ui">Empezar navegación</span></li>
+  </ul>
+  <div class="note">
+    Las <strong>señales de tráfico</strong> (semáforo, STOP, ceda) <em>no</em>
+    se muestran en la vista previa: solo durante la navegación, y filtradas al
+    corredor de tu ruta.
+  </div>
 
-  <h3>10.2 En marcha (HUD)</h3>
-  <p>
-    Verás la siguiente maniobra, velocidad, límite, ETA, avisos de radar o
-    gasolinera (según ajustes) y recálculo si te desvías.
-  </p>
+  <h3 id="hud">12.4 En marcha (HUD)</h3>
   <figure>
     <img src="https://panel.albertomaestre.es/uploads/cms/12_motoamg_hud.png" alt="HUD de navegación" />
-    <figcaption>HUD en ruta (recomendado en horizontal / soporte de moto)</figcaption>
+    <figcaption>HUD en ruta: maniobra, velocidad, ETA y avisos</figcaption>
   </figure>
+  <p><strong>Qué verás</strong></p>
+  <ul>
+    <li>Siguiente maniobra y carriles (si hay datos)</li>
+    <li>Velocidad actual y límite de la vía</li>
+    <li>ETA / distancia restante</li>
+    <li>Avisos de radar, gasolinera, peaje, curva (según ajustes)</li>
+    <li>Señales próximas en el mapa (si las tienes activadas)</li>
+    <li>Compañeros del grupo (si «Grupo en ruta» está activo)</li>
+  </ul>
+  <p><strong>Controles útiles</strong></p>
+  <ul>
+    <li><span class="ui">Cerrar navegación</span></li>
+    <li><span class="ui">Silenciar voz</span> / activar voz</li>
+    <li>Modo mapa: Automático / Día / Noche</li>
+    <li><span class="ui">Volver a mi posición</span> (si has arrastrado el mapa)</li>
+    <li>Mostrar / ocultar grupo; mantener pulsado para la lista</li>
+    <li>Modo casco: botones grandes Silenciar / Activar voz / Cancelar</li>
+  </ul>
+  <div class="note">
+    Si activas <span class="ui">Simular ruta</span> en Pantalla al navegar,
+    puedes probar el HUD sin moverte (útil para comprobar avisos y señales).
+  </div>
 
-  <!-- 11 -->
-  <h2 id="ruta-grupo">11. Ruta compartida del grupo</h2>
-  <p>Quien planifica puede publicar una ruta para todo el pelotón. Entonces:</p>
+  <h3 id="ruta-grupo">12.5 Ruta compartida del grupo</h3>
+  <p>Quien planifica puede publicar una ruta para todo el pelotón:</p>
   <ul>
     <li>Todos la ven en el mapa del grupo.</li>
-    <li><span class="ui">Navegar</span> abre el GPS de MotoAMG hacia ese destino/trazado.</li>
-    <li>Si llegas tarde y estás lejos, puedes elegir ir a la <strong>cabecera</strong>
-      o directo al <strong>destino del grupo</strong>.</li>
+    <li><span class="ui">Navegar</span> abre el GPS hacia ese trazado.</li>
+    <li>
+      Si llegas tarde y estás lejos: <span class="ui">Ir a la cabecera</span> o
+      <span class="ui">Ir al destino del grupo</span>.
+    </li>
   </ul>
-  <p>Cuando enganchas el trazado del pelotón, sigues la ruta compartida.</p>
-
-  <!-- 12 -->
-  <h2 id="offline">12. Mapas, radares y gasolineras offline</h2>
-  <figure>
-    <img src="https://panel.albertomaestre.es/uploads/cms/15_motoamg_mapas_offline.png" alt="Mapas offline" />
-    <figcaption>Descarga de mapas offline por región</figcaption>
-  </figure>
-  <ul>
-    <li><strong>Mapas offline:</strong> Configuración → Mapas offline. Útil sin cobertura.</li>
-    <li><strong>Radares offline:</strong> inventario DGT/SCT/OSM; puedes activar aviso
-      si llevan X días sin actualizar.</li>
-    <li><strong>Gasolineras offline:</strong> precios MITECO según tu combustible.</li>
-  </ul>
-  <figure>
-    <img src="https://panel.albertomaestre.es/uploads/cms/16_motoamg_radares.png" alt="Radares offline" />
-    <figcaption>Radares offline y recordatorio de actualización</figcaption>
-  </figure>
 
   <!-- 13 -->
-  <h2 id="perfil">13. Perfil y vehículos</h2>
+  <h2 id="avisos">13. Avisos de navegación</h2>
+  <p>
+    Entra en <span class="ui">Configuración → Avisos de navegación</span>.
+    Activa lo que necesites y entra en cada tipo para afinar mapa, voz y distancias.
+    Arriba a la derecha: <span class="ui">Restablecer</span>.
+  </p>
   <figure>
-    <img src="https://panel.albertomaestre.es/uploads/cms/14_motoamg_perfil.png" alt="Perfil y vehículos" />
-    <figcaption>Mi perfil: nombre, teléfono y vehículos</figcaption>
+    <img src="https://panel.albertomaestre.es/uploads/cms/26_motoamg_avisos_hub.png" alt="Hub de avisos" />
+    <figcaption>Hub de avisos: radares, gasolineras, peajes, curvas, límite y señales</figcaption>
+  </figure>
+
+  <h3 id="avisos-tipos">13.1 Tipos de aviso (detalle)</h3>
+
+  <h4>Radares</h4>
+  <figure>
+    <img src="https://panel.albertomaestre.es/uploads/cms/28_motoamg_avisos_radares.png" alt="Detalle avisos radar" />
+    <figcaption>Detalle de radares: mapa, vista previa, voz y distancias</figcaption>
   </figure>
   <ul>
-    <li>Nombre visible en el mapa, teléfono y vehículos (moto, coche, camión).</li>
-    <li>El vehículo <strong>activo</strong> influye en el tipo de ruta y en qué precios
-      de gasolinera se destacan.</li>
-    <li>Guarda el vehículo con <span class="ui">Guardar vehículo</span>; el nombre/teléfono
-      con <span class="ui">Guardar perfil</span>.</li>
+    <li>Interruptor principal: <span class="ui">Avisos de radar</span></li>
+    <li><span class="ui">Mostrar en el mapa</span> (durante la navegación)</li>
+    <li><span class="ui">Mostrar en vista previa</span></li>
+    <li><span class="ui">Aviso por voz</span></li>
+    <li>
+      <span class="ui">Avisar a</span> (puedes marcar varias): 800 / 500 / 350 /
+      200 / 150 / 90 / 50 m
+    </li>
   </ul>
+
+  <h4>Gasolineras</h4>
+  <ul>
+    <li><span class="ui">Avisos de gasolinera</span></li>
+    <li>Mapa / vista previa / voz</li>
+    <li><span class="ui">Mostrar aviso a</span>: 500 / 800 / 1200 / 2000 m</li>
+    <li><span class="ui">Mostrar precio</span></li>
+    <li><span class="ui">Filtrar por precio máximo</span> (€/L)</li>
+  </ul>
+
+  <h4>Peajes</h4>
+  <ul>
+    <li><span class="ui">Avisos de peaje</span></li>
+    <li>Mapa / vista previa / voz</li>
+    <li><span class="ui">Mostrar aviso a</span>: 400 / 800 / 1200 m</li>
+  </ul>
+
+  <h4>Curvas pronunciadas</h4>
+  <ul>
+    <li><span class="ui">Detectar curvas</span></li>
+    <li>
+      Severidades: <span class="ui">Abierta</span>,
+      <span class="ui">Pronunciada</span>,
+      <span class="ui">Cerrada</span>,
+      <span class="ui">Muy cerrada</span>
+      (por defecto: cerrada y muy cerrada)
+    </li>
+    <li>Mapa / vista previa / aviso por voz</li>
+  </ul>
+
+  <h4>Límite de velocidad</h4>
+  <ul>
+    <li><span class="ui">Avisarme si me paso</span></li>
+    <li>
+      Margen: <span class="ui">Al pasarlo</span>, +3 / +5 / +7 / +10 km/h
+    </li>
+    <li><span class="ui">Sonido al pasarme</span> (pitido la primera vez)</li>
+  </ul>
+
+  <h3 id="senales">13.2 Señales de tráfico</h3>
+  <figure>
+    <img src="https://panel.albertomaestre.es/uploads/cms/27_motoamg_senales_trafico.png" alt="Señales de tráfico" />
+    <figcaption>Señales: semáforos, STOP y ceda (solo iconos en navegación)</figcaption>
+  </figure>
+  <ul>
+    <li>Interruptor: <span class="ui">Mostrar señales en el mapa</span></li>
+    <li><span class="ui">Semáforos</span></li>
+    <li><span class="ui">STOP</span></li>
+    <li><span class="ui">Ceda el paso</span></li>
+  </ul>
+  <div class="note">
+    Solo iconos durante la navegación, en el corredor de <em>tu</em> ruta
+    (no en «Ver ruta» / vista previa). Sin voz ni panel de distancia. En un
+    cruce con semáforo no se acumulan STOP/ceda de calles laterales.
+  </div>
 
   <!-- 14 -->
-  <h2 id="config">14. Configuración recomendada</h2>
+  <h2 id="config">14. Configuración (todas las opciones)</h2>
+  <div class="shot-row">
+    <figure>
+      <img src="https://panel.albertomaestre.es/uploads/cms/13_motoamg_configuracion.png" alt="Configuración parte alta" />
+      <figcaption>Configuración — apariencia y navegación</figcaption>
+    </figure>
+    <figure>
+      <img src="https://panel.albertomaestre.es/uploads/cms/20_motoamg_configuracion_abajo.png" alt="Configuración parte baja" />
+      <figcaption>Configuración — offline, ayuda y cuenta</figcaption>
+    </figure>
+  </div>
+
+  <h3>14.1 Apariencia — Mapa día / noche</h3>
   <figure>
-    <img src="https://panel.albertomaestre.es/uploads/cms/13_motoamg_configuracion.png" alt="Configuración" />
-    <figcaption>Menú de configuración</figcaption>
+    <img src="https://panel.albertomaestre.es/uploads/cms/25_motoamg_mapa_dia_noche.png" alt="Mapa día noche" />
+    <figcaption>Automático, Día o Noche</figcaption>
   </figure>
   <ul>
-    <li><strong>Tema y mapa día/noche</strong> — comodidad visual.</li>
-    <li><strong>Avisos de navegación</strong> — radares, gasolineras, peajes y distancias.</li>
-    <li><strong>Pantalla al navegar</strong> — mantener encendida, brillo, modo casco, batería.</li>
-    <li><strong>Grupo en ruta</strong> — compañeros en el HUD y avisos si alguien se queda.</li>
-    <li><strong>Intercom</strong> — preferencias personales Hablar/Oír.</li>
+    <li><span class="ui">Automático</span></li>
+    <li><span class="ui">Día</span> — siempre mapa claro</li>
+    <li><span class="ui">Noche</span></li>
   </ul>
-  <p>Revisa estos ajustes una vez; la app recordará tus preferencias.</p>
 
-  <!-- 15 -->
-  <h2 id="privacidad">15. Privacidad y buen uso</h2>
+  <h3>14.2 Pantalla al navegar</h3>
+  <figure>
+    <img src="https://panel.albertomaestre.es/uploads/cms/29_motoamg_pantalla_navegar.png" alt="Pantalla al navegar" />
+    <figcaption>Pantalla al navegar: brillo, botones, 3D y simulador</figcaption>
+  </figure>
   <ul>
-    <li>Comparte el código del grupo solo con personas de confianza.</li>
-    <li>Tu ubicación se usa para el mapa del grupo y la navegación.</li>
-    <li>No publiques códigos en redes abiertas.</li>
-    <li>La seguridad en carretera va primero: si la app te distrae, no la uses.</li>
+    <li><span class="ui">Mantener pantalla encendida</span></li>
+    <li><span class="ui">Más brillo en la ruta</span></li>
+    <li><span class="ui">Botones grandes (con guantes)</span></li>
+    <li><span class="ui">Mapa en 3D</span></li>
+    <li><span class="ui">Simular ruta</span></li>
+    <li>
+      Android: <span class="ui">Optimización de batería</span> →
+      Abrir / Revisar ajustes
+    </li>
   </ul>
+
+  <h3>14.3 Grupo en ruta</h3>
+  <figure>
+    <img src="https://panel.albertomaestre.es/uploads/cms/30_motoamg_grupo_en_ruta.png" alt="Grupo en ruta" />
+    <figcaption>Qué motos ver en el HUD y avisos si alguien se queda</figcaption>
+  </figure>
+  <ul>
+    <li><span class="ui">Mostrar grupo al navegar</span></li>
+    <li><span class="ui">Navegar con Waze o Google Maps</span></li>
+    <li>
+      <span class="ui">Qué motos mostrar</span>:
+      Todas las motos | Cabecera y cola
+    </li>
+    <li>
+      <span class="ui">Avisar si alguien se queda</span> + umbrales
+      «Se queda atrás» / «Muy lejos» + silenciar temporalmente
+    </li>
+    <li><span class="ui">Restablecer</span></li>
+  </ul>
+
+  <h3>14.4 Intercom (ver sección 11)</h3>
+  <p>Acceso directo desde el hub de Configuración.</p>
+
+  <h3>14.5 Contacto de emergencia</h3>
+  <figure>
+    <img src="https://panel.albertomaestre.es/uploads/cms/31_motoamg_contacto_emergencia.png" alt="Contacto de emergencia" />
+    <figcaption>Contactos personales para avisar tras Urgente · 112</figcaption>
+  </figure>
+  <ul>
+    <li><span class="ui">Añadir contacto</span> — Nombre, Teléfono → Guardar</li>
+    <li>Editar / eliminar contactos existentes</li>
+    <li>Tras Urgente · 112 puedes avisar por SMS o WhatsApp (manual)</li>
+  </ul>
+
+  <h3>14.6 Uso de APIs</h3>
   <p>
-    El detalle legal está en la app: <span class="ui">Acerca de MotoAMG</span>
-    (política de privacidad y condiciones de uso).
+    Contadores de sesión y opción de límites TomTom. Acción
+    <span class="ui">Reiniciar</span>. Si está disponible:
+    <span class="ui">Ver y comparar última ruta</span> (capas MotoAMG / TomTom /
+    Diferencias).
   </p>
 
+  <!-- 15 -->
+  <h2 id="offline">15. Datos offline</h2>
+
+  <h3>15.1 Mapas offline</h3>
+  <figure>
+    <img src="https://panel.albertomaestre.es/uploads/cms/15_motoamg_mapas_offline.png" alt="Mapas offline" />
+    <figcaption>Descarga de mapas por región</figcaption>
+  </figure>
+  <p>
+    Por región: <span class="ui">Descargar</span> / <span class="ui">Continuar</span>,
+    <span class="ui">Eliminar</span>. Útil sin cobertura.
+  </p>
+
+  <h3>15.2 Radares offline</h3>
+  <figure>
+    <img src="https://panel.albertomaestre.es/uploads/cms/16_motoamg_radares.png" alt="Radares offline" />
+    <figcaption>Inventario DGT/SCT y OSM; aviso de actualización</figcaption>
+  </figure>
+  <ul>
+    <li>Fuentes: Oficiales (DGT / SCT), OpenStreetMap España</li>
+    <li><span class="ui">Descargar radares</span> / <span class="ui">Actualizar radares</span></li>
+    <li>
+      <span class="ui">Aviso al abrir la app</span>: Mostrar aviso +
+      «Avisar cada (días)» → Aplicar días
+    </li>
+  </ul>
+
+  <h3>15.3 Gasolineras offline</h3>
+  <figure>
+    <img src="https://panel.albertomaestre.es/uploads/cms/21_motoamg_gasolineras_offline.png" alt="Gasolineras offline" />
+    <figcaption>Inventario MITECO de precios</figcaption>
+  </figure>
+  <ul>
+    <li><span class="ui">Descargar gasolineras</span> / Actualizar / Cancelar</li>
+    <li>Los precios se filtran según el combustible del vehículo activo</li>
+  </ul>
+
   <!-- 16 -->
-  <h2 id="faq">16. Preguntas y respuestas</h2>
+  <h2 id="ayuda">16. Ayuda, legal y soporte</h2>
+  <figure>
+    <img src="https://panel.albertomaestre.es/uploads/cms/18_motoamg_ayuda.png" alt="Ayuda en la app" />
+    <figcaption>Desde Configuración: Ayuda, Uso de APIs y Acerca de MotoAMG</figcaption>
+  </figure>
+  <ul>
+    <li>
+      <span class="ui">Ayuda</span>: Guía rápida de uso, Manual completo,
+      Preguntas y respuestas
+    </li>
+    <li>
+      <span class="ui">Acerca de MotoAMG</span>: versión, Contacto y soporte,
+      Política de privacidad, Términos de uso, Licencias, Atribuciones de mapas,
+      <span class="ui">Buscar actualizaciones</span>
+    </li>
+  </ul>
+
+  <h3 id="actualizar-app">16.1 Actualizar la app</h3>
+  <p>
+    MotoAMG puede avisarte cuando hay una versión nueva (si el build está
+    configurado con el servidor de actualizaciones).
+  </p>
+  <div class="steps">
+    <ol>
+      <li>
+        Ve a <span class="ui">Configuración</span> →
+        <span class="ui">Acerca de MotoAMG</span>.
+      </li>
+      <li>
+        Pulsa <span class="ui">Buscar actualizaciones</span>.
+      </li>
+      <li>
+        Si hay versión nueva: lee el changelog y pulsa
+        <span class="ui">Descargar</span> (abre el enlace del APK).
+      </li>
+      <li>
+        Instala el archivo en el móvil (puede pedir permiso para «orígenes
+        desconocidos» / instalar apps).
+      </li>
+    </ol>
+  </div>
+  <ul>
+    <li>
+      Al abrir la app, si hay actualización disponible, también puede mostrarse
+      un aviso (una vez por sesión).
+    </li>
+    <li>
+      Si la actualización es <strong>obligatoria</strong>, el diálogo no se puede
+      cerrar con «Más tarde»: debes descargar para seguir con una versión
+      soportada.
+    </li>
+    <li>
+      Si ya tienes la última versión, verás el mensaje
+      «Ya tienes la última versión.»
+    </li>
+  </ul>
+  <p>
+    En <span class="ui">Acerca de MotoAMG</span> siempre puedes ver tu
+    <strong>versión</strong> y el número de build (por ejemplo 1.0.0 (1)).
+  </p>
+
+  <p>
+    Soporte: <a href="mailto:info@albertomaestre.es">info@albertomaestre.es</a>.
+    Indica modelo del móvil, versión de Android/iOS, versión de MotoAMG, qué
+    estabas haciendo y capturas si puedes.
+  </p>
+
+  <!-- 17 -->
+  <h2 id="faq">17. Preguntas frecuentes</h2>
 
   <details>
     <summary>¿Necesito estar en un grupo para navegar?</summary>
-    <p>No. Puedes abrir Navegación desde el inicio y usar el GPS solo, sin grupo.</p>
+    <p>No. Puedes abrir Navegación desde el inicio y usar el GPS solo.</p>
   </details>
   <details>
     <summary>¿Qué diferencia hay entre creador del grupo y cabecera?</summary>
     <p>
       El creador administra el grupo (código, opciones, intercom, eliminar…).
-      Cabecera es un rol de marcha: quién va delante en esa salida. Pueden ser
-      personas distintas.
+      Cabecera es un rol de marcha: quién va delante. Pueden ser personas distintas.
     </p>
   </details>
   <details>
     <summary>He perdido el código del grupo. ¿Qué hago?</summary>
     <p>
-      Pídeselo a quien lo creó o a alguien que ya esté dentro. El código aparece
-      en las opciones o en la ficha del grupo para quien lo gestiona.
+      Pídeselo a quien lo creó. El código aparece en las opciones del grupo.
     </p>
   </details>
   <details>
     <summary>¿Puedo estar en varios grupos a la vez?</summary>
     <p>
-      Sí. En Mis grupos verás los activos y eliges cuál abrir. Solo uno está
-      «en mapa» a la vez.
+      Sí. En Mis grupos eliges cuál abrir. Solo uno está «en mapa» a la vez.
     </p>
   </details>
   <details>
     <summary>No me ven en el mapa / no veo a los demás</summary>
     <p>
-      Comprueba ubicación activa, grupo correcto y que MotoAMG no esté restringida
-      por la batería. En segundo plano algunos móviles cortan el GPS.
+      Comprueba ubicación activa, grupo correcto y que MotoAMG no esté
+      restringida por la batería.
     </p>
   </details>
   <details>
     <summary>Un compañero aparece «sin señal». ¿Qué significa?</summary>
     <p>
-      Lleva un rato sin enviar posición (sin cobertura, app cerrada o restricciones
-      de batería). No implica necesariamente un problema en la carretera.
+      Lleva un rato sin enviar posición (sin cobertura, app cerrada o batería).
+      No implica necesariamente un problema en la carretera.
     </p>
   </details>
   <details>
@@ -583,90 +1189,87 @@
   <details>
     <summary>He marcado una avería / emergencia. ¿Cómo la quito?</summary>
     <p>
-      Pulsa el botón circular con el check (del color del aviso). Eso indica
-      «Ya estoy OK» y retira el aviso para el grupo.
+      Pulsa el botón circular con el check (<span class="ui">Ya estoy OK</span>).
     </p>
   </details>
   <details>
     <summary>¿MotoAMG llama al 112 sola?</summary>
     <p>
-      No. En Urgente · 112 puede abrir el marcador y copiar la ubicación, pero la
-      llamada la haces tú. Los contactos personales se avisan a mano si lo eliges.
+      No. Puede abrir el marcador y copiar la ubicación; la llamada la haces tú.
+    </p>
+  </details>
+  <details>
+    <summary>¿Cómo actualizo MotoAMG?</summary>
+    <p>
+      Configuración → Acerca de MotoAMG → Buscar actualizaciones. Si hay versión
+      nueva, pulsa Descargar e instala el APK. También puede aparecer un aviso
+      al abrir la app.
     </p>
   </details>
   <details>
     <summary>¿El intercom funciona sin Wi‑Fi?</summary>
     <p>
-      Necesita conexión de datos (o Wi‑Fi). Sin red no hay audio. El creador debe
-      tener el intercom activado en opciones del grupo.
+      Necesita datos (o Wi‑Fi). El creador debe tener el intercom activado.
     </p>
   </details>
   <details>
     <summary>No oigo / no me oyen en el intercom</summary>
     <p>
-      Revisa Hablar/Oír, permisos de micrófono, Bluetooth del casco y que el
-      creador tenga el intercom activo. Prueba a salir y volver a entrar al mapa.
+      Revisa Hablar/Oír, micrófono, Bluetooth del casco y que el canal del grupo
+      esté activo.
     </p>
   </details>
   <details>
     <summary>La app se cierra o el GPS se corta en segundo plano</summary>
     <p>
-      Excluye MotoAMG de la optimización de batería, deja las notificaciones
-      activas y, en ruta, usa «mantener pantalla encendida» si te resulta útil.
+      Excluye MotoAMG de la optimización de batería, deja notificaciones activas
+      y usa «mantener pantalla encendida» si te resulta útil.
     </p>
   </details>
   <details>
     <summary>¿Puedo usar Waze o Google Maps?</summary>
     <p>
-      Sí. Desde el mapa del grupo o las acciones de navegación puedes abrir Waze
-      o Maps. El navegador integrado sigue disponible en MotoAMG.
+      Sí, desde el mapa del grupo o activando la preferencia en Grupo en ruta.
+      El navegador integrado sigue disponible.
+    </p>
+  </details>
+  <details>
+    <summary>¿Por qué no veo semáforos en «Ver ruta»?</summary>
+    <p>
+      Las señales solo se pintan al navegar, y solo las de tu ruta (próximas).
+      Actívalas en Avisos → Señales de tráfico.
     </p>
   </details>
   <details>
     <summary>Entrada de invitado: ¿se guarda algo?</summary>
     <p>
-      No de forma permanente. Al cerrar sesión de invitado se pierde el acceso.
-      Si quieres guardar grupos y perfil, crea una cuenta.
+      No de forma permanente. Al cerrar la sesión de invitado se pierde el acceso.
     </p>
   </details>
   <details>
     <summary>Olvidé la contraseña de usuario (sin correo)</summary>
     <p>
       Necesitas la clave de recuperación mostrada al registrarte. Sin ella no hay
-      restablecimiento. Con Google o correo usa el flujo de ese proveedor.
+      restablecimiento.
     </p>
   </details>
   <details>
-    <summary>Mi solicitud de peña sigue pendiente</summary>
+    <summary>Mi solicitud de club o grupo sigue pendiente</summary>
     <p>
-      El alta la aprueba el administrador en el panel. Cuando la aprueben, la app
-      activará el club. Si tarda demasiado, contacta con quien gestiona tu peña
-      o con soporte.
+      La aprueba el administrador en el panel. Cuando la aprueben, la app
+      activará el acceso.
+    </p>
+  </details>
+  <details>
+    <summary>El mapa deja de seguirme al navegar</summary>
+    <p>
+      Si arrastras el mapa, se pausa el seguimiento. Pulsa
+      <span class="ui">Volver a mi posición</span> (icono de ubicación) para
+      reanudar.
     </p>
   </details>
 
-  <!-- 17 -->
-  <h2 id="soporte">17. Soporte</h2>
-  <figure>
-    <img src="https://panel.albertomaestre.es/uploads/cms/18_motoamg_ayuda.png" alt="Ayuda en la app" />
-    <figcaption>Ayuda dentro de MotoAMG: guía, FAQ y contacto</figcaption>
-  </figure>
-  <p>
-    Si algo no cuadra, consulta primero las preguntas de este manual o la sección
-    <span class="ui">Ayuda</span> de la app.
-  </p>
-  <p>
-    ¿Necesitas ayuda personalizada? Escríbenos a
-    <a href="mailto:info@albertomaestre.es">info@albertomaestre.es</a>
-    indicando:
-  </p>
-  <ul>
-    <li>Modelo del móvil y versión de Android / iOS</li>
-    <li>Versión de MotoAMG</li>
-    <li>Qué estabas haciendo cuando ocurrió el problema</li>
-    <li>Capturas de pantalla, si puedes</li>
-  </ul>
-  <p class="meta" style="margin-top: 2rem;">
+  <p class="meta" style="margin-top: 2.5rem;">
     © 2026 Alberto Maestre Gutiérrez · MotoAMG — Pelotón en vivo y GPS para moteros
   </p>
 </article>

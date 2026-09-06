@@ -15,6 +15,7 @@ import 'package:moto_amg/features/groups/presentation/widgets/group_entry_dialog
 import 'package:moto_amg/features/intercom/presentation/widgets/intercom_session_binder.dart';
 import 'package:moto_amg/features/map/presentation/screens/group_map_screen.dart';
 import 'package:moto_amg/features/navigation/presentation/screens/navigation_hub_screen.dart';
+import 'package:moto_amg/features/settings/presentation/widgets/app_update_reminder_binder.dart';
 import 'package:moto_amg/features/settings/presentation/widgets/radar_update_reminder_binder.dart';
 import 'package:moto_amg/features/tracking/presentation/widgets/location_binder.dart';
 
@@ -80,7 +81,9 @@ class HomeScreen extends ConsumerWidget {
           : HomeHubScreen(user: effective);
     }
 
-    return RadarUpdateReminderBinder(child: body);
+    return AppUpdateReminderBinder(
+      child: RadarUpdateReminderBinder(child: body),
+    );
   }
 }
 

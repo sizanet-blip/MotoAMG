@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:moto_amg/features/auth/domain/entities/app_user.dart';
 import 'package:moto_amg/features/auth/presentation/providers/auth_providers.dart';
@@ -128,10 +128,10 @@ class AuthGate extends ConsumerWidget {
   }
 
   /// Reglas:
-  /// - Sin peña y sin navegación individual → obligar a unirse/registrar.
+  /// - Sin club y sin navegación individual → obligar a unirse/registrar.
   /// - Varios clubs y ninguno activo → elegir primero.
   /// - Un solo club → activarlo solo.
-  /// - Con navegación individual y sin peña → home (podrá unirse luego).
+  /// - Con navegación individual y sin club → home (podrá unirse luego).
   Widget _clubGate(WidgetRef ref, AppUser user, String? dismissedPendingId) {
     final pendingId = user.pendingClubRequestId;
     final showPending = user.hasPendingClubRequest &&

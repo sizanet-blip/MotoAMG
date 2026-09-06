@@ -12,6 +12,11 @@ abstract final class AppConstants {
   static const String copyrightNotice = '© 2026 Alberto Maestre Gutierrez';
   static const String supportEmail = 'info@albertomaestre.es';
 
+  /// JSON de versión/APK. Build: `--dart-define=UPDATE_METADATA_URL=https://...`
+  static const String updateMetadataUrl = String.fromEnvironment(
+    'UPDATE_METADATA_URL',
+  );
+
   /// Si está vacío, se muestra el texto integrado en la app.
   static const String privacyPolicyUrl = '';
   static const String termsOfUseUrl = '';
@@ -108,7 +113,7 @@ abstract final class AppConstants {
   static const String sharedRouteSubcollection = 'sharedRoute';
   static const String sharedRouteDocId = 'current';
 
-  // --- Clubs / peñas (acceso y cupos; distinto de grupos de ruta) ---
+  // --- Clubs (acceso y cupos; distinto de grupos de ruta / salidas) ---
   static const String clubsCollection = 'clubs';
   static const String clubMembersSubcollection = 'members';
   static const String clubMembershipsSubcollection = 'clubMemberships';

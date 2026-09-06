@@ -1,5 +1,6 @@
 ﻿import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:moto_amg/core/api_usage/api_usage_tracker.dart';
+import 'package:moto_amg/features/settings/data/datasources/app_update_checker.dart';
 import 'package:moto_amg/features/settings/data/repositories/emergency_contacts_repository.dart';
 import 'package:moto_amg/features/settings/data/repositories/radar_update_reminder_repository.dart';
 
@@ -108,3 +109,11 @@ class RadarUpdateReminderController
     return _persist(state.copyWith(intervalDays: clamped));
   }
 }
+
+final appUpdateCheckerProvider = Provider<AppUpdateChecker>((ref) {
+  return AppUpdateChecker();
+});
+
+/// Evita repetir el diálogo de actualización de app en la misma sesión.
+final appUpdatePromptShownThisSessionProvider =
+    StateProvider<bool>((ref) => false);

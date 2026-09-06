@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:moto_amg/core/theme/hub_style.dart';
 import 'package:moto_amg/features/auth/domain/entities/app_user.dart';
@@ -72,7 +72,7 @@ class _JoinClubScreenState extends ConsumerState<JoinClubScreen> {
 
     return Scaffold(
       backgroundColor: isDark ? null : HubStyle.surface,
-      appBar: HubStyle.appBar(titleText: 'Unirme a una peña'),
+      appBar: HubStyle.appBar(titleText: 'Unirme a un Club o Grupo'),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
         children: [

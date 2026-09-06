@@ -1,4 +1,4 @@
-﻿import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:moto_amg/features/auth/data/datasources/auth_remote_datasource.dart';
 import 'package:moto_amg/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:moto_amg/features/auth/domain/entities/app_user.dart';
@@ -237,7 +237,7 @@ AppUser? resolveSessionUser(AppUser? local, AppUser? remote) {
       local.uid == remote.uid &&
       !local.needsDisplayName) {
     // El StateProvider local evita el flash del nombre, pero los campos de
-    // peña/grupo deben seguir el documento de Firestore.
+    // club/grupo deben seguir el documento de Firestore.
     final remotePending = remote.pendingClubRequestId;
     final remoteHasPending =
         remotePending != null && remotePending.trim().isNotEmpty;

@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:moto_amg/core/theme/hub_style.dart';
 import 'package:moto_amg/features/auth/domain/entities/app_user.dart';
@@ -6,7 +6,7 @@ import 'package:moto_amg/features/auth/presentation/providers/auth_providers.dar
 import 'package:moto_amg/features/clubs/presentation/screens/join_club_screen.dart';
 import 'package:moto_amg/features/clubs/presentation/screens/register_club_screen.dart';
 
-/// Puerta de entrada: invitación o registrar peña.
+/// Puerta de entrada: invitación o registrar club / grupo.
 class ClubEntryScreen extends ConsumerWidget {
   const ClubEntryScreen({
     super.key,
@@ -16,7 +16,7 @@ class ClubEntryScreen extends ConsumerWidget {
 
   final AppUser user;
 
-  /// true si se abre desde el home (navegación individual sin peña).
+  /// true si se abre desde el home (navegación individual sin club).
   final bool canDismiss;
 
   @override
@@ -26,7 +26,7 @@ class ClubEntryScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: isDark ? null : HubStyle.surface,
       appBar: HubStyle.appBar(
-        titleText: 'Clubes o peña',
+        titleText: 'Club o Grupo',
         automaticallyImplyLeading: canDismiss,
         actions: [
           if (!canDismiss)
@@ -49,9 +49,10 @@ class ClubEntryScreen extends ConsumerWidget {
           Text(
             canDismiss
                 ? 'Puedes seguir usando la navegación individual. '
-                    'Si te unes o registras una peña, tendrás grupos de ruta.'
-                : 'Puedes unirte a una peña existente con un código de '
-                    'invitación o solicitar la creación de una nueva peña.',
+                    'Si te unes o registras un club o grupo, tendrás salidas '
+                    'compartidas.'
+                : 'Puedes unirte a un club o grupo existente con un código de '
+                    'invitación o solicitar el alta de uno nuevo.',
             style: HubStyle.body(),
           ),
           const SizedBox(height: 28),
@@ -59,7 +60,7 @@ class ClubEntryScreen extends ConsumerWidget {
             icon: Icons.confirmation_number_outlined,
             title: 'Unirme con código de invitación',
             subtitle:
-                'Introduce el código de invitación para unirte a una peña existente.',
+                'Introduce el código para unirte a un club o grupo existente.',
             isDark: isDark,
             onTap: () {
               Navigator.of(context).push(
@@ -72,9 +73,10 @@ class ClubEntryScreen extends ConsumerWidget {
           const SizedBox(height: 12),
           _ClubOptionCard(
             icon: Icons.groups_rounded,
-            title: 'Solicitar alta de peña',
+            title: 'Solicitar alta de Club o Grupo',
             subtitle:
-                'Solicita la creación de una nueva peña y empieza a organizar rodadas.',
+                'Solicita la creación de un club o grupo nuevo y empieza a '
+                'organizar rodadas.',
             isDark: isDark,
             onTap: () {
               Navigator.of(context).push(

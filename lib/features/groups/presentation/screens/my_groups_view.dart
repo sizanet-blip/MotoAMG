@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:moto_amg/core/theme/hub_style.dart';
 import 'package:moto_amg/features/auth/domain/entities/app_user.dart';
@@ -252,7 +252,7 @@ class MyGroupsView extends ConsumerWidget {
         content: Text(
           isOwner
               ? 'Se borrará «${membership.name}» (${membership.code}) para todos.'
-              : 'Dejarás de ver «${membership.name}» en este club.',
+              : 'Dejarás de ver «${membership.name}» en este club o grupo.',
           style: HubStyle.body(),
         ),
         actions: [
@@ -360,7 +360,7 @@ class _PortraitBody extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Únete a un club para crear o unirte a grupos de ruta. '
+                      'Únete a un club o grupo para crear o unirte a salidas. '
                       'Mientras, puedes usar la navegación individual.',
                       style: HubStyle.body(),
                     ),
@@ -487,7 +487,7 @@ class _LandscapeBody extends StatelessWidget {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                'Únete a un club para usar grupos de ruta.',
+                                'Únete a un club o grupo para usar salidas compartidas.',
                                 style: HubStyle.body(),
                               ),
                             ],
@@ -584,7 +584,7 @@ class _LandscapeBody extends StatelessWidget {
                           const SizedBox(height: 4),
                           Text(
                             hideGroupActions
-                                ? 'Navegación individual o únete a un club.'
+                                ? 'Navegación individual o únete a un club o grupo.'
                                 : (user.allowSoloNavigation
                                     ? 'Crear, unirte o ir a navegar.'
                                     : 'Crear grupo o unirte con un código.'),
@@ -628,7 +628,7 @@ class _ClubSwitcher extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final title = clubs.length == 1 ? 'Tu club' : 'Tus clubes';
+    final title = clubs.length == 1 ? 'Tu club o grupo' : 'Tus clubs o grupos';
     MotoClubMembership? selected;
     for (final club in clubs) {
       if (club.clubId == activeClubId) {
@@ -757,7 +757,7 @@ class _ClubInviteBanner extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Únete a un club o registra el tuyo',
+                    'Únete a un club o grupo, o registra el tuyo',
                     style: HubStyle.sectionTitle(),
                   ),
                 ),
