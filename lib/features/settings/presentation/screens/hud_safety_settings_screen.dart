@@ -19,7 +19,7 @@ class HudSafetySettingsScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: isDark ? null : HubStyle.surface,
-      appBar: HubStyle.appBar(titleText: 'Pantalla al navegar'),
+      appBar: HubStyle.appBar(titleText: 'Pantalla (mapa y ruta)'),
       body: ListView(
         padding: const EdgeInsets.only(bottom: 24),
         children: [
@@ -28,7 +28,7 @@ class HudSafetySettingsScreen extends ConsumerWidget {
             secondary: const Icon(Icons.smartphone_outlined),
             title: const Text('Mantener pantalla encendida'),
             subtitle: const Text(
-              'Así no se apaga sola en el mapa de grupo ni al navegar',
+              'No se apaga sola en el mapa del grupo ni al navegar',
             ),
             value: prefs.keepScreenOn,
             onChanged: controller.setKeepScreenOn,

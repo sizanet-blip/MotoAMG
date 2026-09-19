@@ -1,13 +1,14 @@
-﻿import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:moto_amg/features/auth/domain/entities/app_user.dart';
 import 'package:moto_amg/features/auth/presentation/providers/auth_providers.dart';
 import 'package:moto_amg/features/auth/presentation/providers/home_landing_provider.dart';
+import 'package:moto_amg/features/clubs/presentation/providers/club_providers.dart';
 import 'package:moto_amg/features/groups/data/datasources/group_incident_remote_datasource.dart';
 import 'package:moto_amg/features/groups/data/datasources/group_stop_remote_datasource.dart';
 import 'package:moto_amg/features/groups/data/datasources/group_voice_remote_datasource.dart';
-import 'package:moto_amg/features/groups/data/datasources/group_remote_datasource.dart';
+import 'package:moto_amg/features/auth/data/datasources/mysql_club_group_remote_datasource.dart';
 import 'package:moto_amg/features/groups/data/repositories/group_pack_alert_repository.dart';
-import 'package:moto_amg/features/groups/data/repositories/group_repository_impl.dart';
+import 'package:moto_amg/features/groups/data/repositories/mysql_group_repository_impl.dart';
 import 'package:moto_amg/features/groups/domain/entities/group_incident.dart';
 import 'package:moto_amg/features/groups/domain/entities/group_member.dart';
 import 'package:moto_amg/features/groups/domain/entities/group_stop.dart';
@@ -21,10 +22,14 @@ import 'package:moto_amg/features/navigation/domain/entities/geo_point.dart';
 import 'package:moto_amg/features/navigation/domain/entities/navigation_route.dart';
 import 'package:moto_amg/features/tracking/presentation/providers/tracking_providers.dart';
 
-final groupRepositoryProvider = Provider<GroupRepository>((ref) {
-  return GroupRepositoryImpl(GroupRemoteDataSource());
+final mysqlGroupRemoteDataSourceProvider =
+    Provider<MysqlGroupRemoteDataSource>((ref) {
+  return MysqlGroupRemoteDataSource(ref.watch(motoAmgApiClientProvider));
 });
 
+final groupRepositoryProvider = Provider<GroupRepository>((ref) {
+  return MysqlGroupRepositoryImpl(ref.watch(mysqlGroupRemoteDataSourceProvider));
+});
 final groupPackAlertRepositoryProvider = Provider<GroupPackAlertRepository>((
   ref,
 ) {
@@ -91,7 +96,9 @@ class GroupPackAlertController extends Notifier<GroupPackAlertPreferences> {
 
 final groupIncidentDatasourceProvider =
     Provider<GroupIncidentRemoteDataSource>((ref) {
-  return GroupIncidentRemoteDataSource();
+  return GroupIncidentRemoteDataSource(
+    ref.watch(gpsWsLocationDataSourceProvider),
+  );
 });
 
 final groupIncidentsProvider =
@@ -101,7 +108,9 @@ final groupIncidentsProvider =
 
 final groupVoiceDatasourceProvider =
     Provider<GroupVoiceRemoteDataSource>((ref) {
-  return GroupVoiceRemoteDataSource();
+  return GroupVoiceRemoteDataSource(
+    ref.watch(gpsWsLocationDataSourceProvider),
+  );
 });
 
 final groupVoiceAnnouncementsProvider =
@@ -111,7 +120,9 @@ final groupVoiceAnnouncementsProvider =
 
 final groupStopDatasourceProvider =
     Provider<GroupStopRemoteDataSource>((ref) {
-  return GroupStopRemoteDataSource();
+  return GroupStopRemoteDataSource(
+    ref.watch(gpsWsLocationDataSourceProvider),
+  );
 });
 
 final groupStopsProvider =
@@ -179,6 +190,8 @@ class GroupActionController extends Notifier<AsyncValue<void>> {
     return _run(() async {
       final group = await _repo.createGroup(user: user, name: name);
       _setLocalGroup(user, group.id);
+      ref.invalidate(myGroupsProvider(user.uid));
+      ref.invalidate(myClubMembershipsProvider);
     });
   }
 
@@ -186,6 +199,8 @@ class GroupActionController extends Notifier<AsyncValue<void>> {
     return _run(() async {
       final group = await _repo.joinGroup(user: user, code: code);
       _setLocalGroup(user, group.id);
+      ref.invalidate(myGroupsProvider(user.uid));
+      ref.invalidate(myClubMembershipsProvider);
     });
   }
 
@@ -206,6 +221,9 @@ class GroupActionController extends Notifier<AsyncValue<void>> {
         );
       }
       ref.read(groupMapSessionOpenProvider.notifier).state = false;
+      ref.invalidate(myGroupsProvider(user.uid));
+      ref.invalidate(rideGroupProvider(groupId));
+      ref.invalidate(groupMembersProvider(groupId));
     });
   }
 
@@ -228,6 +246,9 @@ class GroupActionController extends Notifier<AsyncValue<void>> {
         );
       }
       ref.read(groupMapSessionOpenProvider.notifier).state = false;
+      ref.invalidate(myGroupsProvider(user.uid));
+      ref.invalidate(rideGroupProvider(groupId));
+      ref.invalidate(groupMembersProvider(groupId));
     });
   }
 
@@ -293,6 +314,8 @@ class GroupActionController extends Notifier<AsyncValue<void>> {
           uid: member.uid,
         );
       } catch (_) {}
+      ref.invalidate(groupMembersProvider(groupId));
+      ref.invalidate(rideGroupProvider(groupId));
     });
   }
 
@@ -309,6 +332,8 @@ class GroupActionController extends Notifier<AsyncValue<void>> {
         memberUid: memberUid,
         isAdmin: isAdmin,
       );
+      ref.invalidate(groupMembersProvider(groupId));
+      ref.invalidate(rideGroupProvider(groupId));
     });
   }
 
@@ -325,6 +350,7 @@ class GroupActionController extends Notifier<AsyncValue<void>> {
         memberUid: memberUid,
         role: role,
       );
+      ref.invalidate(groupMembersProvider(groupId));
     });
   }
 
@@ -339,6 +365,8 @@ class GroupActionController extends Notifier<AsyncValue<void>> {
         groupId: groupId,
         route: route,
       );
+      ref.invalidate(groupSharedRouteProvider(groupId));
+      ref.invalidate(groupHasSharedRouteProvider(groupId));
     });
   }
 
@@ -351,6 +379,8 @@ class GroupActionController extends Notifier<AsyncValue<void>> {
         actor: actor,
         groupId: groupId,
       );
+      ref.invalidate(groupSharedRouteProvider(groupId));
+      ref.invalidate(groupHasSharedRouteProvider(groupId));
     });
   }
 
@@ -365,6 +395,7 @@ class GroupActionController extends Notifier<AsyncValue<void>> {
         groupId: groupId,
         enabled: enabled,
       );
+      ref.invalidate(rideGroupProvider(groupId));
     });
   }
 

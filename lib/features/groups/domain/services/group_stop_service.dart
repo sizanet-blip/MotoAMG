@@ -1,5 +1,4 @@
-﻿import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+﻿import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:moto_amg/features/groups/data/datasources/group_stop_remote_datasource.dart';
 import 'package:moto_amg/features/groups/domain/entities/group_stop.dart';
 import 'package:moto_amg/features/groups/domain/exceptions/group_exceptions.dart';
@@ -22,7 +21,6 @@ class GroupStopService {
     required GroupStopType type,
     required GeoPoint point,
   }) async {
-    _ensureSignedIn();
     if (groupId.isEmpty) {
       throw const GroupException('Grupo no válido.');
     }
@@ -44,18 +42,9 @@ class GroupStopService {
     required String groupId,
     required String stopId,
   }) async {
-    _ensureSignedIn();
     if (groupId.isEmpty || stopId.isEmpty) {
       return;
     }
     await _remote.clear(groupId: groupId, stopId: stopId);
-  }
-
-  void _ensureSignedIn() {
-    if (FirebaseAuth.instance.currentUser == null) {
-      throw const GroupException(
-        'No hay sesión activa. Cierra la app y vuelve a entrar.',
-      );
-    }
   }
 }

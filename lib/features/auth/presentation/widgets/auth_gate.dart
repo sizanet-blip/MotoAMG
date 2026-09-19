@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:moto_amg/features/auth/data/repositories/mysql_auth_repository_impl.dart';
 import 'package:moto_amg/features/auth/domain/entities/app_user.dart';
 import 'package:moto_amg/features/auth/presentation/providers/auth_providers.dart';
 import 'package:moto_amg/features/auth/presentation/screens/display_name_screen.dart';
@@ -47,12 +48,28 @@ class AuthGate extends ConsumerWidget {
 
     final localUser = ref.watch(signedInUserProvider);
     final auth = ref.watch(authStateProvider);
+    final bootstrap = ref.watch(authSessionBootstrapProvider);
+    final loggedOut = ref.watch(authLoggedOutProvider);
     final pendingRecoveryKey = ref.watch(pendingRecoveryKeyProvider);
     if (pendingRecoveryKey != null && pendingRecoveryKey.isNotEmpty) {
       return RecoveryKeyScreen(recoveryKey: pendingRecoveryKey);
     }
 
-    final sessionUser = resolveSessionUser(localUser, auth.asData?.value);
+    // Tras cerrar sesión no usar bootstrap/remote (carrera → home).
+    // Al arranque, hidratar solo desde bootstrap si aún no hay local.
+    final AppUser? sessionUser;
+    if (localUser != null) {
+      sessionUser = resolveSessionUser(localUser, auth.asData?.value);
+    } else if (loggedOut) {
+      sessionUser = null;
+    } else if (bootstrap.isLoading) {
+      sessionUser = null;
+    } else {
+      final bootUser = bootstrap.asData?.value;
+      sessionUser = bootUser == null
+          ? null
+          : resolveSessionUser(bootUser, auth.asData?.value);
+    }
     final dismissedPendingId = ref.watch(dismissedPendingClubRequestIdProvider);
 
     Widget forUser() {
@@ -60,7 +77,9 @@ class AuthGate extends ConsumerWidget {
       if (user == null) {
         return const LoginScreen();
       }
-      if (user.needsPrivacyAcceptance) {
+      // Privacidad: solo al crear cuenta, o si cambia la versión de la política.
+      // Invitados no pasan por esta pantalla.
+      if (!user.isAnonymous && user.needsPrivacyAcceptance) {
         return const PrivacyOnboardingScreen(
           scope: PrivacyAcceptanceScope.account,
         );
@@ -77,39 +96,26 @@ class AuthGate extends ConsumerWidget {
       return _clubGate(ref, user, dismissedPendingId);
     }
 
+    const bootstrapping = Scaffold(
+      body: Center(child: CircularProgressIndicator()),
+    );
+
     return auth.when(
       loading: () {
-        final user = sessionUser;
-        if (user != null &&
-            !user.needsPrivacyAcceptance &&
-            !user.needsDisplayName) {
-          if (user.isAnonymous) {
-            return HomeScreen(user: user);
-          }
-          return _clubGate(ref, user, dismissedPendingId);
+        if (sessionUser != null) {
+          return forUser();
         }
-        if (user != null && user.needsPrivacyAcceptance) {
-          return const PrivacyOnboardingScreen(
-            scope: PrivacyAcceptanceScope.account,
-          );
+        if (loggedOut) {
+          return forUser(); // LoginScreen
         }
-        return const Scaffold(
-          body: Center(child: CircularProgressIndicator()),
-        );
+        return bootstrapping;
       },
       error: (error, _) {
-        if (sessionUser != null &&
-            !sessionUser.needsPrivacyAcceptance &&
-            !sessionUser.needsDisplayName) {
-          if (sessionUser.isAnonymous) {
-            return HomeScreen(user: sessionUser);
-          }
-          return _clubGate(ref, sessionUser, dismissedPendingId);
+        if (sessionUser != null) {
+          return forUser();
         }
-        if (sessionUser != null && sessionUser.needsPrivacyAcceptance) {
-          return const PrivacyOnboardingScreen(
-            scope: PrivacyAcceptanceScope.account,
-          );
+        if (loggedOut) {
+          return forUser();
         }
         return Scaffold(
           body: Center(
@@ -123,7 +129,16 @@ class AuthGate extends ConsumerWidget {
           ),
         );
       },
-      data: (_) => forUser(),
+      data: (_) {
+        // Arranque en frío: esperar bootstrap antes de mostrar login vacío.
+        if (localUser == null &&
+            !loggedOut &&
+            bootstrap.isLoading &&
+            sessionUser == null) {
+          return bootstrapping;
+        }
+        return forUser();
+      },
     );
   }
 
@@ -220,6 +235,15 @@ class _ActivateSoleClubGateState extends ConsumerState<_ActivateSoleClubGate> {
       if (!mounted) {
         return;
       }
+      final repo = ref.read(authRepositoryProvider);
+      if (repo is MysqlAuthRepositoryImpl) {
+        await repo.patchLocalUser(
+          (current) => current.copyWith(
+            currentClubId: widget.clubId,
+            clearPendingClubRequestId: true,
+          ),
+        );
+      }
       final local = ref.read(signedInUserProvider);
       if (local != null && local.uid == widget.user.uid) {
         ref.read(signedInUserProvider.notifier).state = local.copyWith(
@@ -227,6 +251,7 @@ class _ActivateSoleClubGateState extends ConsumerState<_ActivateSoleClubGate> {
           clearPendingClubRequestId: true,
         );
       }
+      ref.invalidate(myClubMembershipsProvider);
     } catch (_) {
       _started = false;
     }

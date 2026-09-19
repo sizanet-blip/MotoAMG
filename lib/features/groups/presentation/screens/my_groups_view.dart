@@ -8,6 +8,7 @@ import 'package:moto_amg/features/auth/presentation/widgets/account_menu_button.
 import 'package:moto_amg/features/clubs/domain/entities/moto_club.dart';
 import 'package:moto_amg/features/clubs/presentation/providers/club_providers.dart';
 import 'package:moto_amg/features/clubs/presentation/screens/club_entry_screen.dart';
+import 'package:moto_amg/features/clubs/presentation/widgets/club_invite_code_card.dart';
 import 'package:moto_amg/features/groups/domain/entities/group_membership.dart';
 import 'package:moto_amg/features/groups/presentation/providers/group_providers.dart';
 import 'package:moto_amg/features/groups/presentation/widgets/group_entry_dialogs.dart';
@@ -28,6 +29,7 @@ class MyGroupsView extends ConsumerWidget {
     final clubMemberships =
         membershipsAsync.asData?.value ?? const <MotoClubMembership>[];
     final activeClubName = _activeClubName(user, clubMemberships);
+    final activeClubInvite = _activeClubInvite(user, clubMemberships);
 
     return PopScope(
       canPop: false,
@@ -94,13 +96,8 @@ class MyGroupsView extends ConsumerWidget {
         ),
         data: (groups) {
           final clubId = user.currentClubId;
-          final membershipsReady = membershipsAsync.hasValue;
-          // currentClubId huérfano (sin membresía en Firestore) ≠ estar en club.
-          final membershipOk = clubId != null &&
-              clubId.isNotEmpty &&
-              (!membershipsReady ||
-                  clubMemberships.any((m) => m.clubId == clubId));
-          final inClub = user.isAnonymous || (user.isInClub && membershipOk);
+          // Con MySQL, currentClubId activo = en club (no ocultar acciones de grupo).
+          final inClub = user.isAnonymous || user.isInClub;
           final active = inClub
               ? groups.where((group) {
                   if (!group.isActive) {
@@ -110,9 +107,11 @@ class MyGroupsView extends ConsumerWidget {
                     return true;
                   }
                   if (clubId == null || clubId.isEmpty) {
-                    return false;
+                    return true;
                   }
-                  return group.clubId == clubId;
+                  return group.clubId == null ||
+                      group.clubId!.isEmpty ||
+                      group.clubId == clubId;
                 }).toList()
               : const <GroupMembership>[];
           final showClubCta =
@@ -154,6 +153,7 @@ class MyGroupsView extends ConsumerWidget {
               showClubCta: showClubCta,
               hideGroupActions: !inClub,
               clubMemberships: clubMemberships,
+              activeClubInvite: activeClubInvite,
               onSelectClub: selectClub,
               onCreate: () => _createGroup(context, ref),
               onJoin: () => _joinGroup(context, ref),
@@ -179,6 +179,7 @@ class MyGroupsView extends ConsumerWidget {
             showClubCta: showClubCta,
             hideGroupActions: !inClub,
             clubMemberships: clubMemberships,
+            activeClubInvite: activeClubInvite,
             onSelectClub: selectClub,
             onCreate: () => _createGroup(context, ref),
             onJoin: () => _joinGroup(context, ref),
@@ -210,6 +211,22 @@ class MyGroupsView extends ConsumerWidget {
     for (final m in memberships) {
       if (m.clubId == id) {
         return m.clubName;
+      }
+    }
+    return null;
+  }
+
+  MotoClubMembership? _activeClubInvite(
+    AppUser user,
+    List<MotoClubMembership> memberships,
+  ) {
+    final id = user.currentClubId;
+    if (id == null || id.isEmpty) {
+      return null;
+    }
+    for (final m in memberships) {
+      if (m.clubId == id && m.isAdmin && m.hasInviteCode) {
+        return m;
       }
     }
     return null;
@@ -319,6 +336,7 @@ class _PortraitBody extends StatelessWidget {
     required this.showClubCta,
     required this.hideGroupActions,
     required this.clubMemberships,
+    this.activeClubInvite,
     required this.onSelectClub,
     required this.onCreate,
     required this.onJoin,
@@ -334,6 +352,7 @@ class _PortraitBody extends StatelessWidget {
   final bool showClubCta;
   final bool hideGroupActions;
   final List<MotoClubMembership> clubMemberships;
+  final MotoClubMembership? activeClubInvite;
   final ValueChanged<MotoClubMembership> onSelectClub;
   final VoidCallback onCreate;
   final VoidCallback onJoin;
@@ -374,6 +393,14 @@ class _PortraitBody extends StatelessWidget {
                         clubs: clubMemberships,
                         activeClubId: user.currentClubId,
                         onSelect: onSelectClub,
+                      ),
+                      const SizedBox(height: 14),
+                    ],
+                    if (activeClubInvite != null) ...[
+                      ClubInviteCodeCard(
+                        code: activeClubInvite!.inviteCode!,
+                        clubName: activeClubInvite!.clubName,
+                        compact: true,
                       ),
                       const SizedBox(height: 14),
                     ],
@@ -432,6 +459,7 @@ class _LandscapeBody extends StatelessWidget {
     required this.showClubCta,
     required this.hideGroupActions,
     required this.clubMemberships,
+    this.activeClubInvite,
     required this.onSelectClub,
     required this.onCreate,
     required this.onJoin,
@@ -447,6 +475,7 @@ class _LandscapeBody extends StatelessWidget {
   final bool showClubCta;
   final bool hideGroupActions;
   final List<MotoClubMembership> clubMemberships;
+  final MotoClubMembership? activeClubInvite;
   final ValueChanged<MotoClubMembership> onSelectClub;
   final VoidCallback onCreate;
   final VoidCallback onJoin;
@@ -505,6 +534,17 @@ class _LandscapeBody extends StatelessWidget {
                                 clubs: clubMemberships,
                                 activeClubId: user.currentClubId,
                                 onSelect: onSelectClub,
+                              ),
+                            ),
+                          ),
+                        if (activeClubInvite != null)
+                          SliverToBoxAdapter(
+                            child: Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: ClubInviteCodeCard(
+                                code: activeClubInvite!.inviteCode!,
+                                clubName: activeClubInvite!.clubName,
+                                compact: true,
                               ),
                             ),
                           ),

@@ -1,4 +1,8 @@
 ﻿/// Constantes de negocio y rutas de Firebase para MotoAMG.
+import 'dart:io' show Platform;
+
+import 'package:flutter/foundation.dart';
+
 abstract final class AppConstants {
   static const String appName = 'MotoAMG';
   static const String appIconAsset = 'assets/branding/motoamg-app-icon.png';
@@ -47,8 +51,9 @@ abstract final class AppConstants {
   /// Intervalo de envío de GPS al nodo RTDB `live_locations`.
   static const Duration locationUpdateInterval = Duration(seconds: 3);
 
-  /// Con la moto parada, no escribir en RTDB más a menudo que esto.
-  static const Duration locationStoppedPublishInterval = Duration(seconds: 30);
+  /// Con la moto parada, no escribir más a menudo que esto.
+  /// Corto al inicio del pelotón: si no, el compañero tarda mucho en verte.
+  static const Duration locationStoppedPublishInterval = Duration(seconds: 8);
 
   /// Por debajo de esta velocidad se considera «parado» (~5 km/h).
   static const double locationStoppedSpeedMps = 1.4;
@@ -104,33 +109,60 @@ abstract final class AppConstants {
   static const int minGroupNameLength = 2;
   static const int maxGroupNameLength = 40;
 
-  // --- Firestore ---
-  static const String usersCollection = 'users';
-  static const String usernamesCollection = 'usernames';
-  static const String groupsCollection = 'groups';
-  static const String membersSubcollection = 'members';
-  static const String membershipsSubcollection = 'memberships';
-  static const String sharedRouteSubcollection = 'sharedRoute';
-  static const String sharedRouteDocId = 'current';
-
   // --- Clubs (acceso y cupos; distinto de grupos de ruta / salidas) ---
-  static const String clubsCollection = 'clubs';
-  static const String clubMembersSubcollection = 'members';
-  static const String clubMembershipsSubcollection = 'clubMemberships';
-  static const String clubInvitesCollection = 'club_invites';
-  static const String clubRequestsCollection = 'club_requests';
   static const int clubInviteCodeLength = 8;
   static const int minClubNameLength = 3;
   static const int maxClubNameLength = 60;
 
-  // --- Realtime Database ---
+  // --- API MySQL (panel) ---
+  /// Host virtual del panel (Apache/IIS en el PC).
+  static const String apiHostHeader = 'panel.amg.desarrollo';
+
+  /// Base URL. Emulador Android → 10.0.2.2 (el PC). Override: --dart-define=MOTOAMG_API_BASE=...
+  static String get apiBaseUrl {
+    const fromEnv = String.fromEnvironment('MOTOAMG_API_BASE');
+    if (fromEnv.isNotEmpty) {
+      return fromEnv;
+    }
+    // ignore: avoid_classes_with_only_static_members
+    return _ApiBase.resolve();
+  }
+
+  // --- Realtime Database (legado; GPS en vivo migra a WebSocket) ---
   static const String liveLocationsPath = 'live_locations';
   static const String groupAlertsPath = 'group_alerts';
   static const String groupStopsPath = 'group_stops';
   static const String groupVoicePath = 'group_voice';
 
+  // --- GPS en vivo (Oracle WebSocket + token) ---
+  static const String gpsWsUrl = String.fromEnvironment(
+    'GPS_WS_URL',
+    defaultValue: 'wss://gps.albertomaestre.es/ws',
+  );
+
+  static String get gpsTokenUrl {
+    const fromEnv = String.fromEnvironment('GPS_TOKEN_URL');
+    if (fromEnv.isNotEmpty) return fromEnv;
+    return '${apiBaseUrl.replaceAll(RegExp(r'/$'), '')}/motoamg/gps-token';
+  }
+
+  static const String gpsApiKey = String.fromEnvironment(
+    'GPS_API_KEY',
+    defaultValue: 'motoamg-dev-api-key-change-me',
+  );
+
   // --- LiveKit intercom ---
   static const String liveKitUrl = 'wss://livekit.albertomaestre.es';
-  static const String liveKitTokenUrl =
-      'https://livekit.albertomaestre.es/token';
+}
+
+/// Resolución de base URL del panel según plataforma.
+abstract final class _ApiBase {
+  static String resolve() {
+    // Emulador Android: 10.0.2.2 = localhost del PC (HTTPS + Host virtual).
+    if (!kIsWeb && Platform.isAndroid) {
+      return 'https://10.0.2.2';
+    }
+    // Escritorio / iOS sim: hostname local.
+    return 'https://panel.amg.desarrollo';
+  }
 }

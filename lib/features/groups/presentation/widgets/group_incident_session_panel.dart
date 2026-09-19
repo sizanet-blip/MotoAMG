@@ -309,6 +309,11 @@ class _GroupIncidentSessionPanelState
         );
       }
     }
+    // Mantener el set alineado con avisos activos (sin TTS duplicado:
+    // el OK se comunica con GroupVoiceKind.incidentCleared).
+    _seenIncidentKeys
+      ..removeWhere((key) => !keys.contains(key))
+      ..addAll(keys);
   }
 
   void _maybeAlertVoiceAnnouncements(List<GroupVoiceAnnouncement> list) {
@@ -561,39 +566,62 @@ class _GroupIncidentSessionPanelState
   }
 
   Future<void> _clearOwnIncident() async {
+    // Quitar de la UI al momento; si el remoto falla, reintentamos sin
+    // volver a mostrar el aviso pillado en pantalla.
     setState(() {
       _lastIncidentError = null;
       _incidentBusy = true;
+      _pendingIncident = null;
+      _localOwnIncident = null;
     });
+    unawaited(_announceIncidentCleared());
     try {
       await ref.read(groupIncidentServiceProvider).clear(
             groupId: widget.groupId,
             uid: widget.user.uid,
           );
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _pendingIncident = null;
-        _localOwnIncident = null;
-      });
     } catch (_) {
       if (!mounted) {
         return;
       }
+      unawaited(_retryClearOwnIncidentLater());
       if (_silent) {
-        unawaited(_retryClearOwnIncidentLater());
         return;
       }
       setState(
         () => _lastIncidentError =
-            'No se pudo quitar el aviso. Inténtalo de nuevo.',
+            'No se pudo sincronizar al quitar el aviso. Reintentando…',
       );
-      _notifyUser('No se pudo quitar el aviso. Inténtalo de nuevo.');
+      _notifyUser('Aviso quitado aquí. Si vuelve a salir, pulsa OK otra vez.');
     } finally {
       if (mounted) {
         setState(() => _incidentBusy = false);
       }
+    }
+  }
+
+  Future<void> _announceIncidentCleared() async {
+    final announcement = GroupVoiceAnnouncement(
+      id: 'ok-${DateTime.now().millisecondsSinceEpoch}',
+      uid: widget.user.uid,
+      kind: GroupVoiceKind.incidentCleared,
+      at: DateTime.now(),
+      displayName: widget.user.displayName,
+    );
+    // Quien quita el aviso también oye confirmación local.
+    unawaited(
+      GroupRideAlertFeedback.playVoiceAnnouncement(
+        announcement: announcement,
+        voice: ref.read(navigationVoiceServiceProvider),
+      ),
+    );
+    try {
+      await ref.read(groupVoiceDatasourceProvider).publish(
+            groupId: widget.groupId,
+            announcement: announcement,
+          );
+    } catch (_) {
+      // Sin red: solo se oye en este móvil.
     }
   }
 

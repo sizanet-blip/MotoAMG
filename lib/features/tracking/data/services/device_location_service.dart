@@ -1,4 +1,4 @@
-﻿import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:moto_amg/core/constants/app_constants.dart';
 import 'package:moto_amg/features/tracking/domain/exceptions/location_exceptions.dart';
@@ -98,13 +98,22 @@ class DeviceLocationService {
 
   Future<Position?> readPosition() async {
     try {
-      return await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-        ),
-      ).timeout(const Duration(seconds: 12));
+      final last = await Geolocator.getLastKnownPosition();
+      try {
+        return await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            timeLimit: Duration(seconds: 8),
+          ),
+        );
+      } catch (_) {
+        if (last != null) {
+          return last;
+        }
+        return await Geolocator.getLastKnownPosition();
+      }
     } catch (_) {
-      return Geolocator.getLastKnownPosition();
+      return await Geolocator.getLastKnownPosition();
     }
   }
 

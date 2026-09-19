@@ -1,13 +1,32 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:moto_amg/core/theme/hub_style.dart';
+import 'package:moto_amg/features/auth/presentation/providers/auth_providers.dart';
 import 'package:moto_amg/features/auth/presentation/screens/register_screen.dart';
 import 'package:moto_amg/features/auth/presentation/screens/username_register_screen.dart';
 
-class RegisterOptionsScreen extends StatelessWidget {
+class RegisterOptionsScreen extends ConsumerWidget {
   const RegisterOptionsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isLoading = ref.watch(authActionControllerProvider).isLoading;
+
+    ref.listen(authActionControllerProvider, (previous, next) {
+      next.whenOrNull(
+        error: (error, _) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(error.toString())),
+          );
+        },
+        data: (_) {
+          if (previous?.isLoading == true && !next.hasError) {
+            Navigator.of(context).popUntil((route) => route.isFirst);
+          }
+        },
+      );
+    });
+
     return Scaffold(
       backgroundColor: HubStyle.surface,
       appBar: HubStyle.appBar(titleText: 'Crear cuenta'),
@@ -16,36 +35,55 @@ class RegisterOptionsScreen extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
           children: [
             Text(
-              'Con una cuenta puedes volver a tus grupos desde este u otro móvil.',
+              'Elige cómo crear tu cuenta. Si ya te registraste, vuelve atrás '
+              'e inicia sesión.',
               style: HubStyle.body(),
             ),
             const SizedBox(height: 20),
             _RegisterOptionCard(
+              icon: Icons.g_mobiledata,
+              title: 'Con Google',
+              subtitle: 'Se crea la cuenta solo si aún no existe.',
+              onTap: isLoading
+                  ? null
+                  : () => ref
+                      .read(authActionControllerProvider.notifier)
+                      .registerWithGoogle(),
+            ),
+            const SizedBox(height: 12),
+            _RegisterOptionCard(
               icon: Icons.mail_outline_rounded,
               title: 'Con correo',
-              subtitle: 'Podrás recuperar la contraseña por email.',
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const RegisterScreen(),
-                  ),
-                );
-              },
+              subtitle: 'Usuario derivado del email + contraseña (MySQL).',
+              onTap: isLoading
+                  ? null
+                  : () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const RegisterScreen(),
+                        ),
+                      );
+                    },
             ),
             const SizedBox(height: 12),
             _RegisterOptionCard(
               icon: Icons.person_outline_rounded,
               title: 'Con usuario y contraseña',
-              subtitle:
-                  'Sin correo. Te daremos una clave de recuperación; guárdala bien.',
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const UsernameRegisterScreen(),
-                  ),
-                );
-              },
+              subtitle: 'Sin depender de Google. Se guarda en MySQL.',
+              onTap: isLoading
+                  ? null
+                  : () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const UsernameRegisterScreen(),
+                        ),
+                      );
+                    },
             ),
+            if (isLoading) ...[
+              const SizedBox(height: 24),
+              const Center(child: CircularProgressIndicator()),
+            ],
           ],
         ),
       ),
@@ -64,7 +102,7 @@ class _RegisterOptionCard extends StatelessWidget {
   final IconData icon;
   final String title;
   final String subtitle;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {

@@ -41,6 +41,7 @@ class MotoClubMembership extends Equatable {
     required this.clubName,
     required this.role,
     required this.joinedAt,
+    this.inviteCode,
   });
 
   final String clubId;
@@ -48,10 +49,16 @@ class MotoClubMembership extends Equatable {
   final MotoClubMemberRole role;
   final DateTime joinedAt;
 
+  /// Solo para admin; miembros lo reciben vacío/null.
+  final String? inviteCode;
+
   bool get isAdmin => role == MotoClubMemberRole.admin;
 
+  bool get hasInviteCode =>
+      inviteCode != null && inviteCode!.trim().isNotEmpty;
+
   @override
-  List<Object?> get props => [clubId, clubName, role, joinedAt];
+  List<Object?> get props => [clubId, clubName, role, joinedAt, inviteCode];
 }
 
 enum ClubJoinRequestStatus { pending, approved, rejected }
@@ -69,6 +76,7 @@ class ClubJoinRequest extends Equatable {
     this.region,
     this.reviewNote,
     this.resultingClubId,
+    this.inviteCode,
   });
 
   final String id;
@@ -82,6 +90,9 @@ class ClubJoinRequest extends Equatable {
   final String? region;
   final String? reviewNote;
   final String? resultingClubId;
+
+  /// Código de invitación tras aprobar (solo para el solicitante/admin).
+  final String? inviteCode;
 
   bool get isPending => status == ClubJoinRequestStatus.pending;
 
@@ -98,5 +109,6 @@ class ClubJoinRequest extends Equatable {
         region,
         reviewNote,
         resultingClubId,
+        inviteCode,
       ];
 }

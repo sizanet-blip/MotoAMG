@@ -1,0 +1,16 @@
+[Unit]
+Description=MotoAMG GPS WebSocket server
+After=network.target docker.service
+Wants=docker.service
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/motoamg-gps/server
+EnvironmentFile=/home/ubuntu/motoamg-gps/server/.env
+ExecStart=/usr/bin/node server.js
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

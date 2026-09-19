@@ -349,10 +349,13 @@ class _RoutePreviewScreenState extends ConsumerState<RoutePreviewScreen> {
     final group = groupId == null || groupId.isEmpty
         ? null
         : ref.watch(rideGroupProvider(groupId)).asData?.value;
+    // Publicar al pelotón si hay grupo activo y eres admin (o aún carga el grupo).
     final canPublishGroupRoute = widget.enableGroupFeatures &&
-        group != null &&
-        group.isActive &&
-        group.isAdmin(widget.user.uid);
+        groupId != null &&
+        groupId.isNotEmpty &&
+        (group == null
+            ? true
+            : (group.isActive && group.isAdmin(widget.user.uid)));
     final hasSharedRoute = groupId != null &&
         groupId.isNotEmpty &&
         (ref.watch(groupHasSharedRouteProvider(groupId)).asData?.value ==

@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:moto_amg/core/constants/app_constants.dart';
 import 'package:moto_amg/core/theme/hub_style.dart';
+import 'package:moto_amg/features/auth/data/repositories/mysql_auth_repository_impl.dart';
 import 'package:moto_amg/features/auth/domain/entities/app_user.dart';
 import 'package:moto_amg/features/auth/presentation/providers/auth_providers.dart';
 import 'package:moto_amg/features/clubs/presentation/providers/club_providers.dart';
 
+/// Envía solicitud de club; queda pendiente hasta aprobarla en el panel.
 class RegisterClubScreen extends ConsumerStatefulWidget {
   const RegisterClubScreen({super.key, required this.user});
 
@@ -17,16 +19,12 @@ class RegisterClubScreen extends ConsumerStatefulWidget {
 
 class _RegisterClubScreenState extends ConsumerState<RegisterClubScreen> {
   final _nameCtrl = TextEditingController();
-  final _regionCtrl = TextEditingController();
-  final _phoneCtrl = TextEditingController();
   var _busy = false;
   String? _error;
 
   @override
   void dispose() {
     _nameCtrl.dispose();
-    _regionCtrl.dispose();
-    _phoneCtrl.dispose();
     super.dispose();
   }
 
@@ -48,17 +46,22 @@ class _RegisterClubScreenState extends ConsumerState<RegisterClubScreen> {
       _error = null;
     });
     try {
-      final requestId =
-          await ref.read(clubRemoteDataSourceProvider).submitClubRequest(
-                uid: widget.user.uid,
-                displayName: widget.user.displayName,
-                clubName: name,
-                email: widget.user.email,
-                phone: _phoneCtrl.text.trim().isEmpty
-                    ? widget.user.phoneNumber
-                    : _phoneCtrl.text.trim(),
-                region: _regionCtrl.text.trim(),
-              );
+      final requestId = await ref.read(clubRemoteDataSourceProvider).submitClubRequest(
+            uid: widget.user.uid,
+            displayName: widget.user.displayName,
+            clubName: name,
+            email: widget.user.email,
+          );
+      final repo = ref.read(authRepositoryProvider);
+      if (repo is MysqlAuthRepositoryImpl) {
+        await repo.patchLocalUser(
+          (current) => current.copyWith(
+            pendingClubRequestId: requestId,
+            currentClubId: null,
+            clearCurrentClubId: true,
+          ),
+        );
+      }
       final local = ref.read(signedInUserProvider);
       if (local != null && local.uid == widget.user.uid) {
         ref.read(signedInUserProvider.notifier).state = local.copyWith(
@@ -66,39 +69,19 @@ class _RegisterClubScreenState extends ConsumerState<RegisterClubScreen> {
           clearCurrentClubId: true,
         );
       }
-      ref.read(dismissedPendingClubRequestIdProvider.notifier).state = null;
+      ref.invalidate(myClubMembershipsProvider);
+      ref.invalidate(pendingClubRequestProvider);
       if (!mounted) {
         return;
       }
-      await showDialog<void>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          backgroundColor: HubStyle.surface,
-          title: Text('Solicitud enviada', style: HubStyle.sectionTitle()),
-          content: Text(
-            'Tu solicitud está pendiente de aprobación. '
-            'Te avisaremos cuando el club o grupo esté activo.',
-            style: HubStyle.body(),
-          ),
-          actions: [
-            FilledButton(
-              onPressed: () => Navigator.pop(ctx),
-              style: HubStyle.filledButtonStyle(),
-              child: const Text('Entendido'),
-            ),
-          ],
-        ),
-      );
-      if (mounted) {
-        Navigator.of(context).popUntil((route) => route.isFirst);
-      }
+      Navigator.of(context).popUntil((route) => route.isFirst);
     } catch (e) {
       if (!mounted) {
         return;
       }
       setState(() {
         _busy = false;
-        _error = 'No se pudo enviar la solicitud.';
+        _error = e.toString().replaceFirst('Exception: ', '');
       });
     }
   }
@@ -109,12 +92,13 @@ class _RegisterClubScreenState extends ConsumerState<RegisterClubScreen> {
 
     return Scaffold(
       backgroundColor: isDark ? null : HubStyle.surface,
-      appBar: HubStyle.appBar(titleText: 'Solicitar alta de Club o Grupo'),
+      appBar: HubStyle.appBar(titleText: 'Crear club'),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
         children: [
           Text(
-            'Enviaremos la solicitud. Cuando la aprueben, podrás invitar a tus socios.',
+            'Se enviará una solicitud al panel. Cuando la aprueben, '
+            'el club quedará activo y podrás usarlo.',
             style: HubStyle.body(),
           ),
           const SizedBox(height: 20),
@@ -124,26 +108,7 @@ class _RegisterClubScreenState extends ConsumerState<RegisterClubScreen> {
             textCapitalization: TextCapitalization.sentences,
             style: HubStyle.body(color: HubStyle.title),
             decoration: HubStyle.inputDecoration(
-              labelText: 'Nombre del club o grupo',
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _regionCtrl,
-            enabled: !_busy,
-            style: HubStyle.body(color: HubStyle.title),
-            decoration: HubStyle.inputDecoration(
-              labelText: 'Ciudad o zona (opcional)',
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _phoneCtrl,
-            enabled: !_busy,
-            keyboardType: TextInputType.phone,
-            style: HubStyle.body(color: HubStyle.title),
-            decoration: HubStyle.inputDecoration(
-              labelText: 'Teléfono de contacto (opcional)',
+              labelText: 'Nombre del club',
             ),
           ),
           if (_error != null) ...[

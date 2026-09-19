@@ -65,6 +65,10 @@ class _LocationBinderState extends ConsumerState<LocationBinder>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Algunos móviles sueltan el wakelock al ir a segundo plano.
+      unawaited(_armWakeLock(force: true));
+    }
     if (state != AppLifecycleState.resumed || !_started) {
       return;
     }
@@ -88,13 +92,27 @@ class _LocationBinderState extends ConsumerState<LocationBinder>
       final gps = ref.read(deviceLocationServiceProvider);
       await gps.ensurePermission();
       _started = true;
-      // Si el HUD ya tiene el GPS, no lo pisamos con el stream lento del grupo.
+      // Si el HUD ya tiene el GPS y hay fix, no pisamos con el stream lento.
+      // Si el flag quedó colgado sin watcher, reclamamos el GPS del grupo.
       if (ref.read(ownPositionWatchSourceProvider) ==
           OwnPositionWatchSource.navigation) {
-        return;
+        if (ref.read(ownDevicePositionProvider) != null) {
+          return;
+        }
+        ref.read(ownPositionWatchSourceProvider.notifier).state = null;
       }
       ref.read(ownPositionWatchSourceProvider.notifier).state =
           OwnPositionWatchSource.group;
+
+      // Última conocida ya sirve para abrir el mapa (emulador / arranque lento).
+      final lastKnown = await Geolocator.getLastKnownPosition();
+      if (!mounted) {
+        return;
+      }
+      if (lastKnown != null) {
+        _rememberPosition(lastKnown);
+      }
+
       final first = await gps.readPosition();
       if (!mounted) {
         return;
@@ -252,8 +270,13 @@ class _LocationBinderState extends ConsumerState<LocationBinder>
       );
       _lastPublishedAt = DateTime.now();
       _lastPublishedHasSignal = hasSignal;
+      _notifiedPublishError = false;
     } catch (error) {
       if (!mounted || _notifiedPublishError) {
+        return;
+      }
+      // Conexión aún abriéndose: el heartbeat reintentará sin alarmar.
+      if (_isTransientGpsError(error)) {
         return;
       }
       _notifiedPublishError = true;
@@ -288,8 +311,12 @@ class _LocationBinderState extends ConsumerState<LocationBinder>
       );
       _lastPublishedAt = DateTime.now();
       _lastPublishedHasSignal = hasSignal;
+      _notifiedPublishError = false;
     } catch (error) {
       if (!mounted || _notifiedPublishError) {
+        return;
+      }
+      if (_isTransientGpsError(error)) {
         return;
       }
       _notifiedPublishError = true;
@@ -297,6 +324,15 @@ class _LocationBinderState extends ConsumerState<LocationBinder>
         SnackBar(content: Text(error.toString())),
       );
     }
+  }
+
+  bool _isTransientGpsError(Object error) {
+    final msg = error.toString();
+    return msg.contains('aún no conectado') ||
+        msg.contains('sesión no iniciada') ||
+        msg.contains('no hay sesión') ||
+        msg.contains('TimeoutException') ||
+        error is TimeoutException;
   }
 
   bool _shouldPublishToGroup({
@@ -336,6 +372,7 @@ class _LocationBinderState extends ConsumerState<LocationBinder>
     }
     ref.read(ownPositionWatchSourceProvider.notifier).state =
         OwnPositionWatchSource.group;
+    unawaited(_armWakeLock(force: true));
     if (_subscription != null) {
       return;
     }
@@ -383,12 +420,13 @@ class _LocationBinderState extends ConsumerState<LocationBinder>
     }
   }
 
-  Future<void> _armWakeLock() async {
-    if (_wakeLockArmed) {
-      return;
-    }
+  Future<void> _armWakeLock({bool force = false}) async {
     final keepOn = ref.read(hudSafetyProvider).keepScreenOn;
     if (!keepOn) {
+      await _disarmWakeLock();
+      return;
+    }
+    if (_wakeLockArmed && !force) {
       return;
     }
     try {
@@ -423,6 +461,10 @@ class _LocationBinderState extends ConsumerState<LocationBinder>
 
   @override
   Widget build(BuildContext context) {
+    // Suscribirse YA (antes de que el mapa tenga GPS): si no, el broadcast
+    // pierde las posiciones del compañero llegadas mientras se buscaba ubicación.
+    ref.watch(groupLocationsProvider(widget.groupId));
+
     // El HUD de navegación necesita GPS frecuente: cedemos el stream del grupo.
     ref.listen(ownPositionWatchSourceProvider, (previous, next) {
       if (!_started || !mounted) {

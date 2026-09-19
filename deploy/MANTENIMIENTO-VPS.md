@@ -231,7 +231,7 @@ Límite distancia moto en `custom_files/valhalla.json`:
 | Valhalla (rutas) | https://valhalla.albertomaestre.es |
 | Photon (buscador) | https://photon.albertomaestre.es |
 | LiveKit (intercom) | https://livekit.albertomaestre.es (`wss://…`) |
-| LiveKit tokens | https://livekit.albertomaestre.es/token |
+| LiveKit tokens | Panel MySQL: `POST /motoamg/groups/<id>/livekit-token` (el `/token` Node del VPS está retirado) |
 | Radares | https://valhalla.albertomaestre.es/radares/es.json |
 | Gasolineras | https://valhalla.albertomaestre.es/gasolineras/es.json |
 | PMTiles | https://valhalla.albertomaestre.es/maps/ |

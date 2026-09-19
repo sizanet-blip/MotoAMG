@@ -4,6 +4,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:livekit_client/livekit_client.dart';
+import 'package:moto_amg/features/auth/presentation/providers/auth_providers.dart';
 import 'package:moto_amg/features/intercom/data/datasources/intercom_token_remote_datasource.dart';
 import 'package:moto_amg/features/intercom/data/intercom_audio_session.dart';
 import 'package:moto_amg/features/intercom/data/repositories/intercom_preferences_repository.dart';
@@ -20,7 +21,9 @@ final intercomPreferencesRepositoryProvider =
 
 final intercomTokenRemoteDataSourceProvider =
     Provider<IntercomTokenRemoteDataSource>(
-  (_) => IntercomTokenRemoteDataSource(),
+  (ref) => IntercomTokenRemoteDataSource(
+    api: ref.watch(motoAmgApiClientProvider),
+  ),
 );
 
 final intercomPreferencesProvider =
@@ -223,16 +226,24 @@ class IntercomSessionController extends Notifier<IntercomSessionState> {
         status: IntercomConnectionStatus.error,
         errorMessage: e.message,
       );
+      if (_isPermanentAuthFailure(e.message, e.statusCode)) {
+        return;
+      }
       _scheduleReconnect();
     } catch (e, st) {
       debugPrint('Intercom connect failed: $e\n$st');
       if (generation != _connectGeneration) {
         return;
       }
+      final short = _shortError(e);
       state = state.copyWith(
         status: IntercomConnectionStatus.error,
-        errorMessage: _shortError(e),
+        errorMessage: short,
       );
+      if (_isPermanentAuthFailure(short, null) ||
+          _isPermanentAuthFailure('$e', null)) {
+        return;
+      }
       _scheduleReconnect();
     }
   }
@@ -272,6 +283,28 @@ class IntercomSessionController extends Notifier<IntercomSessionState> {
         }
         debugPrint('Intercom disconnected: ${event.reason}');
         unawaited(_setIntercomDuck(false));
+        // Fallo de auth/join: no entrar en bucle "Reconectando…".
+        if (event.reason == DisconnectReason.joinFailure) {
+          final msg = state.errorMessage ??
+              'No se pudo unir a la sala de intercom.';
+          if (_isPermanentAuthFailure(msg, null)) {
+            state = state.copyWith(
+              status: IntercomConnectionStatus.error,
+              errorMessage: msg,
+              remoteSpeakerNames: const [],
+              localTransmitting: false,
+            );
+            return;
+          }
+          state = state.copyWith(
+            status: IntercomConnectionStatus.error,
+            errorMessage: msg,
+            remoteSpeakerNames: const [],
+            localTransmitting: false,
+          );
+          _scheduleReconnect();
+          return;
+        }
         state = state.copyWith(
           status: IntercomConnectionStatus.reconnecting,
           errorMessage: 'Reconectando…',
@@ -551,10 +584,28 @@ class IntercomSessionController extends Notifier<IntercomSessionState> {
 
   String _shortError(Object e) {
     final raw = e.toString();
+    final lower = raw.toLowerCase();
+    if (lower.contains('invalid api key')) {
+      return 'Clave LiveKit incorrecta en el panel (apiKey).';
+    }
     if (raw.length <= 80) {
       return raw;
     }
     return '${raw.substring(0, 77)}…';
+  }
+
+  bool _isPermanentAuthFailure(String message, int? statusCode) {
+    if (statusCode == 401 || statusCode == 403 || statusCode == 503) {
+      return true;
+    }
+    final lower = message.toLowerCase();
+    return lower.contains('invalid api key') ||
+        lower.contains('clave livekit') ||
+        lower.contains('sesión no válida') ||
+        lower.contains('no configurado') ||
+        lower.contains('apagado') ||
+        lower.contains('no eres miembro') ||
+        lower.contains('permiso de micrófono');
   }
 
   Future<void> _disposeAll() async {

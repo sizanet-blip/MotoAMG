@@ -1,77 +1,59 @@
-﻿import 'dart:convert';
-
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:http/http.dart' as http;
+﻿import 'package:moto_amg/core/api/motoamg_api_client.dart';
 import 'package:moto_amg/core/constants/app_constants.dart';
 import 'package:moto_amg/features/intercom/domain/entities/intercom_token_credentials.dart';
 
+/// Pide el JWT LiveKit al panel MySQL (sesión Bearer + membresía + intercom on).
 class IntercomTokenRemoteDataSource {
-  IntercomTokenRemoteDataSource({
-    FirebaseAuth? auth,
-    http.Client? client,
-    this.tokenUrl = AppConstants.liveKitTokenUrl,
-  })  : _auth = auth ?? FirebaseAuth.instance,
-        _client = client ?? http.Client();
+  IntercomTokenRemoteDataSource({required MotoAmgApiClient api}) : _api = api;
 
-  final FirebaseAuth _auth;
-  final http.Client _client;
-  final String tokenUrl;
+  final MotoAmgApiClient _api;
 
   Future<IntercomTokenCredentials> fetchToken({required String groupId}) async {
-    final user = _auth.currentUser;
-    if (user == null) {
-      throw IntercomTokenException('No hay sesión de Firebase.');
-    }
-
-    final idToken = await user.getIdToken();
-    if (idToken == null || idToken.isEmpty) {
-      throw IntercomTokenException('No se pudo obtener el token de Firebase.');
-    }
-
-    final response = await _client
-        .post(
-          Uri.parse(tokenUrl),
-          headers: {
-            'Authorization': 'Bearer $idToken',
-            'Content-Type': 'application/json',
-          },
-          body: jsonEncode({'groupId': groupId}),
-        )
-        .timeout(const Duration(seconds: 15));
-
-    if (response.statusCode == 401) {
-      throw IntercomTokenException(
-        'Sesión no válida para el intercom.',
-        statusCode: 401,
+    try {
+      final map = await _api.post(
+        '/motoamg/groups/$groupId/livekit-token',
+        auth: true,
       );
-    }
-    if (response.statusCode == 403) {
-      final body = response.body.toLowerCase();
-      if (body.contains('intercom_disabled')) {
+      final url = map['url']?.toString() ?? AppConstants.liveKitUrl;
+      final token = map['token']?.toString() ?? '';
+      final room = map['room']?.toString() ?? groupId;
+      if (token.isEmpty) {
+        throw IntercomTokenException('Respuesta de token vacía.');
+      }
+      return IntercomTokenCredentials(url: url, token: token, room: room);
+    } on MotoAmgApiException catch (e) {
+      final code = e.statusCode;
+      final msg = e.message.toLowerCase();
+      if (code == 401) {
         throw IntercomTokenException(
-          'El intercom del grupo está apagado.',
+          'Sesión no válida para el intercom.',
+          statusCode: 401,
+        );
+      }
+      if (code == 403) {
+        if (msg.contains('apagado') || msg.contains('intercom')) {
+          throw IntercomTokenException(
+            'El intercom del grupo está apagado.',
+            statusCode: 403,
+          );
+        }
+        throw IntercomTokenException(
+          'No eres miembro de este grupo.',
           statusCode: 403,
         );
       }
+      if (code == 503) {
+        throw IntercomTokenException(
+          'Intercom no configurado en el panel (falta secreto LiveKit).',
+          statusCode: 503,
+        );
+      }
       throw IntercomTokenException(
-        'No eres miembro de este grupo.',
-        statusCode: 403,
+        e.message.isNotEmpty
+            ? e.message
+            : 'Intercom no disponible (${code ?? '?'}).',
+        statusCode: code,
       );
     }
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw IntercomTokenException(
-        'Intercom no disponible (${response.statusCode}).',
-        statusCode: response.statusCode,
-      );
-    }
-
-    final map = jsonDecode(response.body) as Map<String, dynamic>;
-    final url = map['url']?.toString() ?? AppConstants.liveKitUrl;
-    final token = map['token']?.toString() ?? '';
-    final room = map['room']?.toString() ?? groupId;
-    if (token.isEmpty) {
-      throw IntercomTokenException('Respuesta de token vacía.');
-    }
-    return IntercomTokenCredentials(url: url, token: token, room: room);
   }
 }

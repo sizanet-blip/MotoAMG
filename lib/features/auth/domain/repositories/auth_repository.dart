@@ -1,4 +1,4 @@
-﻿import 'package:moto_amg/features/auth/domain/entities/app_user.dart';
+import 'package:moto_amg/features/auth/domain/entities/app_user.dart';
 import 'package:moto_amg/features/auth/domain/entities/user_vehicle.dart';
 import 'package:moto_amg/features/auth/domain/entities/username_registration.dart';
 
@@ -6,6 +6,9 @@ abstract class AuthRepository {
   Stream<AppUser?> watchCurrentUser();
 
   Future<AppUser> signInWithGoogle();
+
+  /// Alta con Google (solo si no existe).
+  Future<AppUser> registerWithGoogle();
 
   Future<AppUser> signInWithEmail({
     required String email,

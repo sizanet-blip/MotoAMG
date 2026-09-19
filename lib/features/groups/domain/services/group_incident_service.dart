@@ -1,5 +1,4 @@
-﻿import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+﻿import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:moto_amg/features/groups/data/datasources/group_incident_remote_datasource.dart';
 import 'package:moto_amg/features/groups/domain/entities/group_incident.dart';
 import 'package:moto_amg/features/groups/domain/exceptions/group_exceptions.dart';
@@ -10,7 +9,7 @@ final groupIncidentServiceProvider = Provider<GroupIncidentService>((ref) {
   return GroupIncidentService(ref.watch(groupIncidentDatasourceProvider));
 });
 
-/// Publicar y quitar avisos del grupo (RTDB), sin pasar por el controlador global.
+/// Publicar y quitar avisos del grupo (WebSocket GPS).
 class GroupIncidentService {
   const GroupIncidentService(this._remote);
 
@@ -25,7 +24,6 @@ class GroupIncidentService {
     required GeoPoint point,
     GroupIncidentSeverity? severity,
   }) async {
-    _ensureSignedIn();
     if (groupId.isEmpty) {
       throw const GroupException('Grupo no válido.');
     }
@@ -64,18 +62,9 @@ class GroupIncidentService {
     required String groupId,
     required String uid,
   }) async {
-    _ensureSignedIn();
     if (groupId.isEmpty) {
       return;
     }
     await _remote.clear(groupId: groupId, uid: uid);
-  }
-
-  void _ensureSignedIn() {
-    if (FirebaseAuth.instance.currentUser == null) {
-      throw const GroupException(
-        'No hay sesión activa. Cierra la app y vuelve a entrar.',
-      );
-    }
   }
 }

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:moto_amg/core/theme/hub_style.dart';
+import 'package:moto_amg/features/auth/data/repositories/mysql_auth_repository_impl.dart';
 import 'package:moto_amg/features/auth/domain/entities/app_user.dart';
 import 'package:moto_amg/features/auth/presentation/providers/auth_providers.dart';
 import 'package:moto_amg/features/clubs/domain/entities/moto_club.dart';
 import 'package:moto_amg/features/clubs/presentation/providers/club_providers.dart';
+import 'package:moto_amg/features/clubs/presentation/widgets/club_invite_code_card.dart';
 import 'package:moto_amg/features/groups/presentation/providers/group_providers.dart';
 
 class ClubPendingScreen extends ConsumerStatefulWidget {
@@ -19,31 +21,59 @@ class ClubPendingScreen extends ConsumerStatefulWidget {
 class _ClubPendingScreenState extends ConsumerState<ClubPendingScreen> {
   var _activating = false;
   var _busyDismiss = false;
+  var _readyToEnter = false;
   String? _activateError;
+  String? _inviteCode;
+  String? _approvedClubName;
+  String? _approvedClubId;
 
-  Future<void> _activateApproved(String clubId) async {
-    if (_activating) {
+  Future<void> _prepareApproved(ClubJoinRequest request) async {
+    if (_activating || _readyToEnter) {
+      return;
+    }
+    final clubId = request.resultingClubId;
+    if (clubId == null || clubId.isEmpty) {
       return;
     }
     setState(() {
       _activating = true;
       _activateError = null;
+      _approvedClubId = clubId;
+      _approvedClubName = request.clubName;
+      _inviteCode = request.inviteCode?.trim().isNotEmpty == true
+          ? request.inviteCode!.trim()
+          : null;
     });
     try {
-      await ref.read(clubRemoteDataSourceProvider).setActiveClub(
-            uid: widget.user.uid,
-            clubId: clubId,
-          );
-      await ref
-          .read(clubRemoteDataSourceProvider)
-          .clearPendingRequest(widget.user.uid);
-      final local = ref.read(signedInUserProvider);
-      if (local != null && local.uid == widget.user.uid) {
-        ref.read(signedInUserProvider.notifier).state = local.copyWith(
-          currentClubId: clubId,
-          clearPendingClubRequestId: true,
-        );
+      try {
+        await ref.read(clubRemoteDataSourceProvider).setActiveClub(
+              uid: widget.user.uid,
+              clubId: clubId,
+            );
+      } catch (_) {
+        // El panel ya pudo fijar current_club_id al aprobar.
       }
+
+      var code = _inviteCode;
+      if (code == null || code.isEmpty) {
+        final memberships =
+            await ref.read(clubRemoteDataSourceProvider).listMemberships();
+        for (final m in memberships) {
+          if (m.clubId == clubId && m.hasInviteCode) {
+            code = m.inviteCode!.trim();
+            break;
+          }
+        }
+      }
+
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _activating = false;
+        _readyToEnter = true;
+        _inviteCode = code;
+      });
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -55,12 +85,49 @@ class _ClubPendingScreenState extends ConsumerState<ClubPendingScreen> {
     }
   }
 
+  Future<void> _enterApp() async {
+    final clubId = _approvedClubId;
+    if (clubId == null || clubId.isEmpty) {
+      return;
+    }
+    setState(() => _activating = true);
+    try {
+      await ref
+          .read(clubRemoteDataSourceProvider)
+          .clearPendingRequest(widget.user.uid);
+
+      final updated = widget.user.copyWith(
+        currentClubId: clubId,
+        clearPendingClubRequestId: true,
+      );
+      final repo = ref.read(authRepositoryProvider);
+      if (repo is MysqlAuthRepositoryImpl) {
+        await repo.patchLocalUser(
+          (current) => current.copyWith(
+            currentClubId: clubId,
+            clearPendingClubRequestId: true,
+          ),
+        );
+      }
+      ref.read(signedInUserProvider.notifier).state = updated;
+      ref.invalidate(myClubMembershipsProvider);
+      ref.invalidate(pendingClubRequestProvider);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _activating = false;
+          _activateError =
+              'No se pudo entrar al club. Comprueba la conexión e inténtalo.';
+        });
+      }
+    }
+  }
+
   Future<void> _dismissRejected(String requestId) async {
     if (_busyDismiss) {
       return;
     }
     setState(() => _busyDismiss = true);
-    // Sale ya del gate aunque Firestore tarde en borrar el pending.
     ref.read(dismissedPendingClubRequestIdProvider.notifier).state = requestId;
     final local = ref.read(signedInUserProvider);
     if (local != null && local.uid == widget.user.uid) {
@@ -87,6 +154,7 @@ class _ClubPendingScreenState extends ConsumerState<ClubPendingScreen> {
   }
 
   void _syncFromLiveUser(AppUser? live) {
+    // No limpiar el pending aquí: tras aprobar hay que mostrar el código.
     if (live == null || live.uid != widget.user.uid) {
       return;
     }
@@ -96,16 +164,12 @@ class _ClubPendingScreenState extends ConsumerState<ClubPendingScreen> {
     }
     final liveHasClub =
         live.currentClubId != null && live.currentClubId!.trim().isNotEmpty;
-    final liveHasPending = live.pendingClubRequestId != null &&
-        live.pendingClubRequestId!.trim().isNotEmpty;
-    if (liveHasClub && !liveHasPending) {
-      if (local.currentClubId != live.currentClubId ||
-          local.hasPendingClubRequest) {
-        ref.read(signedInUserProvider.notifier).state = local.copyWith(
-          currentClubId: live.currentClubId,
-          clearPendingClubRequestId: true,
-        );
-      }
+    if (liveHasClub &&
+        local.currentClubId != live.currentClubId &&
+        local.hasPendingClubRequest) {
+      ref.read(signedInUserProvider.notifier).state = local.copyWith(
+        currentClubId: live.currentClubId,
+      );
     }
   }
 
@@ -121,7 +185,6 @@ class _ClubPendingScreenState extends ConsumerState<ClubPendingScreen> {
     });
     liveAsync.whenData(_syncFromLiveUser);
 
-    // Si el panel ya puso el club en el usuario, AuthGate saldrá solo.
     if (widget.user.isInClub && !widget.user.hasPendingClubRequest) {
       return Scaffold(
         backgroundColor: isDark ? null : HubStyle.surface,
@@ -132,7 +195,7 @@ class _ClubPendingScreenState extends ConsumerState<ClubPendingScreen> {
     return Scaffold(
       backgroundColor: isDark ? null : HubStyle.surface,
       appBar: HubStyle.appBar(
-        titleText: 'Pendiente de aprobación',
+        titleText: _readyToEnter ? 'Club aprobado' : 'Pendiente de aprobación',
         automaticallyImplyLeading: false,
         actions: [
           IconButton(
@@ -170,10 +233,9 @@ class _ClubPendingScreenState extends ConsumerState<ClubPendingScreen> {
           }
           if (request.status == ClubJoinRequestStatus.approved &&
               request.resultingClubId != null) {
-            final clubId = request.resultingClubId!;
-            if (!_activating && _activateError == null) {
+            if (!_readyToEnter && !_activating && _activateError == null) {
               WidgetsBinding.instance.addPostFrameCallback((_) {
-                _activateApproved(clubId);
+                _prepareApproved(request);
               });
             }
             if (_activateError != null) {
@@ -190,9 +252,67 @@ class _ClubPendingScreenState extends ConsumerState<ClubPendingScreen> {
                     ),
                     const SizedBox(height: 20),
                     FilledButton(
-                      onPressed: () => _activateApproved(clubId),
+                      onPressed: () {
+                        setState(() {
+                          _activateError = null;
+                          _readyToEnter = false;
+                        });
+                        _prepareApproved(request);
+                      },
                       style: HubStyle.filledButtonStyle(),
                       child: const Text('Reintentar'),
+                    ),
+                  ],
+                ),
+              );
+            }
+            if (_readyToEnter) {
+              final code = _inviteCode;
+              final name = _approvedClubName ?? request.clubName;
+              return _CenteredMessage(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.check_circle_rounded,
+                      size: 56,
+                      color: HubStyle.accent,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Club «$name» aprobado',
+                      textAlign: TextAlign.center,
+                      style: HubStyle.sectionTitle(),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      code != null && code.isNotEmpty
+                          ? 'Comparte este código para que otros se unan al club.'
+                          : 'Tu club ya está activo. El código estará en Mis grupos.',
+                      textAlign: TextAlign.center,
+                      style: HubStyle.body(),
+                    ),
+                    if (code != null && code.isNotEmpty) ...[
+                      const SizedBox(height: 20),
+                      ClubInviteCodeCard(
+                        code: code,
+                        clubName: name,
+                      ),
+                    ],
+                    const SizedBox(height: 24),
+                    FilledButton(
+                      onPressed: _activating ? null : _enterApp,
+                      style: HubStyle.filledButtonStyle(enabled: !_activating),
+                      child: _activating
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text('Continuar'),
                     ),
                   ],
                 ),
@@ -205,7 +325,7 @@ class _ClubPendingScreenState extends ConsumerState<ClubPendingScreen> {
                   const CircularProgressIndicator(color: HubStyle.accent),
                   const SizedBox(height: 20),
                   Text(
-                    'Club aprobado. Activando…',
+                    'Club aprobado. Preparando…',
                     textAlign: TextAlign.center,
                     style: HubStyle.body(),
                   ),

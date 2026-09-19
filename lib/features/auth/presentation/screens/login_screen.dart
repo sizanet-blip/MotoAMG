@@ -1,11 +1,10 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:moto_amg/core/constants/app_constants.dart';
 import 'package:moto_amg/core/theme/hub_style.dart';
 import 'package:moto_amg/features/auth/presentation/providers/auth_providers.dart';
 import 'package:moto_amg/features/auth/presentation/screens/display_name_screen.dart';
-import 'package:moto_amg/features/auth/presentation/screens/recover_account_screen.dart';
-import 'package:moto_amg/features/auth/presentation/screens/register_options_screen.dart';
+import 'package:moto_amg/features/onboarding/presentation/screens/privacy_onboarding_screen.dart';
 import 'package:moto_amg/features/auth/presentation/utils/auth_validators.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -90,8 +89,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    'Entra con correo o con tu usuario. '
-                    'Si solo es una ruta, usa una cuenta de invitado.',
+                    'Usuario/contraseña, Google o invitado. '
+                    'Los datos van en MySQL (panel).',
                     textAlign: TextAlign.center,
                     style: HubStyle.caption(),
                   ),
@@ -135,23 +134,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                     validator: AuthValidators.loginPassword,
                   ),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      style: HubStyle.textButtonStyle(),
-                      onPressed: isLoading
-                          ? null
-                          : () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute<void>(
-                                  builder: (_) => const RecoverAccountScreen(),
-                                ),
-                              );
-                            },
-                      child: const Text('He olvidado la contraseña'),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 16),
                   FilledButton(
                     style: HubStyle.filledButtonStyle(),
                     onPressed: isLoading ? null : _signIn,
@@ -174,7 +157,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         : () {
                             Navigator.of(context).push(
                               MaterialPageRoute<void>(
-                                builder: (_) => const RegisterOptionsScreen(),
+                                builder: (_) => const PrivacyOnboardingScreen(
+                                  scope: PrivacyAcceptanceScope.registration,
+                                ),
                               ),
                             );
                           },
@@ -219,8 +204,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'Cuenta de invitado: solo un nombre. Al salir se borra todo '
-                    'y no se puede recuperar.',
+                    'Invitado: solo un nombre. Al salir se borra la sesión local.',
                     textAlign: TextAlign.center,
                     style: HubStyle.caption(),
                   ),

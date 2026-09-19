@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:moto_amg/features/auth/data/datasources/auth_remote_datasource.dart';
-import 'package:moto_amg/features/auth/data/repositories/auth_repository_impl.dart';
+import 'package:moto_amg/core/api/motoamg_api_client.dart';
+import 'package:moto_amg/core/constants/app_constants.dart';
+import 'package:moto_amg/features/auth/data/datasources/mysql_auth_remote_datasource.dart';
+import 'package:moto_amg/features/auth/data/repositories/mysql_auth_repository_impl.dart';
 import 'package:moto_amg/features/auth/domain/entities/app_user.dart';
 import 'package:moto_amg/features/auth/domain/entities/user_vehicle.dart';
 import 'package:moto_amg/features/auth/domain/exceptions/auth_exceptions.dart';
@@ -8,16 +10,65 @@ import 'package:moto_amg/features/auth/domain/repositories/auth_repository.dart'
 import 'package:moto_amg/features/auth/presentation/providers/home_landing_provider.dart';
 import 'package:moto_amg/features/tracking/presentation/providers/tracking_providers.dart';
 
+final mysqlAuthSessionStoreProvider = Provider<MysqlAuthSessionStore>((ref) {
+  ref.keepAlive();
+  return MysqlAuthSessionStore();
+});
+
+final motoAmgApiClientProvider = Provider<MotoAmgApiClient>((ref) {
+  ref.keepAlive();
+  // read (no watch): un solo cliente; si se recrea, se pierde el JWT en memoria.
+  final session = ref.read(mysqlAuthSessionStoreProvider);
+  return MotoAmgApiClient(tokenResolver: session.readToken);
+});
+
+final mysqlAuthRemoteDataSourceProvider =
+    Provider<MysqlAuthRemoteDataSource>((ref) {
+  ref.keepAlive();
+  return MysqlAuthRemoteDataSource(
+    ref.read(motoAmgApiClientProvider),
+    ref.read(mysqlAuthSessionStoreProvider),
+  );
+});
+
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
-  return AuthRepositoryImpl(AuthRemoteDataSource());
+  ref.keepAlive();
+  return MysqlAuthRepositoryImpl(ref.read(mysqlAuthRemoteDataSourceProvider));
+});
+
+/// Tras "Cerrar sesión" queda en true hasta el próximo login exitoso.
+/// Evita que bootstrap/remote resuciten la sesión (carrera → home).
+final authLoggedOutProvider = StateProvider<bool>((ref) => false);
+
+/// Restaura JWT/Hive al arrancar y rellena [signedInUserProvider].
+final authSessionBootstrapProvider = FutureProvider<AppUser?>((ref) async {
+  final repo = ref.watch(authRepositoryProvider);
+  if (repo is! MysqlAuthRepositoryImpl) return null;
+  if (ref.read(authLoggedOutProvider)) return null;
+  final user = await repo.ensureSessionRestored();
+  if (user != null) {
+    // Evitar mutar providers durante el build del FutureProvider.
+    Future.microtask(() {
+      if (ref.read(authLoggedOutProvider)) return;
+      final local = ref.read(signedInUserProvider);
+      // No pisar una sesión distinta; si local es null, hidratar al arranque.
+      if (local == null) {
+        ref.read(signedInUserProvider.notifier).state = user;
+      } else if (local.uid == user.uid) {
+        ref.read(signedInUserProvider.notifier).state = user;
+      }
+    });
+  }
+  return user;
 });
 
 final authStateProvider = StreamProvider<AppUser?>((ref) {
+  // Dispara restore en paralelo al stream.
+  ref.watch(authSessionBootstrapProvider);
   return ref.watch(authRepositoryProvider).watchCurrentUser();
 });
 
-/// Usuario con nombre ya confirmado en esta sesión (evita quedarse en la
-/// pantalla de nombre si Firebase tarda en devolver el perfil).
+/// Usuario con nombre ya confirmado en esta sesión.
 final signedInUserProvider = StateProvider<AppUser?>((ref) => null);
 
 /// Clave de recuperación pendiente de mostrar (solo al crear cuenta con usuario).
@@ -36,6 +87,10 @@ class AuthActionController extends Notifier<AsyncValue<void>> {
 
   Future<void> signInWithGoogle() {
     return _run(() => _repo.signInWithGoogle());
+  }
+
+  Future<void> registerWithGoogle() {
+    return _run(() => _repo.registerWithGoogle());
   }
 
   Future<void> signInWithEmail({
@@ -70,13 +125,18 @@ class AuthActionController extends Notifier<AsyncValue<void>> {
     required String password,
     required String displayName,
   }) {
-    return _run(
-      () => _repo.registerWithEmail(
+    return _run(() async {
+      final user = await _repo.registerWithEmail(
         email: email,
         password: password,
         displayName: displayName,
-      ),
-    );
+      );
+      final repo = _repo;
+      if (repo is MysqlAuthRepositoryImpl) {
+        return repo.acceptPrivacyLocal(user);
+      }
+      return user;
+    });
   }
 
   Future<void> registerWithUsername({
@@ -88,7 +148,13 @@ class AuthActionController extends Notifier<AsyncValue<void>> {
         username: username,
         password: password,
       );
-      ref.read(pendingRecoveryKeyProvider.notifier).state = result.recoveryKey;
+      final key = result.recoveryKey.trim();
+      ref.read(pendingRecoveryKeyProvider.notifier).state =
+          key.isEmpty ? null : key;
+      final repo = _repo;
+      if (repo is MysqlAuthRepositoryImpl) {
+        return repo.acceptPrivacyLocal(result.user);
+      }
       return result.user;
     });
   }
@@ -171,11 +237,32 @@ class AuthActionController extends Notifier<AsyncValue<void>> {
   }
 
   Future<void> acceptPrivacyPolicy() {
-    return _run(() => _repo.acceptPrivacyPolicy());
+    return _run(() async {
+      final local = ref.read(signedInUserProvider);
+      final remote = ref.read(authStateProvider).asData?.value;
+      final session = resolveSessionUser(local, remote);
+      final repo = _repo;
+      if (repo is MysqlAuthRepositoryImpl) {
+        final seed = session ?? local ?? remote;
+        if (seed == null) {
+          throw const AuthException('No hay sesión activa.');
+        }
+        return repo.patchLocalUser(
+          (current) => current.copyWith(
+            privacyAcceptedAt: DateTime.now(),
+            privacyAcceptedVersion: AppConstants.privacyPolicyVersion,
+          ),
+          seed: seed,
+        );
+      }
+      return repo.acceptPrivacyPolicy();
+    });
   }
 
   Future<void> signOut() {
     return _run(() async {
+      // Primero el pestillo: AuthGate deja de confiar en bootstrap/remote.
+      ref.read(authLoggedOutProvider.notifier).state = true;
       final current = ref.read(signedInUserProvider);
       final groupId = current?.currentGroupId;
       if (current != null && groupId != null && groupId.isNotEmpty) {
@@ -186,8 +273,6 @@ class AuthActionController extends Notifier<AsyncValue<void>> {
           );
         } catch (_) {}
       }
-      // Quitar la pantalla del grupo *antes* de cerrar Firebase. Si no,
-      // Firestore emite permission-denied y el stream se queda roto.
       ref.read(signedInUserProvider.notifier).state = null;
       ref.read(pendingRecoveryKeyProvider.notifier).state = null;
       ref.read(homeLandingSectionProvider.notifier).state =
@@ -196,6 +281,8 @@ class AuthActionController extends Notifier<AsyncValue<void>> {
       ref.invalidate(ownDevicePositionProvider);
       ref.invalidate(ownGpsLostProvider);
       await _repo.signOut();
+      ref.invalidate(authStateProvider);
+      ref.invalidate(authSessionBootstrapProvider);
       return null;
     }, clearUser: true);
   }
@@ -209,9 +296,9 @@ class AuthActionController extends Notifier<AsyncValue<void>> {
       final user = await action();
       if (clearUser) {
         ref.read(signedInUserProvider.notifier).state = null;
+        ref.read(authLoggedOutProvider.notifier).state = true;
       } else if (user != null) {
-        // Mantener sesión local también sin displayName (p. ej. tras aceptar
-        // privacidad) para que AuthGate no pierda el progreso.
+        ref.read(authLoggedOutProvider.notifier).state = false;
         final previous = ref.read(signedInUserProvider);
         if (user.displayName.trim().isNotEmpty ||
             previous == null ||
@@ -219,7 +306,7 @@ class AuthActionController extends Notifier<AsyncValue<void>> {
           ref.read(signedInUserProvider.notifier).state = user;
         }
       }
-      ref.invalidate(authStateProvider);
+      // No invalidar authState: provoca loading/carreras y pantallas pilladas.
       state = const AsyncData(null);
     } on AuthCancelledException {
       state = const AsyncData(null);
@@ -236,18 +323,26 @@ AppUser? resolveSessionUser(AppUser? local, AppUser? remote) {
       remote != null &&
       local.uid == remote.uid &&
       !local.needsDisplayName) {
-    // El StateProvider local evita el flash del nombre, pero los campos de
-    // club/grupo deben seguir el documento de Firestore.
     final remotePending = remote.pendingClubRequestId;
     final remoteHasPending =
         remotePending != null && remotePending.trim().isNotEmpty;
     final remoteHasClub = remote.currentClubId != null &&
         remote.currentClubId!.trim().isNotEmpty;
-    // Si el panel (o la app) ya asignó club y borró el pending en Firestore,
-    // no reinyectar un pending local antiguo.
-    final pendingClubRequestId = remoteHasPending
-        ? remotePending
-        : (remoteHasClub ? null : local.pendingClubRequestId);
+    final localHasPending = local.pendingClubRequestId != null &&
+        local.pendingClubRequestId!.trim().isNotEmpty;
+    final localHasClub = local.currentClubId != null &&
+        local.currentClubId!.trim().isNotEmpty;
+
+    // Si la app ya activó el club y limpió el pending, no resucitar el pending remoto.
+    // Si aún hay pending local (p. ej. mostrar código tras aprobar), conservarlo
+    // aunque el panel ya haya puesto current_club_id.
+    final pendingClubRequestId = (localHasClub && !localHasPending)
+        ? null
+        : (remoteHasPending
+            ? remotePending
+            : (localHasPending
+                ? local.pendingClubRequestId
+                : (remoteHasClub ? null : local.pendingClubRequestId)));
 
     return AppUser(
       uid: local.uid,
@@ -258,7 +353,7 @@ AppUser? resolveSessionUser(AppUser? local, AppUser? remote) {
       email: remote.email ?? local.email,
       username: remote.username ?? local.username,
       photoUrl: remote.photoUrl ?? local.photoUrl,
-      currentGroupId: remote.currentGroupId,
+      currentGroupId: remote.currentGroupId ?? local.currentGroupId,
       currentClubId: remote.currentClubId ?? local.currentClubId,
       pendingClubRequestId: pendingClubRequestId,
       allowSoloNavigation: remote.allowSoloNavigation,
@@ -269,9 +364,13 @@ AppUser? resolveSessionUser(AppUser? local, AppUser? remote) {
       bikePlate: remote.bikePlate ?? local.bikePlate,
       vehicles: remote.vehicles.isNotEmpty ? remote.vehicles : local.vehicles,
       activeVehicleId: remote.activeVehicleId ?? local.activeVehicleId,
-      privacyAcceptedAt: remote.privacyAcceptedAt ?? local.privacyAcceptedAt,
-      privacyAcceptedVersion:
-          remote.privacyAcceptedVersion ?? local.privacyAcceptedVersion,
+      // Privacidad vive en el dispositivo/sesión: no dejar que /me la borre.
+      privacyAcceptedAt: local.privacyAcceptedAt ?? remote.privacyAcceptedAt,
+      privacyAcceptedVersion: () {
+        final localVer = local.privacyAcceptedVersion?.trim() ?? '';
+        if (localVer.isNotEmpty) return local.privacyAcceptedVersion;
+        return remote.privacyAcceptedVersion;
+      }(),
     );
   }
   if (local != null && !local.needsDisplayName) {

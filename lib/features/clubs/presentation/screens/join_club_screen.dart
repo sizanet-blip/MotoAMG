@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:moto_amg/core/theme/hub_style.dart';
+import 'package:moto_amg/features/auth/data/repositories/mysql_auth_repository_impl.dart';
 import 'package:moto_amg/features/auth/domain/entities/app_user.dart';
 import 'package:moto_amg/features/auth/presentation/providers/auth_providers.dart';
 import 'package:moto_amg/features/clubs/presentation/providers/club_providers.dart';
@@ -44,6 +45,18 @@ class _JoinClubScreenState extends ConsumerState<JoinClubScreen> {
       if (!mounted) {
         return;
       }
+      final repo = ref.read(authRepositoryProvider);
+      if (repo is MysqlAuthRepositoryImpl) {
+        await repo.patchLocalUser(
+          (current) => current.copyWith(
+            currentClubId: club.id,
+            clearPendingClubRequestId: true,
+          ),
+        );
+      }
+      if (!mounted) {
+        return;
+      }
       final local = ref.read(signedInUserProvider);
       if (local != null && local.uid == widget.user.uid) {
         ref.read(signedInUserProvider.notifier).state = local.copyWith(
@@ -51,6 +64,7 @@ class _JoinClubScreenState extends ConsumerState<JoinClubScreen> {
           clearPendingClubRequestId: true,
         );
       }
+      ref.invalidate(myClubMembershipsProvider);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Te has unido a ${club.name}')),
       );
@@ -61,7 +75,11 @@ class _JoinClubScreenState extends ConsumerState<JoinClubScreen> {
       }
       setState(() {
         _busy = false;
-        _error = e is StateError ? e.message : 'No se pudo unir al club.';
+        if (e is StateError) {
+          _error = e.message;
+        } else {
+          _error = e.toString().replaceFirst('Exception: ', '');
+        }
       });
     }
   }

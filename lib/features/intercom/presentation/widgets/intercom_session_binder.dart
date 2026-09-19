@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -34,11 +34,18 @@ class _IntercomSessionBinderState extends ConsumerState<IntercomSessionBinder> {
     _container ??= ProviderScope.containerOf(context);
     if (!_retained) {
       _retained = true;
-      unawaited(
-        _container!
-            .read(intercomSessionProvider.notifier)
-            .retainHost(groupId: widget.groupId),
-      );
+      // No mutar providers durante didChangeDependencies/build.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final container = _container;
+        if (!mounted || container == null) {
+          return;
+        }
+        unawaited(
+          container
+              .read(intercomSessionProvider.notifier)
+              .retainHost(groupId: widget.groupId),
+        );
+      });
     }
   }
 

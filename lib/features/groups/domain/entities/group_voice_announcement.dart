@@ -4,18 +4,21 @@ import 'package:equatable/equatable.dart';
 enum GroupVoiceKind {
   catchUpChase,
   catchUpDestination,
+  incidentCleared,
 }
 
 extension GroupVoiceKindX on GroupVoiceKind {
   String get firestoreValue => switch (this) {
         GroupVoiceKind.catchUpChase => 'catch_up_chase',
         GroupVoiceKind.catchUpDestination => 'catch_up_destination',
+        GroupVoiceKind.incidentCleared => 'incident_cleared',
       };
 
   static GroupVoiceKind? tryParse(String? raw) {
     return switch (raw) {
       'catch_up_chase' => GroupVoiceKind.catchUpChase,
       'catch_up_destination' => GroupVoiceKind.catchUpDestination,
+      'incident_cleared' => GroupVoiceKind.incidentCleared,
       _ => null,
     };
   }
@@ -46,6 +49,7 @@ class GroupVoiceAnnouncement extends Equatable {
       GroupVoiceKind.catchUpChase => '$label se dirige al grupo',
       GroupVoiceKind.catchUpDestination =>
         '$label va al destino del grupo directamente',
+      GroupVoiceKind.incidentCleared => '$label ya está OK',
     };
   }
 

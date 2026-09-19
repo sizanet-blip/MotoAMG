@@ -4,7 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:moto_amg/core/constants/app_constants.dart';
 import 'package:moto_amg/core/onboarding/app_onboarding_provider.dart';
 import 'package:moto_amg/core/theme/hub_style.dart';
+import 'package:moto_amg/features/auth/data/repositories/mysql_auth_repository_impl.dart';
+import 'package:moto_amg/features/auth/domain/entities/app_user.dart';
 import 'package:moto_amg/features/auth/presentation/providers/auth_providers.dart';
+import 'package:moto_amg/features/auth/presentation/screens/register_options_screen.dart';
 import 'package:moto_amg/features/settings/presentation/screens/legal_document_screen.dart';
 
 /// Aceptación de privacidad: en el dispositivo (1.ª instalación) o por cuenta.
@@ -12,8 +15,11 @@ enum PrivacyAcceptanceScope {
   /// Solo Hive en este móvil (antes del login).
   device,
 
-  /// Guardado en Firestore para el usuario autenticado.
+  /// Guardado en la cuenta del usuario (sesión MySQL).
   account,
+
+  /// Antes de crear cuenta (luego RegisterOptionsScreen).
+  registration,
 }
 
 /// Tras permisos (dispositivo) o tras login (cuenta): hay que aceptar.
@@ -38,6 +44,8 @@ class _PrivacyOnboardingScreenState
   late final TapGestureRecognizer _termsTap;
 
   bool get _forAccount => widget.scope == PrivacyAcceptanceScope.account;
+  bool get _forRegistration =>
+      widget.scope == PrivacyAcceptanceScope.registration;
 
   @override
   void initState() {
@@ -70,24 +78,56 @@ class _PrivacyOnboardingScreenState
     setState(() => _completing = true);
     try {
       if (_forAccount) {
-        await ref
-            .read(authActionControllerProvider.notifier)
-            .acceptPrivacyPolicy();
+        await _acceptForAccount();
+      } else if (_forRegistration) {
+        // Marca en dispositivo + pasa a elegir método de alta.
+        await ref.read(appOnboardingControllerProvider).acceptPrivacy();
+        if (!mounted) return;
+        await Navigator.of(context).pushReplacement(
+          MaterialPageRoute<void>(
+            builder: (_) => const RegisterOptionsScreen(),
+          ),
+        );
       } else {
         await ref.read(appOnboardingControllerProvider).acceptPrivacy();
       }
     } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'No se pudo guardar la aceptación. Inténtalo de nuevo.',
+          ),
+        ),
+      );
+    } finally {
       if (mounted) {
         setState(() => _completing = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'No se pudo guardar la aceptación. Inténtalo de nuevo.',
-            ),
-          ),
-        );
       }
     }
+  }
+
+  Future<void> _acceptForAccount() async {
+    final session = resolveSessionUser(
+      ref.read(signedInUserProvider),
+      ref.read(authStateProvider).asData?.value,
+    );
+    if (session == null) {
+      throw StateError('no_session');
+    }
+
+    final repo = ref.read(authRepositoryProvider);
+    late final AppUser updated;
+    if (repo is MysqlAuthRepositoryImpl) {
+      updated = await repo.acceptPrivacyLocal(session);
+    } else {
+      updated = session.copyWith(
+        privacyAcceptedAt: DateTime.now(),
+        privacyAcceptedVersion: AppConstants.privacyPolicyVersion,
+      );
+    }
+
+    ref.read(signedInUserProvider.notifier).state = updated;
   }
 
   @override
@@ -96,8 +136,11 @@ class _PrivacyOnboardingScreenState
     final subtitle = _forAccount
         ? 'Esta cuenta aún no ha aceptado cómo tratamos los datos. '
             'Cada usuario debe aceptar la política, aunque el móvil ya se haya usado.'
-        : 'Antes de entrar en ${AppConstants.appName} debes aceptar cómo '
-            'tratamos tus datos (ubicación, cuenta y uso del servicio).';
+        : _forRegistration
+            ? 'Para crear una cuenta debes aceptar cómo tratamos tus datos '
+                '(ubicación, cuenta y uso del servicio).'
+            : 'Antes de entrar en ${AppConstants.appName} debes aceptar cómo '
+                'tratamos tus datos (ubicación, cuenta y uso del servicio).';
 
     return Scaffold(
       backgroundColor: HubStyle.surface,
@@ -213,7 +256,9 @@ class _PrivacyOnboardingScreenState
                 Text(
                   _forAccount
                       ? 'Marca la casilla para continuar con esta cuenta.'
-                      : 'Marca la casilla para continuar.',
+                      : _forRegistration
+                          ? 'Marca la casilla para continuar con el registro.'
+                          : 'Marca la casilla para continuar.',
                   textAlign: TextAlign.center,
                   style: HubStyle.caption(color: errorColor),
                 ),

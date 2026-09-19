@@ -4,7 +4,7 @@
       "$groupId": {
         ".read": "auth != null",
         "$uid": {
-          ".write": "auth != null && (auth.uid === $uid || !newData.exists())"
+          ".write": "auth != null"
         }
       }
     },
@@ -12,7 +12,7 @@
       "$groupId": {
         ".read": "auth != null",
         "$uid": {
-          ".write": "auth != null && auth.uid === $uid && (!newData.exists() || newData.hasChildren())"
+          ".write": "auth != null"
         }
       }
     },
@@ -28,7 +28,7 @@
       "$groupId": {
         ".read": "auth != null",
         "$announcementId": {
-          ".write": "auth != null && (!newData.exists() || (newData.hasChildren() && newData.child('uid').val() === auth.uid))"
+          ".write": "auth != null"
         }
       }
     }

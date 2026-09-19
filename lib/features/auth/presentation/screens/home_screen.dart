@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:moto_amg/core/constants/app_constants.dart';
 import 'package:moto_amg/core/theme/hub_style.dart';
@@ -44,6 +44,22 @@ class HomeScreen extends ConsumerWidget {
         localGroupId != null &&
         localGroupId.isNotEmpty) {
       effective = effective.copyWith(currentGroupId: localGroupId);
+    }
+    final localClubId = localSession?.uid == effective.uid
+        ? localSession?.currentClubId
+        : null;
+    if ((effective.currentClubId == null ||
+            effective.currentClubId!.isEmpty) &&
+        localClubId != null &&
+        localClubId.isNotEmpty) {
+      effective = effective.copyWith(currentClubId: localClubId);
+    }
+    // Si /me aún no trae club pero el gate ya tiene user con club.
+    if ((effective.currentClubId == null ||
+            effective.currentClubId!.isEmpty) &&
+        user.currentClubId != null &&
+        user.currentClubId!.isNotEmpty) {
+      effective = effective.copyWith(currentClubId: user.currentClubId);
     }
 
     ref.listen(groupActionControllerProvider, (previous, next) {
@@ -287,6 +303,7 @@ class _InGroupView extends ConsumerWidget {
                         MaterialPageRoute<void>(
                           builder: (_) => NavigationHubScreen(
                             user: user.copyWith(currentGroupId: groupId),
+                            enableGroupFeatures: true,
                           ),
                         ),
                       );

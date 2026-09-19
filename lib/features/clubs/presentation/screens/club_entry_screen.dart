@@ -51,16 +51,16 @@ class ClubEntryScreen extends ConsumerWidget {
                 ? 'Puedes seguir usando la navegación individual. '
                     'Si te unes o registras un club o grupo, tendrás salidas '
                     'compartidas.'
-                : 'Puedes unirte a un club o grupo existente con un código de '
-                    'invitación o solicitar el alta de uno nuevo.',
+                : 'Puedes unirte a un club con un código de invitación '
+                    'o solicitar crear uno (lo aprueba el panel).',
             style: HubStyle.body(),
           ),
           const SizedBox(height: 28),
           _ClubOptionCard(
             icon: Icons.confirmation_number_outlined,
-            title: 'Unirme con código de invitación',
+            title: 'Unirme con código',
             subtitle:
-                'Introduce el código para unirte a un club o grupo existente.',
+                'Introduce el código de invitación de un club existente.',
             isDark: isDark,
             onTap: () {
               Navigator.of(context).push(
@@ -73,10 +73,10 @@ class ClubEntryScreen extends ConsumerWidget {
           const SizedBox(height: 12),
           _ClubOptionCard(
             icon: Icons.groups_rounded,
-            title: 'Solicitar alta de Club o Grupo',
+            title: 'Crear club',
             subtitle:
-                'Solicita la creación de un club o grupo nuevo y empieza a '
-                'organizar rodadas.',
+                'Envía una solicitud. El club se activa cuando lo '
+                'aprueben en el panel.',
             isDark: isDark,
             onTap: () {
               Navigator.of(context).push(

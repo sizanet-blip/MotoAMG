@@ -125,20 +125,22 @@ class HomeHubScreen extends ConsumerWidget {
                           HomeLandingSection.groups;
                     },
                   ),
-                  const SizedBox(height: 14),
-                  _HomeHubCard(
-                    icon: Icons.near_me_rounded,
-                    title: 'Navegación',
-                    subtitle: 'Planifica y navega tus rutas',
-                    isDark: isDark,
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => NavigationHubScreen(user: user),
-                        ),
-                      );
-                    },
-                  ),
+                  if (user.allowSoloNavigation) ...[
+                    const SizedBox(height: 14),
+                    _HomeHubCard(
+                      icon: Icons.near_me_rounded,
+                      title: 'Navegación',
+                      subtitle: 'Planifica y navega tus rutas',
+                      isDark: isDark,
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => NavigationHubScreen(user: user),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
                   const SizedBox(height: 14),
                   _HomeHubCard(
                     icon: Icons.settings_rounded,

@@ -1,10 +1,12 @@
-﻿import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:moto_amg/features/auth/data/datasources/mysql_club_group_remote_datasource.dart';
 import 'package:moto_amg/features/auth/presentation/providers/auth_providers.dart';
-import 'package:moto_amg/features/clubs/data/datasources/club_remote_datasource.dart';
 import 'package:moto_amg/features/clubs/domain/entities/moto_club.dart';
 
-final clubRemoteDataSourceProvider = Provider<ClubRemoteDataSource>((ref) {
-  return ClubRemoteDataSource();
+final clubRemoteDataSourceProvider = Provider<MysqlClubRemoteDataSource>((ref) {
+  ref.keepAlive();
+  // Un solo cliente API con JWT; no recrear al completar el bootstrap.
+  return MysqlClubRemoteDataSource(ref.read(motoAmgApiClientProvider));
 });
 
 /// Tras «Volver a intentar» en una solicitud rechazada: el pending remoto
@@ -14,7 +16,12 @@ final dismissedPendingClubRequestIdProvider = StateProvider<String?>((ref) => nu
 /// Solo reacciona al uid (no a cada cambio de currentClubId / nombre),
 /// para no reiniciar el stream y hacer parpadear el home.
 final myClubMembershipsProvider =
-    StreamProvider.autoDispose<List<MotoClubMembership>>((ref) {
+    StreamProvider.autoDispose<List<MotoClubMembership>>((ref) async* {
+  // Esperar restore de sesión antes del primer GET autenticado.
+  try {
+    await ref.watch(authSessionBootstrapProvider.future);
+  } catch (_) {}
+
   final localUid = ref.watch(signedInUserProvider.select((u) => u?.uid));
   final localAnon = ref.watch(
     signedInUserProvider.select((u) => u?.isAnonymous ?? false),
@@ -31,9 +38,10 @@ final myClubMembershipsProvider =
   final uid = localUid ?? remoteUid;
   final anonymous = localUid != null ? localAnon : remoteAnon;
   if (uid == null || anonymous) {
-    return Stream.value(const []);
+    yield const [];
+    return;
   }
-  return ref.watch(clubRemoteDataSourceProvider).watchMemberships(uid);
+  yield* ref.watch(clubRemoteDataSourceProvider).watchMemberships(uid);
 });
 
 final pendingClubRequestProvider =
@@ -46,15 +54,13 @@ final pendingClubRequestProvider =
       (async) => async.asData?.value?.pendingClubRequestId,
     ),
   );
-  final remoteClubId = ref.watch(
-    authStateProvider.select((async) => async.asData?.value?.currentClubId),
-  );
-  // Misma regla que resolveSessionUser.
-  final id = (remoteRequestId != null && remoteRequestId.isNotEmpty)
-      ? remoteRequestId
-      : ((remoteClubId != null && remoteClubId.isNotEmpty)
-          ? null
-          : requestId);
+  // Preferir pending local: tras aprobar el panel quita el pending remoto
+  // pero la app lo conserva hasta mostrar el código de invitación.
+  final id = (requestId != null && requestId.isNotEmpty)
+      ? requestId
+      : ((remoteRequestId != null && remoteRequestId.isNotEmpty)
+          ? remoteRequestId
+          : null);
   if (id == null || id.isEmpty) {
     return Stream.value(null);
   }

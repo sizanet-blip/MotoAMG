@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
@@ -48,6 +48,7 @@ import 'package:moto_amg/features/tracking/domain/entities/device_position.dart'
 import 'package:moto_amg/features/tracking/domain/entities/live_location.dart';
 import 'package:moto_amg/features/tracking/presentation/providers/tracking_providers.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 /// Mapa en vivo del grupo: mismo motor/estilos que navegación (MapLibre).
 class GroupMapView extends ConsumerStatefulWidget {
@@ -64,12 +65,89 @@ class GroupMapView extends ConsumerStatefulWidget {
   ConsumerState<GroupMapView> createState() => _GroupMapViewState();
 }
 
-class _GroupMapViewState extends ConsumerState<GroupMapView> {
+class _GroupMapViewState extends ConsumerState<GroupMapView>
+    with WidgetsBindingObserver {
   /// Evita destruir el mapa si el GPS parpadea un instante.
   var _hadGpsFix = false;
 
+  /// Tras un rato sin fix, mostrar mapa igual (centro por defecto / compañeros).
+  var _allowMapWithoutFix = false;
+  Timer? _gpsWaitTimer;
+  var _wakeLockArmed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _gpsWaitTimer = Timer(const Duration(seconds: 4), () {
+      if (!mounted || _hadGpsFix) {
+        return;
+      }
+      setState(() => _allowMapWithoutFix = true);
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_armWakeLock(force: true));
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_armWakeLock(force: true));
+    }
+  }
+
+  Future<void> _armWakeLock({bool force = false}) async {
+    final keepOn = ref.read(hudSafetyProvider).keepScreenOn;
+    if (!keepOn) {
+      await _disarmWakeLock();
+      return;
+    }
+    if (_wakeLockArmed && !force) {
+      return;
+    }
+    try {
+      await WakelockPlus.enable();
+      _wakeLockArmed = true;
+    } catch (_) {}
+  }
+
+  Future<void> _disarmWakeLock() async {
+    if (!_wakeLockArmed) {
+      return;
+    }
+    _wakeLockArmed = false;
+    // Si el HUD de navegación sigue abierto, él mantiene el wakelock.
+    final navKeeps = ref.read(ownPositionWatchSourceProvider) ==
+        OwnPositionWatchSource.navigation;
+    if (navKeeps) {
+      return;
+    }
+    try {
+      await WakelockPlus.disable();
+    } catch (_) {}
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _gpsWaitTimer?.cancel();
+    // No desactivar aquí: LocationBinder sigue montado mientras el mapa de
+    // grupo esté abierto y apaga el wakelock al salir del mapa.
+    _wakeLockArmed = false;
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
+    ref.listen(hudSafetyProvider.select((p) => p.keepScreenOn), (prev, next) {
+      if (next) {
+        unawaited(_armWakeLock(force: true));
+      } else {
+        unawaited(_disarmWakeLock());
+      }
+    });
+
     // Pausar MapLibre solo si hay otra pantalla completa encima (HUD, hub…),
     // NO cuando hay un diálogo modal: isCurrent=false pero isActive=true.
     final route = ModalRoute.of(context);
@@ -83,20 +161,28 @@ class _GroupMapViewState extends ConsumerState<GroupMapView> {
     );
     if (hasFix) {
       _hadGpsFix = true;
+      _gpsWaitTimer?.cancel();
     }
-    if (!_hadGpsFix && !hasFix) {
-      return const Center(
+    if (!_hadGpsFix && !hasFix && !_allowMapWithoutFix) {
+      return Center(
         child: Padding(
-          padding: EdgeInsets.all(24),
+          padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 16),
-              Text(
+              const CircularProgressIndicator(),
+              const SizedBox(height: 16),
+              const Text(
                 'Buscando tu ubicación…\n'
                 'Si usas el emulador: tres puntitos → Location → elige tu zona.',
                 textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              TextButton(
+                onPressed: () {
+                  setState(() => _allowMapWithoutFix = true);
+                },
+                child: const Text('Ver mapa sin GPS'),
               ),
             ],
           ),
@@ -123,6 +209,7 @@ class _GroupMapViewState extends ConsumerState<GroupMapView> {
       user: widget.user,
       groupId: widget.groupId,
       mapStyles: cachedStyles,
+      waitingForGps: !_hadGpsFix && !hasFix,
     );
   }
 }
@@ -132,11 +219,13 @@ class _GroupMapCanvas extends ConsumerStatefulWidget {
     required this.user,
     required this.groupId,
     required this.mapStyles,
+    this.waitingForGps = false,
   });
 
   final AppUser user;
   final String groupId;
   final HybridMapStyles mapStyles;
+  final bool waitingForGps;
 
   @override
   ConsumerState<_GroupMapCanvas> createState() => _GroupMapCanvasState();
@@ -251,17 +340,19 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
     final incidentsAsync = ref.watch(groupIncidentsProvider(widget.groupId));
     final incidents = incidentsAsync.valueOrNull ?? const <GroupIncident>[];
     final locations = locationsAsync.valueOrNull ?? const <LiveLocation>[];
+    final fallbackOwn = ownDevicePosition(
+      lat: _initialTarget.latitude,
+      lng: _initialTarget.longitude,
+    );
     final entries = _buildEntries(
       locations,
-      own ??
-          ownDevicePosition(
-            lat: _initialTarget.latitude,
-            lng: _initialTarget.longitude,
-          ),
+      // Sin GPS real no pongas "yo" en Zaragoza: solo compañeros / centro mapa.
+      own ?? fallbackOwn,
       now: now,
-      ownGpsLost: gpsLost,
+      ownGpsLost: gpsLost || own == null,
       members: members,
       incidents: incidents,
+      includeOwnMarker: own != null,
     );
     final memberUids = {
       widget.user.uid,
@@ -511,6 +602,24 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
                     if (!hasNetwork) ...[
                       const SizedBox(height: 8),
                       const OfflineMapBanner(compact: true),
+                    ],
+                    if (widget.waitingForGps) ...[
+                      const SizedBox(height: 8),
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFF7ED),
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: HubStyle.cardShadow,
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(10),
+                          child: Text(
+                            'Buscando tu GPS… Activa la ubicación o, en el '
+                            'emulador: tres puntitos → Location.',
+                            style: HubStyle.caption(color: HubStyle.title),
+                          ),
+                        ),
+                      ),
                     ],
                     if (waiting.isNotEmpty) ...[
                       const SizedBox(height: 8),
@@ -1379,6 +1488,7 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
     required bool ownGpsLost,
     required List<GroupMember>? members,
     required List<GroupIncident> incidents,
+    bool includeOwnMarker = true,
   }) {
     // Solo excluimos uids si ya tenemos lista de miembros cargada y no vacía.
     // Si members es null/[] no filtramos: si no, el otro no aparece nunca.
@@ -1408,18 +1518,20 @@ class _GroupMapCanvasState extends ConsumerState<_GroupMapCanvas> {
       }
       byUid[location.uid] = location;
     }
-    // Posición propia: GPS/simulación local, no el nodo RTDB (puede ir atrasado).
-    byUid[widget.user.uid] = LiveLocation(
-      uid: widget.user.uid,
-      groupId: widget.groupId,
-      lat: own.lat,
-      lng: own.lng,
-      heading: own.heading ?? 0,
-      speed: own.speedMps,
-      updatedAt: now,
-      displayName: widget.user.displayName,
-      hasSignal: !ownGpsLost,
-    );
+    // Posición propia: GPS/simulación local, no el nodo remoto (puede ir atrasado).
+    if (includeOwnMarker) {
+      byUid[widget.user.uid] = LiveLocation(
+        uid: widget.user.uid,
+        groupId: widget.groupId,
+        lat: own.lat,
+        lng: own.lng,
+        heading: own.heading ?? 0,
+        speed: own.speedMps,
+        updatedAt: now,
+        displayName: widget.user.displayName,
+        hasSignal: !ownGpsLost,
+      );
+    }
 
     final placed = <({double lat, double lng})>[];
     final out = <_MemberMapEntry>[];
