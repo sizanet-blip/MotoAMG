@@ -35,47 +35,37 @@ class RegisterOptionsScreen extends ConsumerWidget {
           padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
           children: [
             Text(
-              'Elige cómo crear tu cuenta. Si ya te registraste, vuelve atrás '
-              'e inicia sesión.',
+              'Solicita acceso con usuario y contraseña. Un administrador '
+              'deberá aprobar tu cuenta en el panel antes de poder entrar. '
+              'Guarda el código de recuperación que te mostraremos.',
               style: HubStyle.body(),
             ),
             const SizedBox(height: 20),
             _RegisterOptionCard(
-              icon: Icons.g_mobiledata,
-              title: 'Con Google',
-              subtitle: 'Se crea la cuenta solo si aún no existe.',
-              onTap: isLoading
-                  ? null
-                  : () => ref
-                      .read(authActionControllerProvider.notifier)
-                      .registerWithGoogle(),
-            ),
-            const SizedBox(height: 12),
-            _RegisterOptionCard(
-              icon: Icons.mail_outline_rounded,
-              title: 'Con correo',
-              subtitle: 'Usuario derivado del email + contraseña (MySQL).',
-              onTap: isLoading
-                  ? null
-                  : () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => const RegisterScreen(),
-                        ),
-                      );
-                    },
-            ),
-            const SizedBox(height: 12),
-            _RegisterOptionCard(
               icon: Icons.person_outline_rounded,
-              title: 'Con usuario y contraseña',
-              subtitle: 'Sin depender de Google. Se guarda en MySQL.',
+              title: 'Usuario y contraseña',
+              subtitle: 'Cuenta AMG unificada (pendiente de aprobación).',
               onTap: isLoading
                   ? null
                   : () {
                       Navigator.of(context).push(
                         MaterialPageRoute<void>(
                           builder: (_) => const UsernameRegisterScreen(),
+                        ),
+                      );
+                    },
+            ),
+            const SizedBox(height: 12),
+            _RegisterOptionCard(
+              icon: Icons.mail_outline_rounded,
+              title: 'Con correo',
+              subtitle: 'Usuario + email opcional + contraseña.',
+              onTap: isLoading
+                  ? null
+                  : () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const RegisterScreen(),
                         ),
                       );
                     },
@@ -106,48 +96,34 @@ class _RegisterOptionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
+    return Material(
+      color: HubStyle.surface,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        boxShadow: HubStyle.cardShadow,
+        side: BorderSide(color: Colors.black.withValues(alpha: 0.08)),
       ),
-      child: Material(
-        color: HubStyle.surface,
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(16),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(14, 16, 8, 16),
-            child: Row(
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: const BoxDecoration(
-                    color: HubStyle.accent,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(icon, color: Colors.white, size: 24),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Icon(icon, size: 32, color: HubStyle.accent),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: HubStyle.sectionTitle()),
+                    const SizedBox(height: 4),
+                    Text(subtitle, style: HubStyle.caption()),
+                  ],
                 ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(title, style: HubStyle.sectionTitle()),
-                      const SizedBox(height: 2),
-                      Text(subtitle, style: HubStyle.caption()),
-                    ],
-                  ),
-                ),
-                const Icon(
-                  Icons.chevron_right_rounded,
-                  color: HubStyle.accent,
-                  size: 26,
-                ),
-              ],
-            ),
+              ),
+              const Icon(Icons.chevron_right),
+            ],
           ),
         ),
       ),

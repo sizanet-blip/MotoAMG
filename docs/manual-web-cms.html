@@ -1,7 +1,7 @@
 ﻿<!--
   Manual web MotoAMG — pegar en el campo "contenido" del CMS.
 
-  Sube ANTES estos PNG a https://panel.albertomaestre.es/uploads/cms/
+  Sube ANTES estos PNG a /uploads/cms/
   (origen: carpeta assets/help/ del proyecto Flutter)
 
   Capturas base:
@@ -39,6 +39,9 @@
   36_motoamg_unir_codigo.png
   38_motoamg_evitaciones.png
   40_motoamg_opciones_grupo.png
+  41_motoamg_condiciones.png
+  42_motoamg_crear_cuenta.png
+  43_motoamg_registro_usuario.png
 -->
 <article class="manual-motoamg">
   <style>
@@ -237,7 +240,7 @@
   <header class="hero">
     <img
       class="logo"
-      src="https://panel.albertomaestre.es/uploads/cms/00_motoamg_icono.png"
+      src="/uploads/cms/00_motoamg_icono.png"
       alt="Icono MotoAMG"
     />
     <h1>Manual de usuario — MotoAMG</h1>
@@ -325,7 +328,7 @@
     <li>Avisos de actualización de la app (desde Acerca de MotoAMG)</li>
   </ul>
   <figure>
-    <img src="https://panel.albertomaestre.es/uploads/cms/01_motoamg_inicio.png" alt="Pantalla de inicio MotoAMG" />
+    <img src="/uploads/cms/01_motoamg_inicio.png" alt="Pantalla de inicio MotoAMG" />
     <figcaption>Inicio de MotoAMG: hub con Mis grupos, Navegación y Configuración</figcaption>
   </figure>
 
@@ -335,8 +338,8 @@
     <ol>
       <li>Instala la app e iníciala.</li>
       <li>Concede <strong>ubicación</strong> y, en Android, <strong>notificaciones</strong>.</li>
-      <li>Lee y acepta la <strong>política de privacidad</strong> y los términos.</li>
-      <li>Inicia sesión (Google, correo, usuario) o entra como invitado.</li>
+      <li>Lee y acepta la <strong>política de privacidad</strong> y los términos de MotoAMG.</li>
+      <li>Regístrate o inicia sesión con <strong>usuario y contraseña AMG</strong> (guarda el código de recuperación). La cuenta puede quedar pendiente de aprobación.</li>
       <li>Si tu club o grupo lo requiere, únete o solicita el alta.</li>
       <li>Crea o únete a un <strong>grupo</strong>, o abre solo <span class="ui">Navegación</span>.</li>
     </ol>
@@ -349,7 +352,7 @@
     el servicio de navegación no se corte con la pantalla apagada.
   </p>
   <figure>
-    <img src="https://panel.albertomaestre.es/uploads/cms/03_motoamg_permisos.png" alt="Pantalla de permisos" />
+    <img src="/uploads/cms/03_motoamg_permisos.png" alt="Pantalla de permisos" />
     <figcaption>Permisos: ubicación, notificaciones y batería (recomendado)</figcaption>
   </figure>
   <div class="opt">
@@ -374,26 +377,35 @@
 
   <h3 id="privacidad">2.2 Privacidad y condiciones</h3>
   <p>
-    Antes de usar la app debes aceptar la política y los términos. Cada cuenta
-    lo hace por separado.
+    Al crear la cuenta (y al entrar por primera vez con una cuenta) debes
+    aceptar la política y los términos de MotoAMG.
   </p>
   <figure>
-    <img src="https://panel.albertomaestre.es/uploads/cms/04_motoamg_privacidad.png" alt="Privacidad y condiciones" />
-    <figcaption>Aceptación de privacidad y condiciones</figcaption>
+    <img src="/uploads/cms/04_motoamg_privacidad.png" alt="Política de privacidad MotoAMG" />
+    <figcaption>Política de privacidad de MotoAMG</figcaption>
+  </figure>
+  <figure>
+    <img src="/uploads/cms/41_motoamg_condiciones.png" alt="Términos de uso MotoAMG" />
+    <figcaption>Términos de uso de MotoAMG</figcaption>
   </figure>
   <ul>
     <li><span class="ui">Leer política de privacidad</span></li>
     <li><span class="ui">Leer términos de uso</span></li>
-    <li>Marca la casilla de aceptación</li>
+    <li>Marca la casilla <span class="ui">He leído y acepto…</span></li>
     <li><span class="ui">Aceptar y continuar</span></li>
   </ul>
 
   <!-- 3 -->
   <h2 id="cuentas">3. Cuentas e inicio de sesión</h2>
   <figure>
-    <img src="https://panel.albertomaestre.es/uploads/cms/02_motoamg_login.png" alt="Pantalla de login" />
-    <figcaption>Entrar con correo, usuario, Google o como invitado</figcaption>
+    <img src="/uploads/cms/02_motoamg_login.png" alt="Pantalla de login" />
+    <figcaption>Entrar con usuario y contraseña AMG</figcaption>
   </figure>
+
+  <p>
+    En esta versión el acceso es solo con <strong>cuenta AMG</strong>
+    (usuario y contraseña). No hay Google ni modo invitado.
+  </p>
 
   <h3>3.1 Entrar</h3>
   <table>
@@ -403,55 +415,53 @@
     <tbody>
       <tr>
         <td><span class="ui">Correo o usuario</span> + <span class="ui">Contraseña</span> → <span class="ui">Entrar</span></td>
-        <td>Cuenta MotoAMG habitual</td>
-      </tr>
-      <tr>
-        <td><span class="ui">Entrar con Google</span></td>
-        <td>Cuenta Google (recuperable con Google)</td>
-      </tr>
-      <tr>
-        <td><span class="ui">Entrar como invitado</span></td>
-        <td>Solo un nombre; al salir se borra todo</td>
+        <td>Cuenta AMG activa (aprobada en el panel)</td>
       </tr>
       <tr>
         <td><span class="ui">¿No tienes cuenta? Crear cuenta</span></td>
-        <td>Con correo o con usuario y contraseña</td>
-      </tr>
-      <tr>
-        <td><span class="ui">He olvidado la contraseña</span></td>
-        <td>Recuperar con correo o con clave MA-…</td>
+        <td>Solicitud de alta (puede quedar pendiente de aprobación)</td>
       </tr>
     </tbody>
   </table>
 
   <h3>3.2 Crear cuenta</h3>
-  <p>Puedes registrarte de dos formas:</p>
+  <figure>
+    <img src="/uploads/cms/42_motoamg_crear_cuenta.png" alt="Opciones de crear cuenta" />
+    <figcaption>Elegir tipo de alta: usuario o con correo</figcaption>
+  </figure>
+  <figure>
+    <img src="/uploads/cms/43_motoamg_registro_usuario.png" alt="Registro con usuario" />
+    <figcaption>Formulario de registro con usuario y contraseña</figcaption>
+  </figure>
   <ul>
+    <li>Acepta primero la política de privacidad y los términos de uso.</li>
     <li>
-      <strong>Con correo:</strong> nombre en el mapa, correo, contraseña y
-      confirmación → <span class="ui">Crear cuenta</span>
+      Elige <span class="ui">Usuario y contraseña</span> o
+      <span class="ui">Con correo</span> (email opcional).
     </li>
     <li>
-      <strong>Con usuario y contraseña:</strong> usuario único y contraseña.
-      Tras el registro aparece <span class="ui">Guarda tu clave</span>
-      (formato <code>MA-XXXX-…</code>). Cópiala y marca
-      <span class="ui">He guardado la clave en un sitio seguro</span> antes de
-      continuar. <strong>Sin esa clave no hay otra vía de recuperación</strong>
-      en cuentas solo-usuario.
+      Tras el registro aparece el <strong>código de recuperación</strong>:
+      cópialo y guárdalo. Sin él puede no haber otra vía de restablecimiento.
+    </li>
+    <li>
+      Si la cuenta queda <strong>pendiente</strong>, un administrador debe
+      activarla en el panel antes de poder entrar.
     </li>
   </ul>
 
-  <h3>3.3 Recuperar contraseña</h3>
+  <h3>3.3 Código de recuperación</h3>
   <ul>
-    <li><span class="ui">Con correo</span> → envío de enlace</li>
     <li>
-      <span class="ui">Con clave</span> → usuario + clave de recuperación +
-      nueva contraseña → <span class="ui">Cambiar contraseña y entrar</span>
+      Al crear la cuenta la app muestra una <strong>clave de recuperación</strong>
+      única: guárdala en un sitio seguro.
+    </li>
+    <li>
+      Es la vía prevista para recuperar el acceso si olvidas la contraseña
+      (sobre todo si no registraste email).
     </li>
   </ul>
   <div class="note">
-    Si solo haces una ruta puntual, el modo invitado basta. Si quieres guardar
-    grupos y perfil, crea una cuenta.
+    Guarda el código de recuperación. No hay acceso de invitado ni registro con Google.
   </div>
 
   <!-- 4 -->
@@ -461,7 +471,7 @@
     <span class="ui">¿A dónde vamos hoy?</span>, con tres entradas principales:
   </p>
   <figure>
-    <img src="https://panel.albertomaestre.es/uploads/cms/01_motoamg_inicio.png" alt="Hub de inicio" />
+    <img src="/uploads/cms/01_motoamg_inicio.png" alt="Hub de inicio" />
     <figcaption>Hub: tres accesos principales</figcaption>
   </figure>
   <table>
@@ -494,19 +504,19 @@
   <!-- 5 -->
   <h2 id="cuenta-menu">5. Menú de cuenta y perfil</h2>
   <figure>
-    <img src="https://panel.albertomaestre.es/uploads/cms/19_motoamg_menu_cuenta.png" alt="Menú de cuenta" />
+    <img src="/uploads/cms/19_motoamg_menu_cuenta.png" alt="Menú de cuenta" />
     <figcaption>Menú Cuenta: nombre, correo, Mi perfil, Configuración, Cerrar sesión</figcaption>
   </figure>
   <ul>
     <li><span class="ui">Mi perfil</span></li>
     <li><span class="ui">Configuración</span></li>
     <li><span class="ui">Clave de recuperación</span> (si aplica a tu tipo de cuenta)</li>
-    <li><span class="ui">Cerrar sesión</span> / <span class="ui">Salir de invitado</span></li>
+    <li><span class="ui">Cerrar sesión</span></li>
   </ul>
 
   <h3>5.1 Mi perfil</h3>
   <figure>
-    <img src="https://panel.albertomaestre.es/uploads/cms/14_motoamg_perfil.png" alt="Mi perfil" />
+    <img src="/uploads/cms/14_motoamg_perfil.png" alt="Mi perfil" />
     <figcaption>Mi perfil: nombre, teléfono y vehículos</figcaption>
   </figure>
   <div class="opt"><strong>Nombre</strong> — visible en el mapa del grupo</div>
@@ -542,7 +552,7 @@
     (nivel de acceso a la app; distinto de la salida/ruta del día).
   </p>
   <figure>
-    <img src="https://panel.albertomaestre.es/uploads/cms/05_motoamg_club_entrada.png" alt="Bienvenida Mis grupos / club" />
+    <img src="/uploads/cms/05_motoamg_club_entrada.png" alt="Bienvenida Mis grupos / club" />
     <figcaption>
       Tras entrar en un club o grupo (p. ej. «Grupo Prueba»), Mis grupos te invita a
       crear la salida del día o unirte con un código
@@ -571,14 +581,14 @@
   <h2 id="grupos">7. Mis grupos</h2>
   <p>Un <strong>grupo</strong> es tu pelotón de salida.</p>
   <figure>
-    <img src="https://panel.albertomaestre.es/uploads/cms/06_motoamg_mis_grupos.png" alt="Mis grupos" />
+    <img src="/uploads/cms/06_motoamg_mis_grupos.png" alt="Mis grupos" />
     <figcaption>Mis grupos: lista, crear, unirse y acceso a Navegación</figcaption>
   </figure>
 
   <h3>7.1 Crear un grupo</h3>
   <div class="shot-row">
     <figure>
-      <img src="https://panel.albertomaestre.es/uploads/cms/35_motoamg_crear_grupo.png" alt="Diálogo crear grupo" />
+      <img src="/uploads/cms/35_motoamg_crear_grupo.png" alt="Diálogo crear grupo" />
       <figcaption>Diálogo «Nombre del grupo»</figcaption>
     </figure>
   </div>
@@ -593,7 +603,7 @@
 
   <h3>7.2 Unirse con código</h3>
   <figure>
-    <img src="https://panel.albertomaestre.es/uploads/cms/36_motoamg_unir_codigo.png" alt="Unirse con código" />
+    <img src="/uploads/cms/36_motoamg_unir_codigo.png" alt="Unirse con código" />
     <figcaption>Diálogo «Código del grupo»</figcaption>
   </figure>
   <p>
@@ -610,7 +620,7 @@
   <!-- 8 -->
   <h2 id="mapa">8. Mapa del grupo</h2>
   <figure class="wide">
-    <img src="https://panel.albertomaestre.es/uploads/cms/07_motoamg_mapa_grupo.png" alt="Mapa del grupo" />
+    <img src="/uploads/cms/07_motoamg_mapa_grupo.png" alt="Mapa del grupo" />
     <figcaption>Mapa en vivo: posición, leyenda y botones de acción</figcaption>
   </figure>
 
@@ -652,7 +662,7 @@
 
   <h3>8.3 Opciones del grupo</h3>
   <figure>
-    <img src="https://panel.albertomaestre.es/uploads/cms/40_motoamg_opciones_grupo.png" alt="Contexto de opciones del grupo" />
+    <img src="/uploads/cms/40_motoamg_opciones_grupo.png" alt="Contexto de opciones del grupo" />
     <figcaption>Desde el mapa o la ficha del grupo se gestionan código, intercom y miembros</figcaption>
   </figure>
   <p>En <span class="ui">Opciones del grupo</span> (creador / admin):</p>
@@ -670,7 +680,7 @@
   <!-- 9 -->
   <h2 id="roles">9. Cabecera, cola y pelotón</h2>
   <figure>
-    <img src="https://panel.albertomaestre.es/uploads/cms/08_motoamg_peloton.png" alt="Pelotón" />
+    <img src="/uploads/cms/08_motoamg_peloton.png" alt="Pelotón" />
     <figcaption>Mapa / hoja del pelotón: compañeros y roles de marcha</figcaption>
   </figure>
   <ul>
@@ -689,7 +699,7 @@
   <!-- 10 -->
   <h2 id="incidencias">10. Incidencias y seguridad</h2>
   <figure>
-    <img src="https://panel.albertomaestre.es/uploads/cms/09_motoamg_incidencias.png" alt="Avisos de incidencia" />
+    <img src="/uploads/cms/09_motoamg_incidencias.png" alt="Avisos de incidencia" />
     <figcaption>Botones de aviso en el mapa / navegación</figcaption>
   </figure>
   <table>
@@ -724,7 +734,7 @@
   <!-- 11 -->
   <h2 id="intercom">11. Intercom</h2>
   <figure>
-    <img src="https://panel.albertomaestre.es/uploads/cms/17_motoamg_intercom.png" alt="Ajustes de intercom" />
+    <img src="/uploads/cms/17_motoamg_intercom.png" alt="Ajustes de intercom" />
     <figcaption>Preferencias personales: Hablar / Escuchar por defecto</figcaption>
   </figure>
   <ol>
@@ -756,7 +766,7 @@
 
   <h3 id="planificar">12.1 Planificar ruta</h3>
   <figure class="wide">
-    <img src="https://panel.albertomaestre.es/uploads/cms/10_motoamg_navegacion.png" alt="Planificar navegación" />
+    <img src="/uploads/cms/10_motoamg_navegacion.png" alt="Planificar navegación" />
     <figcaption>Planificador: mapa, búsqueda «¿A dónde vas?» y controles</figcaption>
   </figure>
   <div class="steps">
@@ -798,7 +808,7 @@
     <li><span class="ui">Ferries</span></li>
   </ul>
   <figure>
-    <img src="https://panel.albertomaestre.es/uploads/cms/38_motoamg_evitaciones.png" alt="Mapa al planificar" />
+    <img src="/uploads/cms/38_motoamg_evitaciones.png" alt="Mapa al planificar" />
     <figcaption>Durante la planificación puedes acercar, alejar y centrar en tu ubicación</figcaption>
   </figure>
   <p>
@@ -809,7 +819,7 @@
 
   <h3 id="preview">12.3 Vista previa de ruta</h3>
   <figure>
-    <img src="https://panel.albertomaestre.es/uploads/cms/11_motoamg_ruta_preview.png" alt="Vista previa de ruta" />
+    <img src="/uploads/cms/11_motoamg_ruta_preview.png" alt="Vista previa de ruta" />
     <figcaption>Vista previa antes de empezar: alternativas y capas de avisos</figcaption>
   </figure>
   <ul>
@@ -830,7 +840,7 @@
 
   <h3 id="hud">12.4 En marcha (HUD)</h3>
   <figure>
-    <img src="https://panel.albertomaestre.es/uploads/cms/12_motoamg_hud.png" alt="HUD de navegación" />
+    <img src="/uploads/cms/12_motoamg_hud.png" alt="HUD de navegación" />
     <figcaption>HUD en ruta: maniobra, velocidad, ETA y avisos</figcaption>
   </figure>
   <p><strong>Qué verás</strong></p>
@@ -875,7 +885,7 @@
     Arriba a la derecha: <span class="ui">Restablecer</span>.
   </p>
   <figure>
-    <img src="https://panel.albertomaestre.es/uploads/cms/26_motoamg_avisos_hub.png" alt="Hub de avisos" />
+    <img src="/uploads/cms/26_motoamg_avisos_hub.png" alt="Hub de avisos" />
     <figcaption>Hub de avisos: radares, gasolineras, peajes, curvas, límite y señales</figcaption>
   </figure>
 
@@ -883,7 +893,7 @@
 
   <h4>Radares</h4>
   <figure>
-    <img src="https://panel.albertomaestre.es/uploads/cms/28_motoamg_avisos_radares.png" alt="Detalle avisos radar" />
+    <img src="/uploads/cms/28_motoamg_avisos_radares.png" alt="Detalle avisos radar" />
     <figcaption>Detalle de radares: mapa, vista previa, voz y distancias</figcaption>
   </figure>
   <ul>
@@ -937,7 +947,7 @@
 
   <h3 id="senales">13.2 Señales de tráfico</h3>
   <figure>
-    <img src="https://panel.albertomaestre.es/uploads/cms/27_motoamg_senales_trafico.png" alt="Señales de tráfico" />
+    <img src="/uploads/cms/27_motoamg_senales_trafico.png" alt="Señales de tráfico" />
     <figcaption>Señales: semáforos, STOP y ceda (solo iconos en navegación)</figcaption>
   </figure>
   <ul>
@@ -956,18 +966,18 @@
   <h2 id="config">14. Configuración (todas las opciones)</h2>
   <div class="shot-row">
     <figure>
-      <img src="https://panel.albertomaestre.es/uploads/cms/13_motoamg_configuracion.png" alt="Configuración parte alta" />
+      <img src="/uploads/cms/13_motoamg_configuracion.png" alt="Configuración parte alta" />
       <figcaption>Configuración — apariencia y navegación</figcaption>
     </figure>
     <figure>
-      <img src="https://panel.albertomaestre.es/uploads/cms/20_motoamg_configuracion_abajo.png" alt="Configuración parte baja" />
+      <img src="/uploads/cms/20_motoamg_configuracion_abajo.png" alt="Configuración parte baja" />
       <figcaption>Configuración — offline, ayuda y cuenta</figcaption>
     </figure>
   </div>
 
   <h3>14.1 Apariencia — Mapa día / noche</h3>
   <figure>
-    <img src="https://panel.albertomaestre.es/uploads/cms/25_motoamg_mapa_dia_noche.png" alt="Mapa día noche" />
+    <img src="/uploads/cms/25_motoamg_mapa_dia_noche.png" alt="Mapa día noche" />
     <figcaption>Automático, Día o Noche</figcaption>
   </figure>
   <ul>
@@ -978,7 +988,7 @@
 
   <h3>14.2 Pantalla al navegar</h3>
   <figure>
-    <img src="https://panel.albertomaestre.es/uploads/cms/29_motoamg_pantalla_navegar.png" alt="Pantalla al navegar" />
+    <img src="/uploads/cms/29_motoamg_pantalla_navegar.png" alt="Pantalla al navegar" />
     <figcaption>Pantalla al navegar: brillo, botones, 3D y simulador</figcaption>
   </figure>
   <ul>
@@ -995,7 +1005,7 @@
 
   <h3>14.3 Grupo en ruta</h3>
   <figure>
-    <img src="https://panel.albertomaestre.es/uploads/cms/30_motoamg_grupo_en_ruta.png" alt="Grupo en ruta" />
+    <img src="/uploads/cms/30_motoamg_grupo_en_ruta.png" alt="Grupo en ruta" />
     <figcaption>Qué motos ver en el HUD y avisos si alguien se queda</figcaption>
   </figure>
   <ul>
@@ -1017,7 +1027,7 @@
 
   <h3>14.5 Contacto de emergencia</h3>
   <figure>
-    <img src="https://panel.albertomaestre.es/uploads/cms/31_motoamg_contacto_emergencia.png" alt="Contacto de emergencia" />
+    <img src="/uploads/cms/31_motoamg_contacto_emergencia.png" alt="Contacto de emergencia" />
     <figcaption>Contactos personales para avisar tras Urgente · 112</figcaption>
   </figure>
   <ul>
@@ -1039,7 +1049,7 @@
 
   <h3>15.1 Mapas offline</h3>
   <figure>
-    <img src="https://panel.albertomaestre.es/uploads/cms/15_motoamg_mapas_offline.png" alt="Mapas offline" />
+    <img src="/uploads/cms/15_motoamg_mapas_offline.png" alt="Mapas offline" />
     <figcaption>Descarga de mapas por región</figcaption>
   </figure>
   <p>
@@ -1049,7 +1059,7 @@
 
   <h3>15.2 Radares offline</h3>
   <figure>
-    <img src="https://panel.albertomaestre.es/uploads/cms/16_motoamg_radares.png" alt="Radares offline" />
+    <img src="/uploads/cms/16_motoamg_radares.png" alt="Radares offline" />
     <figcaption>Inventario DGT/SCT y OSM; aviso de actualización</figcaption>
   </figure>
   <ul>
@@ -1063,7 +1073,7 @@
 
   <h3>15.3 Gasolineras offline</h3>
   <figure>
-    <img src="https://panel.albertomaestre.es/uploads/cms/21_motoamg_gasolineras_offline.png" alt="Gasolineras offline" />
+    <img src="/uploads/cms/21_motoamg_gasolineras_offline.png" alt="Gasolineras offline" />
     <figcaption>Inventario MITECO de precios</figcaption>
   </figure>
   <ul>
@@ -1074,7 +1084,7 @@
   <!-- 16 -->
   <h2 id="ayuda">16. Ayuda, legal y soporte</h2>
   <figure>
-    <img src="https://panel.albertomaestre.es/uploads/cms/18_motoamg_ayuda.png" alt="Ayuda en la app" />
+    <img src="/uploads/cms/18_motoamg_ayuda.png" alt="Ayuda en la app" />
     <figcaption>Desde Configuración: Ayuda, Uso de APIs y Acerca de MotoAMG</figcaption>
   </figure>
   <ul>
@@ -1241,9 +1251,17 @@
     </p>
   </details>
   <details>
-    <summary>Entrada de invitado: ¿se guarda algo?</summary>
+    <summary>¿Puedo entrar como invitado o con Google?</summary>
     <p>
-      No de forma permanente. Al cerrar la sesión de invitado se pierde el acceso.
+      No en esta versión. Solo cuenta AMG con usuario y contraseña, sujeta a
+      aprobación del administrador si el alta queda pendiente.
+    </p>
+  </details>
+  <details>
+    <summary>Me he registrado y no puedo entrar</summary>
+    <p>
+      La cuenta puede estar pendiente. Cuando el administrador la active en el
+      panel, inicia sesión con tu usuario y contraseña.
     </p>
   </details>
   <details>

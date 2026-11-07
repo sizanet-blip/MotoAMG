@@ -120,22 +120,57 @@ class MysqlAuthRemoteDataSource {
     required String displayName,
     String? email,
   }) async {
+    // Auth unificado AMG: solicitud pending (no JWT hasta aprobación).
     final data = await _api.post(
-      '/motoamg/auth/register',
+      '/app-auth/register',
       body: {
         'username': username,
         'password': password,
-        'displayName': displayName,
+        'display_name': displayName,
+        'app_id': 'MotoAMG',
         if (email != null && email.isNotEmpty) 'email': email,
+        'privacy_accepted_version': AppConstants.privacyPolicyVersion,
+        'terms_accepted_version': AppConstants.termsOfUseVersion,
       },
     );
-    return _persist(data);
+    final recovery = data['recovery_code']?.toString();
+    final msg = data['message']?.toString() ??
+        'Solicitud enviada. Espera la aprobación del administrador.';
+    throw MotoAmgApiException(
+      recovery != null && recovery.isNotEmpty
+          ? '$msg Guarda tu código de recuperación: $recovery'
+          : msg,
+      statusCode: 202,
+    );
   }
 
   Future<AppUser> login({
     required String username,
     required String password,
   }) async {
+    // 1) Gate AMG (active + app MotoAMG).
+    final gate = await _api.post(
+      '/app-auth/login',
+      body: {
+        'username': username,
+        'password': password,
+        'app_id': 'MotoAMG',
+        'privacy_current_version': AppConstants.privacyPolicyVersion,
+        'terms_current_version': AppConstants.termsOfUseVersion,
+      },
+    );
+    if (gate['ok'] != true && gate['token'] == null) {
+      final message = gate['message']?.toString() ?? 'No se pudo iniciar sesión.';
+      final status = (gate['account'] is Map)
+          ? gate['account']['status']?.toString()
+          : null;
+      throw MotoAmgApiException(
+        message,
+        statusCode: status == 'pending' ? 403 : 401,
+      );
+    }
+
+    // 2) Sesión Moto (JWT clubs/grupos) tras bridge en aprobación.
     final data = await _api.post(
       '/motoamg/auth/login',
       body: {

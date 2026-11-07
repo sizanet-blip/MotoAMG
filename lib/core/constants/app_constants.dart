@@ -21,6 +21,23 @@ abstract final class AppConstants {
     'UPDATE_METADATA_URL',
   );
 
+  /// Inventario unificado de instalaciones (panel Yii2).
+  /// Preferente: `INSTALLATION_API_URL`; si vacío, `LICENSE_API_URL`.
+  static const String _installationApiUrl = String.fromEnvironment(
+    'INSTALLATION_API_URL',
+    defaultValue: '',
+  );
+  static const String _licenseApiUrl = String.fromEnvironment(
+    'LICENSE_API_URL',
+    defaultValue: '',
+  );
+
+  static String get installationApiUrl {
+    final a = _installationApiUrl.trim();
+    if (a.isNotEmpty) return a;
+    return _licenseApiUrl.trim();
+  }
+
   /// Si está vacío, se muestra el texto integrado en la app.
   static const String privacyPolicyUrl = '';
   static const String termsOfUseUrl = '';
@@ -46,7 +63,9 @@ abstract final class AppConstants {
   static const String privacyAcceptedKey = 'privacy_v1';
 
   /// Versión de la política: si cambia, cada cuenta debe volver a aceptar.
-  static const String privacyPolicyVersion = '2026-09-05';
+  /// Versión legal propia de MotoAMG (aceptación en registro / onboarding).
+  static const String privacyPolicyVersion = '1.0-2026-10-25';
+  static const String termsOfUseVersion = '1.0-2026-10-25';
 
   /// Intervalo de envío de GPS al nodo RTDB `live_locations`.
   static const Duration locationUpdateInterval = Duration(seconds: 3);

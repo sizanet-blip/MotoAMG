@@ -31,7 +31,8 @@ const quickGuideSections = <HelpSection>[
         '1. Activa ubicación y notificaciones cuando la app lo pida.\n'
         '2. En Xiaomi, Samsung y similares, excluye MotoAMG de la '
         'optimización de batería (Configuración → Pantalla al navegar).\n'
-        '3. Inicia sesión (Google, correo o usuario) o entra como invitado.\n'
+        '3. Inicia sesión con usuario y contraseña AMG (tras registrarte puede '
+        'hacer falta la aprobación del administrador). Guarda el código de recuperación.\n'
         '4. Revisa radares y mapas offline si vas a zonas con poca cobertura.\n'
         '5. Comprueba actualizaciones en Acerca de MotoAMG si te avisa la app.',
   ),
@@ -88,15 +89,16 @@ const fullManualSections = <HelpSection>[
   HelpSection(
     title: '2. Cuentas e inicio de sesión',
     body:
-        'Puedes entrar de varias formas:\n\n'
-        '• Google o correo: cuenta habitual, recuperable según el proveedor.\n'
-        '• Usuario y contraseña: si eliges esta opción, guarda bien la clave de '
-        'recuperación que se muestra al registrarte; no hay otra vía si la pierdes.\n'
-        '• Invitado: solo un nombre; puedes unirte a un grupo con código. Al salir '
-        'se borra todo y no se puede recuperar.\n\n'
+        'El acceso a MotoAMG es con cuenta AMG (usuario y contraseña):\n\n'
+        '• Regístrate con usuario, contraseña y, si quieres, email.\n'
+        '• Acepta la política de privacidad y los términos de uso de MotoAMG.\n'
+        '• La cuenta puede quedar pendiente hasta que un administrador la active.\n'
+        '• Al registrarte se muestra un código de recuperación: guárdalo; sirve '
+        'para restablecer la contraseña.\n'
+        '• No hay acceso de invitado ni registro con Google en esta versión.\n\n'
         'En Mi perfil puedes cambiar el nombre en el mapa, el teléfono, los '
-        'vehículos y la contraseña (si aplica). Los vehículos se guardan al '
-        'pulsar «Guardar vehículo»; el nombre y teléfono con «Guardar perfil».',
+        'vehículos y la contraseña. Los vehículos se guardan al pulsar '
+        '«Guardar vehículo»; el nombre y teléfono con «Guardar perfil».',
   ),
   HelpSection(
     title: '3. Vehículos',
@@ -363,17 +365,23 @@ const faqItems = <HelpFaqItem>[
         'para quien prefiera quedarse en MotoAMG.',
   ),
   HelpFaqItem(
-    question: 'Entrada de invitado: ¿se guarda algo?',
+    question: '¿Puedo entrar como invitado o con Google?',
     answer:
-        'No de forma permanente. Al cerrar sesión de invitado se pierde el acceso '
-        'y no hay recuperación. Si quieres guardar grupos y perfil, crea una cuenta.',
+        'No en esta versión. Solo cuenta AMG con usuario y contraseña, sujeta a '
+        'aprobación del administrador si el alta queda pendiente.',
   ),
   HelpFaqItem(
-    question: 'Olvidé la contraseña de usuario (sin correo)',
+    question: 'Me he registrado y no puedo entrar',
     answer:
-        'Necesitas la clave de recuperación que se mostró al registrarte. Sin ella '
-        'no hay restablecimiento. Si te registraste con Google o correo, usa el '
-        'flujo de recuperación de ese proveedor.',
+        'La cuenta puede estar pendiente. Cuando el administrador la active en el '
+        'panel, inicia sesión con tu usuario y contraseña.',
+  ),
+  HelpFaqItem(
+    question: 'Olvidé la contraseña',
+    answer:
+        'Usa el código de recuperación que se mostró al registrarte (junto con tu '
+        'usuario). Si añadiste email, también puedes usar la recuperación por correo '
+        'cuando esté disponible. Sin el código, no hay otra vía automática.',
   ),
   HelpFaqItem(
     question: '¿Mis datos se comparten fuera del grupo?',

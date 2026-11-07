@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:moto_amg/core/constants/app_constants.dart';
 import 'package:moto_amg/core/theme/hub_style.dart';
 import 'package:moto_amg/features/auth/presentation/providers/auth_providers.dart';
-import 'package:moto_amg/features/auth/presentation/screens/display_name_screen.dart';
 import 'package:moto_amg/features/onboarding/presentation/screens/privacy_onboarding_screen.dart';
 import 'package:moto_amg/features/auth/presentation/utils/auth_validators.dart';
 
@@ -89,8 +88,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    'Usuario/contraseña, Google o invitado. '
-                    'Los datos van en MySQL (panel).',
+                    'Usuario y contraseña. La cuenta debe estar aprobada '
+                    'en el panel AMG.',
                     textAlign: TextAlign.center,
                     style: HubStyle.caption(),
                   ),
@@ -164,49 +163,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             );
                           },
                     child: const Text('¿No tienes cuenta? Crear cuenta'),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      const Expanded(child: Divider()),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        child: Text('o', style: HubStyle.caption()),
-                      ),
-                      const Expanded(child: Divider()),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  OutlinedButton.icon(
-                    style: HubStyle.outlinedButtonStyle(),
-                    onPressed: isLoading
-                        ? null
-                        : () => ref
-                            .read(authActionControllerProvider.notifier)
-                            .signInWithGoogle(),
-                    icon: const Icon(Icons.g_mobiledata, size: 28),
-                    label: const Text('Entrar con Google'),
-                  ),
-                  const SizedBox(height: 10),
-                  OutlinedButton.icon(
-                    style: HubStyle.outlinedButtonStyle(),
-                    onPressed: isLoading
-                        ? null
-                        : () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) => const DisplayNameScreen(),
-                              ),
-                            );
-                          },
-                    icon: const Icon(Icons.badge_outlined),
-                    label: const Text('Entrar como invitado'),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Invitado: solo un nombre. Al salir se borra la sesión local.',
-                    textAlign: TextAlign.center,
-                    style: HubStyle.caption(),
                   ),
                 ],
               ),
